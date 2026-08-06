@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "novel",
+  "productName": "Movel",
   "version": "0.1.0",
-  "identifier": "com.meguru.novel",
+  "identifier": "com.meguru.movel",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "novel",
+        "title": "Movel",
         "width": 800,
         "height": 600
       }

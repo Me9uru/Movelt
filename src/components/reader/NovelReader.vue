@@ -15,10 +15,11 @@ const props = defineProps<{
   document: ReaderDocument;
   loading?: boolean;
   initialProgress?: ReadingProgress | null;
+  hasNextChapter?: boolean;
 }>();
 
 const emit = defineEmits<{
-  back: [];
+  next: [];
   progress: [location: number];
 }>();
 
@@ -237,7 +238,6 @@ onBeforeUnmount(() => {
 
     <div v-if="settings.mode === 'scroll'" class="reader-body">
       <header class="reader-heading">
-        <el-tag round effect="plain">正在阅读</el-tag>
         <h1>{{ document.title }}</h1>
         <div class="reader-rule"><span></span><el-icon><Reading /></el-icon><span></span></div>
       </header>
@@ -250,7 +250,17 @@ onBeforeUnmount(() => {
       </div>
 
       <el-divider>本章结束</el-divider>
-      <el-button class="reader-back" :icon="ArrowLeft" round @click="$emit('back')">返回目录</el-button>
+      <el-button
+        class="reader-next"
+        type="primary"
+        :icon="ArrowRight"
+        :disabled="!hasNextChapter || loading"
+        :title="hasNextChapter ? undefined : '已是最后一节'"
+        round
+        @click="$emit('next')"
+      >
+        下一节
+      </el-button>
     </div>
 
     <div v-else class="paged-reader" :class="{ 'paged-reader--spread': isLandscape }">
@@ -264,7 +274,6 @@ onBeforeUnmount(() => {
         @pointercancel="pointerStartX = null"
       >
         <header class="paged-heading">
-          <span>正在阅读</span>
           <h1>{{ document.title }}</h1>
           <div class="reader-rule"><span></span><el-icon><Reading /></el-icon><span></span></div>
         </header>
@@ -279,6 +288,17 @@ onBeforeUnmount(() => {
         <el-button :icon="ArrowLeft" circle :disabled="currentPage === 0" aria-label="上一页" @click="goToPage(currentPage - 1)" />
         <span>{{ pageLabel }}</span>
         <el-button :icon="ArrowRight" circle :disabled="currentPage >= pageCount - 1" aria-label="下一页" @click="goToPage(currentPage + 1)" />
+        <el-button
+          v-if="currentPage >= pageCount - 1"
+          class="paged-next"
+          type="primary"
+          :disabled="!hasNextChapter || loading"
+          :title="hasNextChapter ? undefined : '已是最后一节'"
+          round
+          @click="$emit('next')"
+        >
+          下一节
+        </el-button>
       </nav>
     </div>
   </article>
@@ -295,7 +315,7 @@ onBeforeUnmount(() => {
 .reader-body { width: min(var(--reader-width), 100%); margin: 0 auto; transition: width .2s; }
 .reader-heading { margin: 0 auto 50px; text-align: center; }
 .reader-heading h1, .paged-heading h1 { color: var(--reader-text); font-family: var(--reader-font-family); font-weight: 500; line-height: 1.4; }
-.reader-heading h1 { margin: 22px 0 26px; font-size: clamp(30px, 5vw, 42px); }
+.reader-heading h1 { margin: 0 0 26px; font-size: clamp(30px, 5vw, 42px); }
 .reader-rule { display: flex; align-items: center; justify-content: center; gap: 12px; color: #b39d81; }
 .reader-rule span { width: 72px; height: 1px; background: var(--reader-border); }
 .reader-content { padding: 48px 56px; border: 1px solid var(--reader-border); border-radius: 20px; background: var(--reader-surface); box-shadow: 0 22px 60px rgb(40 35 28 / 7%); }
@@ -303,7 +323,7 @@ onBeforeUnmount(() => {
 .chapter-image { display: block; max-width: 100%; max-height: 80vh; margin: 36px auto; object-fit: contain; break-inside: avoid; }
 .reader-body > :deep(.el-divider) { margin: 62px 0 34px; border-color: var(--reader-border); }
 .reader-body > :deep(.el-divider .el-divider__text) { color: var(--reader-muted); background: var(--reader-bg); }
-.reader-back { display: flex; margin: 0 auto; }
+.reader-next { display: flex; margin: 0 auto; }
 
 .reader--paged { height: calc(100dvh - 76px); min-height: 540px; padding-bottom: 20px; overflow: hidden; }
 .reader--paged .reader-toolbar { position: relative; top: 0; margin-bottom: 16px; }
@@ -312,13 +332,13 @@ onBeforeUnmount(() => {
 .paged-reader--spread { width: min(1100px, 100%); }
 .paged-reader--spread .page-viewport { column-count: 2; column-gap: 72px; }
 .paged-heading { margin-bottom: 42px; text-align: center; break-inside: avoid; }
-.paged-heading > span { color: var(--reader-muted); font-size: 12px; letter-spacing: .12em; }
-.paged-heading h1 { margin: 18px 0 22px; font-size: clamp(26px, 4vw, 38px); }
+.paged-heading h1 { margin: 0 0 22px; font-size: clamp(26px, 4vw, 38px); }
 .page-viewport .chapter-image { max-height: calc(100dvh - 290px); }
 .page-viewport .chapter-end { margin-top: 40px; color: var(--reader-muted); font-size: 13px; text-align: center; break-inside: avoid; }
 .page-controls { display: flex; align-items: center; justify-content: center; gap: 18px; height: 58px; color: var(--reader-muted); font-size: 12px; }
 .page-controls span { min-width: 58px; text-align: center; }
 .page-controls :deep(.el-button) { border-color: var(--reader-border); color: var(--reader-text); background: var(--reader-surface); }
+.page-controls :deep(.paged-next) { color: var(--el-color-white); background: var(--el-color-primary); }
 
 @media (max-width: 720px) {
   .reader { min-height: calc(100vh - 66px); padding: 12px 14px 60px; }

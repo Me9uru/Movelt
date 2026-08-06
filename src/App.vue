@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import {
   ArrowLeft,
   Check,
   Collection,
+  Loading,
   Reading,
   Search,
   Star,
@@ -11,29 +12,37 @@ import {
 } from "@element-plus/icons-vue";
 import {
   getNovelOverview,
+  listNovelSources,
   searchNovels,
   type NovelDetail,
+  type NovelSourceInfo,
   type NovelSummary,
   type Volume,
 } from "./services/novel";
 import type { ReaderDocument } from "./domain/reader";
 import type { ReadingProgress } from "./domain/library";
-import { bilinovelSource } from "./sources/bilinovel";
+import { networkNovelSource } from "./sources/networkNovel";
 import NovelReader from "./components/reader/NovelReader.vue";
 import { useLibrary } from "./composables/useLibrary";
 
 type LibraryView = "search" | "bookshelf";
 type View = LibraryView | "detail" | "reader";
+type LoadingAction = "search" | "novel" | "chapter" | "bookshelf";
+
+const historyViewKey = "movelView";
 
 const view = ref<View>("search");
 const lastLibraryView = ref<LibraryView>("search");
 const query = ref("");
+const sourceOptions = ref<NovelSourceInfo[]>([]);
+const selectedSource = ref("");
 const results = ref<NovelSummary[]>([]);
 const detail = ref<NovelDetail | null>(null);
 const catalogue = ref<Volume[]>([]);
 const readerDocument = ref<ReaderDocument | null>(null);
 const currentChapterId = ref<string | null>(null);
 const loading = ref(false);
+const loadingAction = ref<LoadingAction | null>(null);
 const bookshelfLoading = ref(true);
 const errorMessage = ref("");
 const {
@@ -50,11 +59,33 @@ const {
 const chapterCount = computed(() =>
   catalogue.value.reduce((total, volume) => total + volume.chapters.length, 0),
 );
+const chapterIds = computed(() =>
+  catalogue.value.flatMap((volume) => volume.chapters.map((chapter) => chapter.id)),
+);
+const nextChapterId = computed(() => {
+  if (!currentChapterId.value) return null;
+  const currentIndex = chapterIds.value.indexOf(currentChapterId.value);
+  return currentIndex >= 0 ? chapterIds.value[currentIndex + 1] ?? null : null;
+});
 const onBookshelf = computed(() => detail.value ? isOnBookshelf(detail.value) : false);
 const currentProgress = computed(() => detail.value ? progressFor(detail.value) : null);
 const readerInitialProgress = computed(() => {
   const progress = currentProgress.value;
   return progress?.documentId === currentChapterId.value ? progress : null;
+});
+const loadingCopy = computed(() => {
+  switch (loadingAction.value) {
+    case "search":
+      return { title: "正在搜索作品", hint: "首次加载书库索引可能需要十几秒" };
+    case "novel":
+      return { title: "正在加载作品详情", hint: "正在获取简介与章节目录" };
+    case "chapter":
+      return { title: "正在加载章节", hint: "内容较多时可能需要稍候" };
+    case "bookshelf":
+      return { title: "正在更新书架", hint: "请稍候" };
+    default:
+      return { title: "正在加载", hint: "请稍候" };
+  }
 });
 
 function describeError(error: unknown): string {
@@ -67,22 +98,34 @@ function describeError(error: unknown): string {
   return "请求失败，请稍后重试";
 }
 
-async function run<T>(task: () => Promise<T>): Promise<T | null> {
+let activeLoadSeq = 0;
+
+async function run<T>(action: LoadingAction, task: () => Promise<T>): Promise<T | null> {
+  if (loading.value) return null;
+  const seq = ++activeLoadSeq;
   loading.value = true;
+  loadingAction.value = action;
   errorMessage.value = "";
   try {
-    return await task();
+    const result = await task();
+    if (seq !== activeLoadSeq) return null;
+    return result;
   } catch (error) {
+    if (seq !== activeLoadSeq) return null;
     errorMessage.value = describeError(error);
     return null;
   } finally {
-    loading.value = false;
+    if (seq === activeLoadSeq) {
+      loading.value = false;
+      loadingAction.value = null;
+    }
   }
 }
 
 async function search() {
   if (!query.value.trim()) return;
-  const response = await run(() => searchNovels(query.value.trim()));
+  const searchQuery = query.value.trim();
+  const response = await run("search", () => searchNovels(selectedSource.value, searchQuery));
   if (response) {
     results.value = response.items;
     view.value = "search";
@@ -92,32 +135,75 @@ async function search() {
 function openLibraryView(nextView: LibraryView) {
   view.value = nextView;
   lastLibraryView.value = nextView;
+  replaceHistoryView(nextView);
   errorMessage.value = "";
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function historyState(nextView: View): Record<string, unknown> {
+  const currentState = window.history.state;
+  const state = currentState && typeof currentState === "object"
+    ? currentState as Record<string, unknown>
+    : {};
+  return { ...state, [historyViewKey]: nextView };
+}
+
+function replaceHistoryView(nextView: View) {
+  window.history.replaceState(historyState(nextView), "");
+}
+
+function enterHistoryView(nextView: "detail" | "reader") {
+  view.value = nextView;
+  window.history.pushState(historyState(nextView), "");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function handleHistoryBack(event: PopStateEvent) {
+  const nextView = event.state?.[historyViewKey];
+  if (nextView === "reader" && readerDocument.value) {
+    view.value = "reader";
+  } else if (nextView === "detail" && detail.value) {
+    view.value = "detail";
+  } else if (nextView === "bookshelf" || nextView === "search") {
+    view.value = nextView;
+    lastLibraryView.value = nextView;
+  } else {
+    view.value = lastLibraryView.value;
+    replaceHistoryView(lastLibraryView.value);
+  }
+  errorMessage.value = "";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function handleAndroidBack(event: Event) {
+  if (view.value === "detail" || view.value === "reader") {
+    event.preventDefault();
+    back();
+  }
 }
 
 async function openNovel(novel: NovelSummary) {
   if (view.value === "search" || view.value === "bookshelf") {
     lastLibraryView.value = view.value;
   }
-  const response = await run(async () => {
-    const overview = await getNovelOverview(novel.id);
+  const response = await run("novel", async () => {
+    const overview = await getNovelOverview(novel.source, novel.id);
     await loadProgress(overview.detail);
     return overview;
   });
   if (response) {
     detail.value = response.detail;
     catalogue.value = response.volumes;
-    view.value = "detail";
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    enterHistoryView("detail");
   }
 }
 
 async function openChapter(chapterId: string) {
   if (!detail.value) return;
-  const response = await run(async () => {
+  const isChangingChapter = view.value === "reader";
+  const response = await run("chapter", async () => {
     const book = detail.value!;
-    const document = await bilinovelSource.loadDocument(book.id, chapterId);
+    const document = await networkNovelSource(book.source).loadDocument(book.id, chapterId);
     const existing = progressFor(book);
     await saveProgress(book, {
       documentId: chapterId,
@@ -129,14 +215,38 @@ async function openChapter(chapterId: string) {
   if (response) {
     readerDocument.value = response;
     currentChapterId.value = chapterId;
-    view.value = "reader";
+    prefetchFollowingChapters(chapterId);
+    if (isChangingChapter) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      enterHistoryView("reader");
+    }
   }
+}
+
+function prefetchFollowingChapters(chapterId: string) {
+  if (!detail.value) return;
+  const currentIndex = chapterIds.value.indexOf(chapterId);
+  if (currentIndex < 0) return;
+
+  const followingIds = chapterIds.value.slice(currentIndex + 1, currentIndex + 3);
+  if (followingIds.length === 0) return;
+
+  const book = detail.value;
+  const source = networkNovelSource(book.source);
+  void source.prefetchDocuments?.(book.id, followingIds).catch((error: unknown) => {
+    console.warn("章节预取失败", error);
+  });
+}
+
+function openNextChapter() {
+  if (nextChapterId.value) void openChapter(nextChapterId.value);
 }
 
 async function toggleBookshelf() {
   if (!detail.value) return;
   const book = detail.value;
-  await run(() => isOnBookshelf(book) ? removeBook(book) : addBook(book));
+  await run("bookshelf", () => isOnBookshelf(book) ? removeBook(book) : addBook(book));
 }
 
 function continueReading() {
@@ -159,23 +269,32 @@ function progressPercent(progress: ReadingProgress | null): number {
 }
 
 function back() {
-  errorMessage.value = "";
-  if (view.value === "reader") {
-    view.value = "detail";
-  } else {
-    view.value = lastLibraryView.value;
+  if (loading.value) {
+    activeLoadSeq++;
+    loading.value = false;
+    loadingAction.value = null;
   }
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  window.history.back();
 }
 
 onMounted(async () => {
+  replaceHistoryView(view.value);
+  window.addEventListener("popstate", handleHistoryBack);
+  window.addEventListener("movel:android-back", handleAndroidBack);
   try {
-    await refreshBooks();
+    const [, sources] = await Promise.all([refreshBooks(), listNovelSources()]);
+    sourceOptions.value = sources;
+    selectedSource.value = sources[0]?.id ?? "";
   } catch (error) {
     errorMessage.value = describeError(error);
   } finally {
     bookshelfLoading.value = false;
   }
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("popstate", handleHistoryBack);
+  window.removeEventListener("movel:android-back", handleAndroidBack);
 });
 </script>
 
@@ -194,7 +313,7 @@ onMounted(async () => {
       </div>
     </header>
 
-    <main class="app-shell">
+    <main class="app-shell" :aria-busy="loading">
       <el-alert
         v-if="errorMessage"
         class="error-alert"
@@ -208,11 +327,26 @@ onMounted(async () => {
       <section v-if="view === 'search'" class="search-view">
         <div class="hero">
           <form class="search-box" @submit.prevent="search">
+            <el-select
+              v-model="selectedSource"
+              class="source-select"
+              size="large"
+              aria-label="小说来源"
+              @change="results = []"
+            >
+              <el-option
+                v-for="source in sourceOptions"
+                :key="source.id"
+                :label="source.name"
+                :value="source.id"
+              />
+            </el-select>
             <el-input
               v-model="query"
               :prefix-icon="Search"
               size="large"
               clearable
+              :disabled="loading"
               aria-label="小说名或作者"
               placeholder="输入小说名或作者"
             />
@@ -221,7 +355,7 @@ onMounted(async () => {
               type="primary"
               size="large"
               :loading="loading"
-              :disabled="!query.trim()"
+              :disabled="loading || !selectedSource || !query.trim()"
             >
               搜索作品
             </el-button>
@@ -260,10 +394,12 @@ onMounted(async () => {
           <div v-else class="result-grid">
             <el-card
               v-for="novel in results"
-              :key="novel.id"
+              :key="`${novel.source}:${novel.id}`"
               class="book-card"
+              :class="{ 'book-card--disabled': loading }"
               shadow="hover"
-              tabindex="0"
+              :tabindex="loading ? -1 : 0"
+              :aria-disabled="loading"
               @click="openNovel(novel)"
               @keydown.enter="openNovel(novel)"
             >
@@ -304,8 +440,10 @@ onMounted(async () => {
               v-for="entry in books"
               :key="`${entry.book.source}:${entry.book.id}`"
               class="book-card shelf-card"
+              :class="{ 'book-card--disabled': loading }"
               shadow="hover"
-              tabindex="0"
+              :tabindex="loading ? -1 : 0"
+              :aria-disabled="loading"
               @click="openNovel(entry.book)"
               @keydown.enter="openNovel(entry.book)"
             >
@@ -383,6 +521,7 @@ onMounted(async () => {
                   :type="onBookshelf ? 'default' : 'primary'"
                   :icon="onBookshelf ? Check : Star"
                   size="large"
+                  :disabled="loading"
                   @click="toggleBookshelf"
                 >
                   {{ onBookshelf ? "已加入书架" : "加入书架" }}
@@ -391,6 +530,7 @@ onMounted(async () => {
                   v-if="currentProgress"
                   :icon="VideoPlay"
                   size="large"
+                  :disabled="loading"
                   @click="continueReading"
                 >
                   继续阅读 · {{ currentProgress.documentTitle }}
@@ -423,6 +563,7 @@ onMounted(async () => {
                 :key="item.id"
                 type="button"
                 :class="{ 'chapter-current': currentProgress?.documentId === item.id }"
+                :disabled="loading"
                 @click="openChapter(item.id)"
               >
                 <span class="chapter-number">{{ String(chapterIndex + 1).padStart(2, "0") }}</span>
@@ -444,10 +585,27 @@ onMounted(async () => {
         :document="readerDocument"
         :loading="loading"
         :initial-progress="readerInitialProgress"
-        @back="back"
+        :has-next-chapter="Boolean(nextChapterId)"
+        @next="openNextChapter"
         @progress="recordProgress"
       />
     </main>
+
+    <transition name="loading-fade">
+      <div
+        v-if="loading"
+        class="operation-loading"
+        role="status"
+        aria-live="polite"
+        :aria-label="loadingCopy.title"
+      >
+        <div class="operation-loading__panel">
+          <el-icon class="operation-loading__icon"><Loading /></el-icon>
+          <strong>{{ loadingCopy.title }}</strong>
+          <span>{{ loadingCopy.hint }}</span>
+        </div>
+      </div>
+    </transition>
 
     <nav
       v-if="view === 'search' || view === 'bookshelf'"
@@ -501,8 +659,16 @@ body { margin: 0; min-width: 320px; min-height: 100vh; }
 button, input { font: inherit; }
 button { cursor: pointer; }
 .page-bg { min-height: 100vh; background: radial-gradient(circle at 50% -10%, #fff 0, #faf9f6 36%, #f4f2ed 100%); }
+.operation-loading { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 24px; background: rgb(247 246 242 / 62%); backdrop-filter: blur(3px); cursor: wait; }
+.operation-loading__panel { display: flex; flex-direction: column; align-items: center; min-width: 220px; padding: 28px 32px; border: 1px solid rgb(218 214 205 / 82%); border-radius: 18px; background: rgb(255 255 255 / 94%); box-shadow: 0 20px 60px rgb(50 45 38 / 18%); }
+.operation-loading__icon { margin-bottom: 14px; color: var(--el-color-primary); font-size: 32px; animation: loading-rotate 1s linear infinite; }
+.operation-loading__panel strong { color: #34332e; font-size: 16px; }
+.operation-loading__panel span { margin-top: 8px; color: #918a80; font-size: 12px; }
+.loading-fade-enter-active, .loading-fade-leave-active { transition: opacity .18s ease; }
+.loading-fade-enter-from, .loading-fade-leave-to { opacity: 0; }
+@keyframes loading-rotate { to { transform: rotate(360deg); } }
 
-.topbar { position: sticky; top: 0; z-index: 20; border-bottom: 1px solid rgb(218 214 205 / 72%); background: rgb(250 249 246 / 86%); backdrop-filter: blur(18px); }
+.topbar { position: sticky; top: 0; z-index: 20; padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); border-bottom: 1px solid rgb(218 214 205 / 72%); background: rgb(250 249 246 / 86%); backdrop-filter: blur(18px); }
 .topbar-inner { width: min(1160px, calc(100% - 48px)); height: 64px; margin: auto; display: flex; align-items: center; }
 .detail-topbar { justify-content: flex-start; }
 .view-dock { position: fixed; bottom: max(20px, env(safe-area-inset-bottom)); left: 50%; z-index: 30; display: flex; align-items: center; gap: 5px; padding: 5px; border: 1px solid rgb(218 214 205 / 88%); border-radius: 16px; background: rgb(255 255 255 / 88%); box-shadow: 0 14px 40px rgb(50 45 38 / 16%); backdrop-filter: blur(18px); transform: translateX(-50%); }
@@ -523,6 +689,8 @@ button { cursor: pointer; }
 .hero > p { margin: 20px 0 34px; color: #817d74; font-size: 16px; }
 .search-box { display: flex; gap: 10px; width: min(680px, 100%); margin: 0 auto; padding: 7px; border: 1px solid #e2ded6; border-radius: 16px; background: rgb(255 255 255 / 88%); box-shadow: 0 18px 50px rgb(70 61 48 / 10%); }
 .search-box .el-input__wrapper { box-shadow: none; background: transparent; }
+.search-box .source-select { width: 150px; flex: 0 0 150px; }
+.search-box .source-select .el-select__wrapper { box-shadow: none; background: transparent; }
 .search-box .el-button { min-width: 118px; height: 44px; border-radius: 10px; }
 
 .bookshelf-view { padding-top: 56px; }
@@ -534,6 +702,7 @@ button { cursor: pointer; }
 .result-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 24px; }
 .book-card { overflow: hidden; border: 1px solid #e8e4dc; border-radius: 14px; background: rgb(255 255 255 / 72%); cursor: pointer; transition: transform .25s ease, box-shadow .25s ease; }
 .book-card:hover { transform: translateY(-5px); }
+.book-card--disabled { pointer-events: none; cursor: wait; }
 .book-card .el-card__body { padding: 10px 10px 16px; }
 .book-cover, .cover-placeholder { display: block; width: 100%; aspect-ratio: 3 / 4; border-radius: 9px; overflow: hidden; background: linear-gradient(145deg, #ece8df, #ddd6ca); }
 .cover-placeholder { display: grid; place-items: center; color: #9d9486; }
@@ -592,6 +761,7 @@ button { cursor: pointer; }
   .hero h1 { font-size: 36px; }
   .hero > p { padding: 0 18px; line-height: 1.7; }
   .search-box { gap: 6px; }
+  .search-box .source-select { width: 112px; flex-basis: 112px; }
   .search-box .el-button { min-width: 92px; padding: 8px 14px; }
   .result-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
   .book-heading { grid-template-columns: 1fr; gap: 24px; }

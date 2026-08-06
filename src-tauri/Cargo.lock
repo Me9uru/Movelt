@@ -66,6 +66,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-trait"
+version = "0.1.91"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae36dc4177970ef04fde5178d3e2429882def40e57a451f919c098f72baa6cec"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.3",
+]
+
+[[package]]
 name = "atk"
 version = "0.18.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1993,6 +2004,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "movel"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "ego-tree",
+ "futures",
+ "reqwest 0.12.28",
+ "rusqlite",
+ "scraper",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dev-invoke",
+ "thiserror 2.0.19",
+ "tokio",
+ "url",
+]
+
+[[package]]
 name = "muda"
 version = "0.19.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2042,25 +2073,6 @@ name = "new_debug_unreachable"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "650eef8c711430f1a879fdd01d4745a7deea475becfb90269c06775983bbf086"
-
-[[package]]
-name = "novel"
-version = "0.1.0"
-dependencies = [
- "ego-tree",
- "futures",
- "reqwest 0.12.28",
- "rusqlite",
- "scraper",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dev-invoke",
- "thiserror 2.0.19",
- "tokio",
- "url",
-]
 
 [[package]]
 name = "num-conv"

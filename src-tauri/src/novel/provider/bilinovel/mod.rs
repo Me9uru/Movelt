@@ -1,7 +1,8 @@
 mod client;
 mod parser;
 
-use super::{
+use super::NovelSource;
+use crate::novel::{
     domain::{ChapterContent, NovelOverview, SearchResult},
     error::NovelError,
 };
@@ -11,19 +12,33 @@ pub struct BilinovelSource {
     client: BilinovelClient,
 }
 
+pub(super) const SOURCE_ID: &str = "bilinovel";
+const SOURCE_NAME: &str = "哔哩轻小说";
+
 impl BilinovelSource {
     pub fn new() -> Result<Self, NovelError> {
         Ok(Self {
             client: BilinovelClient::new()?,
         })
     }
+}
 
-    pub async fn search(&self, query: &str, page: u32) -> Result<SearchResult, NovelError> {
+#[async_trait::async_trait]
+impl NovelSource for BilinovelSource {
+    fn id(&self) -> &'static str {
+        SOURCE_ID
+    }
+
+    fn name(&self) -> &'static str {
+        SOURCE_NAME
+    }
+
+    async fn search(&self, query: &str, page: u32) -> Result<SearchResult, NovelError> {
         let novels = self.client.novels().await?;
         Ok(parser::search(&novels, query, page))
     }
 
-    pub async fn overview(&self, novel_id: &str) -> Result<NovelOverview, NovelError> {
+    async fn overview(&self, novel_id: &str) -> Result<NovelOverview, NovelError> {
         validate_numeric_id(novel_id)?;
         let novel = self.client.novel(novel_id).await?;
         let detail = parser::detail(&novel);
@@ -36,7 +51,7 @@ impl BilinovelSource {
         Ok(NovelOverview { detail, volumes })
     }
 
-    pub async fn chapter(
+    async fn chapter(
         &self,
         novel_id: &str,
         chapter_id: &str,

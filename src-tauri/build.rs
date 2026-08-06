@@ -1,8 +1,10 @@
 fn main() {
     const COMMANDS: &[&str] = &[
+        "list_novel_sources",
         "search_novels",
         "get_novel_overview",
         "get_chapter",
+        "prefetch_chapters",
         "list_bookshelf",
         "add_to_bookshelf",
         "remove_from_bookshelf",

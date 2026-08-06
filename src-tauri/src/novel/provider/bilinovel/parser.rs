@@ -1,15 +1,15 @@
-use super::super::{
+use super::client::{ApiChapter, ApiNovel, ApiVolume};
+use super::SOURCE_ID;
+use crate::novel::{
     domain::{
         ChapterContent, ChapterNode, ChapterSummary, NovelDetail, NovelSummary, SearchResult,
         Volume,
     },
     error::NovelError,
 };
-use super::client::{ApiChapter, ApiNovel, ApiVolume};
 use ego_tree::NodeRef;
 use scraper::{Html, Node};
 
-const SOURCE_ID: &str = "bilinovel";
 const PAGE_SIZE: usize = 20;
 const BROKEN_IMAGE_HOST: &str = "lnvoel.animes.garden";
 const IMAGE_HOST: &str = "lnovel.animes.garden";

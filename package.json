@@ -1,11 +1,11 @@
 {
-  "name": "novel",
+  "name": "movel",
   "private": true,
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vue-tsc --noEmit && vite build",
+    "dev": "node scripts/sync-android-entry.mjs && vite",
+    "build": "node scripts/sync-android-entry.mjs && vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "tauri": "tauri"
   },

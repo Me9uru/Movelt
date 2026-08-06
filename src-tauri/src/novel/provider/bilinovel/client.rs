@@ -1,4 +1,4 @@
-use super::super::error::NovelError;
+use crate::novel::error::NovelError;
 use reqwest::{header, Client, StatusCode};
 use serde::{de::DeserializeOwned, Deserialize};
 use std::{

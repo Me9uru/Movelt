@@ -7,9 +7,11 @@
     "urls": ["http://tauri.localhost/*"]
   },
   "permissions": [
+    "allow-list-novel-sources",
     "allow-search-novels",
     "allow-get-novel-overview",
     "allow-get-chapter",
+    "allow-prefetch-chapters",
     "allow-list-bookshelf",
     "allow-add-to-bookshelf",
     "allow-remove-from-bookshelf",
