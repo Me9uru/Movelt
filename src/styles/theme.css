@@ -1,0 +1,133 @@
+:root {
+  font-family: Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  color: #28445d;
+  background: #eef8ff;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+
+  /* Brand palette: change these tokens to retheme the whole application. */
+  --color-primary: #5aa7e8;
+  --color-primary-hover: #3f91d4;
+  --color-primary-deep: #2778ba;
+  --color-primary-soft: #e8f5ff;
+  --color-primary-softer: #f3faff;
+  --color-text: #28445d;
+  --color-text-strong: #19364f;
+  --color-text-muted: #698399;
+  --color-text-subtle: #8ba1b3;
+  --color-surface: #ffffff;
+  --color-surface-glass: rgb(255 255 255 / 88%);
+  --color-surface-card: rgb(255 255 255 / 78%);
+  --color-surface-panel: rgb(255 255 255 / 80%);
+  --color-topbar: rgb(247 251 255 / 86%);
+  --color-background: #eef8ff;
+  --color-background-soft: #f7fbff;
+  --color-border: #d7e9f6;
+  --color-border-strong: #c4dff1;
+  --color-cover-start: #edf8ff;
+  --color-cover-end: #d7ebf8;
+  --shadow-soft: 0 18px 50px rgb(51 119 168 / 10%);
+  --shadow-panel: 0 24px 70px rgb(45 105 150 / 11%);
+  --shadow-floating: 0 14px 40px rgb(41 104 151 / 16%);
+
+  /* Element Plus inherits the same palette. */
+  --el-color-primary: var(--color-primary);
+  --el-color-primary-light-3: #83bdec;
+  --el-color-primary-light-5: #acd4f3;
+  --el-color-primary-light-7: #d3eafb;
+  --el-color-primary-light-8: #e3f2fd;
+  --el-color-primary-light-9: var(--color-primary-softer);
+  --el-color-primary-dark-2: var(--color-primary-deep);
+  --el-text-color-primary: var(--color-text-strong);
+  --el-text-color-regular: var(--color-text);
+  --el-text-color-secondary: var(--color-text-muted);
+  --el-border-radius-base: 10px;
+  --el-border-color: var(--color-border);
+  --el-border-color-light: #e5f1f9;
+  --el-fill-color-light: var(--color-primary-softer);
+  --el-mask-color: rgb(238 248 255 / 58%);
+}
+
+:root[data-reader-theme="paper"] {
+  color: #38352f;
+  background: #f4f0e7;
+  color-scheme: light;
+  --color-primary: #9a8264;
+  --color-primary-hover: #836c50;
+  --color-primary-deep: #705a40;
+  --color-primary-soft: #eee8df;
+  --color-primary-softer: #f7f3ec;
+  --color-text: #514c44;
+  --color-text-strong: #34312c;
+  --color-text-muted: #7d756a;
+  --color-text-subtle: #a0988c;
+  --color-surface: #fffdf7;
+  --color-surface-glass: rgb(255 253 247 / 88%);
+  --color-surface-card: rgb(255 253 247 / 78%);
+  --color-surface-panel: rgb(255 253 247 / 82%);
+  --color-topbar: rgb(250 247 240 / 88%);
+  --color-background: #f4f0e7;
+  --color-background-soft: #faf7f0;
+  --color-border: #ded6c8;
+  --color-border-strong: #cfc3b2;
+  --color-cover-start: #eee9df;
+  --color-cover-end: #ddd5c8;
+  --shadow-soft: 0 18px 50px rgb(70 61 48 / 10%);
+  --shadow-panel: 0 24px 70px rgb(65 58 47 / 9%);
+  --shadow-floating: 0 14px 40px rgb(50 45 38 / 16%);
+  --el-color-primary-light-3: #b09d86;
+  --el-color-primary-light-5: #c6b8a7;
+  --el-color-primary-light-7: #ded5c9;
+  --el-color-primary-light-8: #eae4dc;
+  --el-border-color-light: #e9e2d8;
+  --el-bg-color: #fffdf7;
+  --el-bg-color-overlay: #fffdf7;
+  --el-fill-color-blank: #fffdf7;
+  --el-mask-color: rgb(244 240 231 / 58%);
+}
+
+:root[data-reader-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-reader-theme="night"] {
+  color: #d5e0e8;
+  background: #191f25;
+  color-scheme: dark;
+  --color-primary: #74b8ec;
+  --color-primary-hover: #91c9f2;
+  --color-primary-deep: #9fd0f4;
+  --color-primary-soft: #273c4c;
+  --color-primary-softer: #202f3a;
+  --color-text: #c7d4dd;
+  --color-text-strong: #e2ebf1;
+  --color-text-muted: #91a2af;
+  --color-text-subtle: #728795;
+  --color-surface: #222b33;
+  --color-surface-glass: rgb(34 43 51 / 90%);
+  --color-surface-card: rgb(34 43 51 / 82%);
+  --color-surface-panel: rgb(34 43 51 / 88%);
+  --color-topbar: rgb(25 31 37 / 90%);
+  --color-background: #191f25;
+  --color-background-soft: #1d252c;
+  --color-border: #35434e;
+  --color-border-strong: #435664;
+  --color-cover-start: #2b3944;
+  --color-cover-end: #202a32;
+  --shadow-soft: 0 18px 50px rgb(0 0 0 / 18%);
+  --shadow-panel: 0 24px 70px rgb(0 0 0 / 24%);
+  --shadow-floating: 0 14px 40px rgb(0 0 0 / 28%);
+  --el-color-primary-light-3: #609ac6;
+  --el-color-primary-light-5: #4d7c9f;
+  --el-color-primary-light-7: #395d78;
+  --el-color-primary-light-8: #304e64;
+  --el-border-color-light: #303d47;
+  --el-bg-color: #222b33;
+  --el-bg-color-overlay: #26313a;
+  --el-fill-color-blank: #222b33;
+  --el-fill-color: #29353e;
+  --el-fill-color-light: var(--color-primary-softer);
+  --el-fill-color-lighter: #25313a;
+  --el-fill-color-extra-light: #222c34;
+  --el-mask-color: rgb(25 31 37 / 64%);
+}

@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import {
-  ArrowLeft,
   ArrowRight,
   Reading,
   RefreshLeft,
-  Setting,
 } from "@element-plus/icons-vue";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { ReaderDocument } from "../../domain/reader";
@@ -28,52 +26,91 @@ const readerRoot = ref<HTMLElement | null>(null);
 const pageViewport = ref<HTMLElement | null>(null);
 const currentPage = ref(0);
 const pageCount = ref(1);
-const isLandscape = ref(false);
+const isSpread = ref(false);
+const settingsVisible = ref(false);
 let resizeObserver: ResizeObserver | undefined;
-let orientationQuery: MediaQueryList | undefined;
+let spreadQuery: MediaQueryList | undefined;
 let pointerStartX: number | null = null;
+let suppressReaderClickUntil = 0;
 let scrollTimer: number | null = null;
+let paginationFrame: number | null = null;
+let paginationRequest = 0;
+let paginationResetPending = false;
+let pageLocation = 0;
 let hasRestoredScroll = false;
 let hasRestoredPage = false;
 
 const pageLabel = computed(() => `${currentPage.value + 1} / ${pageCount.value}`);
 
-function updateOrientation() {
-  isLandscape.value = Boolean(orientationQuery?.matches);
+function updateSpread() {
+  isSpread.value = Boolean(spreadQuery?.matches);
 }
 
 function pageStep(): number {
   const viewport = pageViewport.value;
   if (!viewport) return 0;
-  const gap = Number.parseFloat(getComputedStyle(viewport).columnGap) || 0;
-  return viewport.clientWidth + gap;
+  const viewportStyle = getComputedStyle(viewport);
+  const gap = Number.parseFloat(viewportStyle.columnGap) || 0;
+  const padding = (Number.parseFloat(viewportStyle.paddingLeft) || 0)
+    + (Number.parseFloat(viewportStyle.paddingRight) || 0);
+  return Math.max(1, viewport.clientWidth - padding + gap);
+}
+
+function clampLocation(location: number): number {
+  return Math.min(1, Math.max(0, location));
+}
+
+function performPagination(resetPage: boolean) {
+  const viewport = pageViewport.value;
+  if (!viewport || settings.mode !== "paged") return;
+  resizeObserver?.observe(viewport);
+
+  const step = pageStep();
+  const scrollDistance = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+  pageCount.value = Math.max(1, Math.floor(scrollDistance / step) + 1);
+  if (resetPage && !hasRestoredPage) {
+    pageLocation = clampLocation(props.initialProgress?.location ?? pageLocation);
+  }
+  currentPage.value = Math.round(pageLocation * Math.max(0, pageCount.value - 1));
+  hasRestoredPage = true;
+  viewport.scrollTo({ left: currentPage.value * step, behavior: "auto" });
 }
 
 function updatePagination(resetPage = false) {
   if (settings.mode !== "paged") return;
-  const previousLocation = pageCount.value <= 1 ? 0 : currentPage.value / (pageCount.value - 1);
+  paginationResetPending ||= resetPage;
+  const request = ++paginationRequest;
   void nextTick(() => {
-    const viewport = pageViewport.value;
-    if (!viewport) return;
-    resizeObserver?.observe(viewport);
-
-    const step = pageStep();
-    pageCount.value = Math.max(1, Math.ceil((viewport.scrollWidth + 1) / Math.max(step, 1)));
-    const location = resetPage && !hasRestoredPage
-      ? props.initialProgress?.location ?? 0
-      : previousLocation;
-    currentPage.value = Math.round(location * Math.max(0, pageCount.value - 1));
-    hasRestoredPage = true;
-    viewport.scrollTo({ left: currentPage.value * step, behavior: "auto" });
+    if (request !== paginationRequest || settings.mode !== "paged") return;
+    if (paginationFrame !== null) window.cancelAnimationFrame(paginationFrame);
+    paginationFrame = window.requestAnimationFrame(() => {
+      paginationFrame = null;
+      if (request !== paginationRequest) return;
+      const shouldReset = paginationResetPending;
+      paginationResetPending = false;
+      performPagination(shouldReset);
+    });
   });
+}
+
+function cancelPaginationUpdate() {
+  paginationRequest++;
+  paginationResetPending = false;
+  if (paginationFrame !== null) {
+    window.cancelAnimationFrame(paginationFrame);
+    paginationFrame = null;
+  }
 }
 
 function goToPage(page: number) {
   const viewport = pageViewport.value;
   if (!viewport) return;
   currentPage.value = Math.min(Math.max(page, 0), pageCount.value - 1);
+  if (pageCount.value > 1) {
+    pageLocation = currentPage.value / (pageCount.value - 1);
+  }
   viewport.scrollTo({ left: currentPage.value * pageStep(), behavior: "smooth" });
-  emit("progress", pageCount.value <= 1 ? 1 : currentPage.value / (pageCount.value - 1));
+  emit("progress", pageCount.value <= 1 ? 1 : pageLocation);
 }
 
 function scrollMetrics(): { start: number; distance: number } | null {
@@ -86,7 +123,8 @@ function scrollMetrics(): { start: number; distance: number } | null {
 function recordScrollProgress() {
   const metrics = scrollMetrics();
   if (!metrics) return;
-  emit("progress", (window.scrollY - metrics.start) / metrics.distance);
+  pageLocation = clampLocation((window.scrollY - metrics.start) / metrics.distance);
+  emit("progress", pageLocation);
 }
 
 function handleScroll() {
@@ -133,19 +171,47 @@ function handlePointerUp(event: PointerEvent) {
   const distance = event.clientX - pointerStartX;
   pointerStartX = null;
   if (Math.abs(distance) < 45) return;
+  suppressReaderClickUntil = performance.now() + 350;
   goToPage(currentPage.value + (distance < 0 ? 1 : -1));
 }
 
+function handleReaderClick(event: MouseEvent) {
+  if (performance.now() < suppressReaderClickUntil) return;
+
+  const target = event.target;
+  if (target instanceof HTMLElement && target.closest(
+    "button, a, input, label, [role='button'], [contenteditable='true'], .el-slider, .el-radio-group",
+  )) return;
+  if (window.getSelection()?.isCollapsed === false) return;
+
+  const middleStart = window.innerWidth / 3;
+  const middleEnd = middleStart * 2;
+  if (event.clientX < middleStart && settings.mode === "paged") {
+    goToPage(currentPage.value - 1);
+  } else if (event.clientX > middleEnd && settings.mode === "paged") {
+    goToPage(currentPage.value + 1);
+  } else if (event.clientX >= middleStart && event.clientX <= middleEnd) {
+    settingsVisible.value = true;
+  }
+}
+
 watch(
-  () => [props.document, settings.mode, settings.fontSize, settings.lineHeight,
+  () => [settings.mode, settings.fontSize, settings.lineHeight,
     settings.letterSpacing, settings.paragraphSpacing, settings.contentWidth,
-    settings.font, isLandscape.value],
+    settings.font, isSpread.value],
   () => updatePagination(true),
   { deep: true },
 );
 
+watch(() => props.document, () => {
+  hasRestoredPage = false;
+  pageLocation = clampLocation(props.initialProgress?.location ?? 0);
+  updatePagination(true);
+});
+
 watch(() => settings.mode, (mode) => {
   if (mode === "scroll") {
+    cancelPaginationUpdate();
     hasRestoredScroll = false;
     restoreScrollProgress();
   } else {
@@ -154,9 +220,9 @@ watch(() => settings.mode, (mode) => {
 });
 
 onMounted(() => {
-  orientationQuery = window.matchMedia("(orientation: landscape) and (min-width: 900px)");
-  updateOrientation();
-  orientationQuery.addEventListener("change", updateOrientation);
+  spreadQuery = window.matchMedia("(min-width: 960px)");
+  updateSpread();
+  spreadQuery.addEventListener("change", updateSpread);
   resizeObserver = new ResizeObserver(() => updatePagination());
   if (pageViewport.value) resizeObserver.observe(pageViewport.value);
   window.addEventListener("keydown", handleKeydown);
@@ -166,7 +232,8 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  orientationQuery?.removeEventListener("change", updateOrientation);
+  cancelPaginationUpdate();
+  spreadQuery?.removeEventListener("change", updateSpread);
   resizeObserver?.disconnect();
   window.removeEventListener("keydown", handleKeydown);
   window.removeEventListener("scroll", handleScroll);
@@ -178,64 +245,11 @@ onBeforeUnmount(() => {
 <template>
   <article
     ref="readerRoot"
-    v-loading="loading"
     class="reader"
     :class="[`reader--${settings.theme}`, `reader--${settings.mode}`]"
     :style="style"
+    @click="handleReaderClick"
   >
-    <div class="reader-toolbar" aria-label="阅读工具栏">
-      <span v-if="settings.mode === 'paged'" class="page-status">
-        {{ isLandscape ? "双页" : "单页" }} · {{ pageLabel }}
-      </span>
-
-      <el-popover placement="bottom-end" :width="340" trigger="click" popper-class="reader-settings-popover">
-        <template #reference>
-          <el-button :icon="Setting" round>阅读设置</el-button>
-        </template>
-
-        <div class="settings-panel">
-          <div class="settings-title">
-            <strong>阅读设置</strong>
-            <el-button :icon="RefreshLeft" text size="small" @click="reset">恢复默认</el-button>
-          </div>
-
-          <label>阅读模式</label>
-          <el-radio-group v-model="settings.mode" size="small">
-            <el-radio-button value="scroll">滚动阅读</el-radio-button>
-            <el-radio-button value="paged">分页阅读</el-radio-button>
-          </el-radio-group>
-
-          <label>背景主题</label>
-          <el-radio-group v-model="settings.theme" size="small">
-            <el-radio-button value="paper">纸张</el-radio-button>
-            <el-radio-button value="light">明亮</el-radio-button>
-            <el-radio-button value="night">夜间</el-radio-button>
-          </el-radio-group>
-
-          <label>正文字体</label>
-          <el-radio-group v-model="settings.font" size="small">
-            <el-radio-button value="serif">衬线</el-radio-button>
-            <el-radio-button value="sans">无衬线</el-radio-button>
-          </el-radio-group>
-
-          <label><span>字体大小</span><b>{{ settings.fontSize }} px</b></label>
-          <el-slider v-model="settings.fontSize" :min="14" :max="30" :step="1" />
-
-          <label><span>行间距</span><b>{{ settings.lineHeight.toFixed(1) }} 倍</b></label>
-          <el-slider v-model="settings.lineHeight" :min="1.4" :max="2.6" :step="0.1" />
-
-          <label><span>字间距</span><b>{{ settings.letterSpacing.toFixed(1) }} px</b></label>
-          <el-slider v-model="settings.letterSpacing" :min="0" :max="4" :step="0.2" />
-
-          <label><span>段间距</span><b>{{ settings.paragraphSpacing.toFixed(1) }} 倍</b></label>
-          <el-slider v-model="settings.paragraphSpacing" :min="0.6" :max="2.4" :step="0.1" />
-
-          <label><span>阅读宽度</span><b>{{ settings.contentWidth }} px</b></label>
-          <el-slider v-model="settings.contentWidth" :min="560" :max="1100" :step="20" />
-        </div>
-      </el-popover>
-    </div>
-
     <div v-if="settings.mode === 'scroll'" class="reader-body">
       <header class="reader-heading">
         <h1>{{ document.title }}</h1>
@@ -263,7 +277,7 @@ onBeforeUnmount(() => {
       </el-button>
     </div>
 
-    <div v-else class="paged-reader" :class="{ 'paged-reader--spread': isLandscape }">
+    <div v-else class="paged-reader" :class="{ 'paged-reader--spread': isSpread }">
       <div
         ref="pageViewport"
         class="page-viewport"
@@ -284,10 +298,8 @@ onBeforeUnmount(() => {
         <p class="chapter-end">— 本章结束 —</p>
       </div>
 
-      <nav class="page-controls" aria-label="分页导航">
-        <el-button :icon="ArrowLeft" circle :disabled="currentPage === 0" aria-label="上一页" @click="goToPage(currentPage - 1)" />
-        <span>{{ pageLabel }}</span>
-        <el-button :icon="ArrowRight" circle :disabled="currentPage >= pageCount - 1" aria-label="下一页" @click="goToPage(currentPage + 1)" />
+      <nav class="page-controls" aria-label="分页状态与章节导航">
+        <span class="page-status">{{ isSpread ? "双页" : "单页" }} · {{ pageLabel }}</span>
         <el-button
           v-if="currentPage >= pageCount - 1"
           class="paged-next"
@@ -301,68 +313,56 @@ onBeforeUnmount(() => {
         </el-button>
       </nav>
     </div>
+
+    <el-drawer
+      v-model="settingsVisible"
+      class="reader-settings-drawer"
+      direction="btt"
+      size="min(680px, 78dvh)"
+      :with-header="false"
+      append-to-body
+    >
+      <div class="settings-panel">
+        <div class="settings-handle" aria-hidden="true"></div>
+        <div class="settings-title">
+          <strong>阅读设置</strong>
+          <el-button :icon="RefreshLeft" text size="small" @click="reset">恢复默认</el-button>
+        </div>
+
+        <label>阅读模式</label>
+        <el-radio-group v-model="settings.mode" size="small">
+          <el-radio-button value="scroll">滚动阅读</el-radio-button>
+          <el-radio-button value="paged">分页阅读</el-radio-button>
+        </el-radio-group>
+
+        <label>背景主题</label>
+        <el-radio-group v-model="settings.theme" size="small">
+          <el-radio-button value="paper">纸张</el-radio-button>
+          <el-radio-button value="light">明亮</el-radio-button>
+          <el-radio-button value="night">夜间</el-radio-button>
+        </el-radio-group>
+
+        <label>正文字体</label>
+        <el-radio-group v-model="settings.font" size="small">
+          <el-radio-button value="serif">衬线</el-radio-button>
+          <el-radio-button value="sans">无衬线</el-radio-button>
+        </el-radio-group>
+
+        <label><span>字体大小</span><b>{{ settings.fontSize }} px</b></label>
+        <el-slider v-model="settings.fontSize" :min="14" :max="30" :step="1" />
+
+        <label><span>行间距</span><b>{{ settings.lineHeight.toFixed(1) }} 倍</b></label>
+        <el-slider v-model="settings.lineHeight" :min="1.4" :max="2.6" :step="0.1" />
+
+        <label><span>字间距</span><b>{{ settings.letterSpacing.toFixed(1) }} px</b></label>
+        <el-slider v-model="settings.letterSpacing" :min="0" :max="4" :step="0.2" />
+
+        <label><span>段间距</span><b>{{ settings.paragraphSpacing.toFixed(1) }} 倍</b></label>
+        <el-slider v-model="settings.paragraphSpacing" :min="0.6" :max="2.4" :step="0.1" />
+
+        <label><span>阅读宽度</span><b>{{ settings.contentWidth }} px</b></label>
+        <el-slider v-model="settings.contentWidth" :min="560" :max="1100" :step="20" />
+      </div>
+    </el-drawer>
   </article>
 </template>
-
-<style scoped>
-.reader { min-height: calc(100vh - 76px); margin: 0 calc(50% - 50vw); padding: 18px max(24px, calc(50vw - 580px)) 80px; transition: background .25s, color .25s; }
-.reader--paper { --reader-bg: #f4f0e7; --reader-surface: rgb(255 253 247 / 82%); --reader-text: #38352f; --reader-muted: #877f73; --reader-border: #ded6c8; background: var(--reader-bg); }
-.reader--light { --reader-bg: #f7f7f7; --reader-surface: #fff; --reader-text: #292929; --reader-muted: #777; --reader-border: #e2e2e2; background: var(--reader-bg); }
-.reader--night { --reader-bg: #191b1f; --reader-surface: #22252a; --reader-text: #c9c5bb; --reader-muted: #8f9196; --reader-border: #34373d; background: var(--reader-bg); color-scheme: dark; }
-.reader-toolbar { position: sticky; top: 88px; z-index: 10; display: flex; align-items: center; justify-content: flex-end; gap: 10px; width: min(var(--reader-width), 100%); margin: 0 auto 34px; }
-.reader-toolbar :deep(.el-button), .page-status { border: 1px solid var(--reader-border); color: var(--reader-text); background: color-mix(in srgb, var(--reader-surface) 92%, transparent); backdrop-filter: blur(12px); }
-.page-status { padding: 8px 13px; border-radius: 999px; color: var(--reader-muted); font-size: 12px; }
-.reader-body { width: min(var(--reader-width), 100%); margin: 0 auto; transition: width .2s; }
-.reader-heading { margin: 0 auto 50px; text-align: center; }
-.reader-heading h1, .paged-heading h1 { color: var(--reader-text); font-family: var(--reader-font-family); font-weight: 500; line-height: 1.4; }
-.reader-heading h1 { margin: 0 0 26px; font-size: clamp(30px, 5vw, 42px); }
-.reader-rule { display: flex; align-items: center; justify-content: center; gap: 12px; color: #b39d81; }
-.reader-rule span { width: 72px; height: 1px; background: var(--reader-border); }
-.reader-content { padding: 48px 56px; border: 1px solid var(--reader-border); border-radius: 20px; background: var(--reader-surface); box-shadow: 0 22px 60px rgb(40 35 28 / 7%); }
-.reader-content p, .page-viewport p { margin: 0 0 var(--reader-paragraph-spacing); color: var(--reader-text); font-family: var(--reader-font-family); font-size: var(--reader-font-size); line-height: var(--reader-line-height); letter-spacing: var(--reader-letter-spacing); text-align: justify; overflow-wrap: anywhere; }
-.chapter-image { display: block; max-width: 100%; max-height: 80vh; margin: 36px auto; object-fit: contain; break-inside: avoid; }
-.reader-body > :deep(.el-divider) { margin: 62px 0 34px; border-color: var(--reader-border); }
-.reader-body > :deep(.el-divider .el-divider__text) { color: var(--reader-muted); background: var(--reader-bg); }
-.reader-next { display: flex; margin: 0 auto; }
-
-.reader--paged { height: calc(100dvh - 76px); min-height: 540px; padding-bottom: 20px; overflow: hidden; }
-.reader--paged .reader-toolbar { position: relative; top: 0; margin-bottom: 16px; }
-.paged-reader { width: min(var(--reader-width), 100%); margin: 0 auto; }
-.page-viewport { height: calc(100dvh - 196px); min-height: 390px; padding: 42px 48px; overflow: hidden; outline: none; border: 1px solid var(--reader-border); border-radius: 20px; background: var(--reader-surface); box-shadow: 0 22px 60px rgb(40 35 28 / 7%); column-count: 1; column-gap: 64px; column-fill: auto; scroll-behavior: smooth; touch-action: pan-y; }
-.paged-reader--spread { width: min(1100px, 100%); }
-.paged-reader--spread .page-viewport { column-count: 2; column-gap: 72px; }
-.paged-heading { margin-bottom: 42px; text-align: center; break-inside: avoid; }
-.paged-heading h1 { margin: 0 0 22px; font-size: clamp(26px, 4vw, 38px); }
-.page-viewport .chapter-image { max-height: calc(100dvh - 290px); }
-.page-viewport .chapter-end { margin-top: 40px; color: var(--reader-muted); font-size: 13px; text-align: center; break-inside: avoid; }
-.page-controls { display: flex; align-items: center; justify-content: center; gap: 18px; height: 58px; color: var(--reader-muted); font-size: 12px; }
-.page-controls span { min-width: 58px; text-align: center; }
-.page-controls :deep(.el-button) { border-color: var(--reader-border); color: var(--reader-text); background: var(--reader-surface); }
-.page-controls :deep(.paged-next) { color: var(--el-color-white); background: var(--el-color-primary); }
-
-@media (max-width: 720px) {
-  .reader { min-height: calc(100vh - 66px); padding: 12px 14px 60px; }
-  .reader-toolbar { top: 76px; margin-bottom: 28px; }
-  .reader-heading { margin-bottom: 38px; }
-  .reader-content { padding: 30px 22px; border-radius: 15px; }
-  .reader--paged { height: calc(100dvh - 66px); min-height: 460px; padding-bottom: 8px; }
-  .reader--paged .reader-toolbar { top: 0; margin-bottom: 10px; }
-  .page-viewport { height: calc(100dvh - 174px); min-height: 340px; padding: 28px 24px; border-radius: 15px; column-gap: 48px; }
-  .paged-heading { margin-bottom: 32px; }
-  .paged-heading h1 { font-size: 25px; }
-  .page-controls { height: 50px; }
-}
-</style>
-
-<style>
-.reader-settings-popover .settings-panel { display: grid; gap: 10px; }
-.reader-settings-popover .settings-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
-.reader-settings-popover .settings-title strong { font-family: Georgia, "Noto Serif SC", serif; font-size: 17px; }
-.reader-settings-popover label { display: flex; justify-content: space-between; color: #6f6b64; font-size: 13px; }
-.reader-settings-popover label:not(:first-of-type) { margin-top: 5px; }
-.reader-settings-popover label b { color: #9a8264; font-size: 12px; font-weight: 500; }
-.reader-settings-popover .el-radio-group { width: 100%; }
-.reader-settings-popover .el-radio-button { flex: 1; }
-.reader-settings-popover .el-radio-button__inner { width: 100%; }
-.reader-settings-popover .el-slider { padding: 0 6px; }
-</style>

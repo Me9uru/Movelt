@@ -8,12 +8,12 @@ type WindowWithTauri = Window & {
 
 /**
  * Makes @tauri-apps/api's normal invoke() function work in an external browser.
- * The Rust plugin exposes the real Tauri invoke handler over localhost in debug
- * builds; native Tauri webviews already have __TAURI_INTERNALS__ and are left
- * untouched.
+ * Vite proxies browser requests to the real Tauri invoke handler exposed on the
+ * host's loopback interface in debug builds. Native Tauri webviews already have
+ * __TAURI_INTERNALS__ and are left untouched.
  */
 export function setupDevInvoke(
-  endpoint = "http://127.0.0.1:3030",
+  endpoint = "/__tauri_invoke",
 ): void {
   const browserWindow = window as WindowWithTauri;
   if (browserWindow.__TAURI_INTERNALS__) return;

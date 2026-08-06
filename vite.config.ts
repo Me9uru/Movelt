@@ -21,7 +21,7 @@ export default defineConfig(() => ({
   server: {
     port: 1420,
     strictPort: true,
-    host: host || false,
+    host: host || "0.0.0.0",
     hmr: host
       ? {
           protocol: "ws",
@@ -33,5 +33,16 @@ export default defineConfig(() => ({
       // 3. tell Vite to ignore watching `src-tauri`
       ignored: ["**/src-tauri/**"],
     },
+    // Keep the debug invoke bridge bound to the host's loopback interface while
+    // allowing browsers on the LAN to reach it through the Vite dev server.
+    proxy: {
+      "/__tauri_invoke": {
+        target: "http://127.0.0.1:3030",
+        rewrite: () => "/",
+      },
+    },
+  },
+  preview: {
+    host: "0.0.0.0",
   },
 }));
