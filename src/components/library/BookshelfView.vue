@@ -2,6 +2,7 @@
 import { Collection } from "@element-plus/icons-vue";
 import type { BookshelfEntry } from "../../domain/library";
 import type { NovelSummary } from "../../services/novel";
+import ReadingProgressBar from "./ReadingProgressBar.vue";
 
 defineProps<{
   books: BookshelfEntry[];
@@ -14,9 +15,6 @@ const emit = defineEmits<{
   openNovel: [novel: NovelSummary];
 }>();
 
-function progressPercent(entry: BookshelfEntry): number {
-  return entry.progress ? Math.round(entry.progress.location * 100) : 0;
-}
 </script>
 
 <template>
@@ -60,14 +58,7 @@ function progressPercent(entry: BookshelfEntry): number {
           </div>
           <div class="book-meta">
             <strong>{{ entry.book.title }}</strong>
-            <template v-if="entry.progress">
-              <span class="shelf-progress-title">{{ entry.progress.documentTitle }}</span>
-              <el-progress
-                :percentage="progressPercent(entry)"
-                :stroke-width="4"
-                :show-text="false"
-              />
-            </template>
+            <ReadingProgressBar v-if="entry.progress" :progress="entry.progress" />
             <span v-else>尚未开始阅读</span>
           </div>
         </el-card>

@@ -8,6 +8,7 @@ pub struct ReadingProgress {
     pub document_id: String,
     pub document_title: String,
     pub location: f64,
+    pub book_location: f64,
     pub updated_at: String,
 }
 
@@ -17,6 +18,7 @@ pub struct ReadingProgressInput {
     pub document_id: String,
     pub document_title: String,
     pub location: f64,
+    pub book_location: f64,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]

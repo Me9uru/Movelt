@@ -4,6 +4,7 @@ export interface ReadingProgress {
   documentId: string;
   documentTitle: string;
   location: number;
+  bookLocation: number;
   updatedAt: string;
 }
 

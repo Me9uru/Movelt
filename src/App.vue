@@ -65,7 +65,20 @@ const nextChapterId = computed(() => {
   return currentIndex >= 0 ? chapterIds.value[currentIndex + 1] ?? null : null;
 });
 const onBookshelf = computed(() => detail.value ? isOnBookshelf(detail.value) : false);
-const currentProgress = computed(() => detail.value ? progressFor(detail.value) : null);
+const currentProgress = computed(() => {
+  const saved = detail.value ? progressFor(detail.value) : null;
+  if (!saved) return null;
+  return {
+    ...saved,
+    bookLocation: bookLocation(saved.documentId, saved.location, saved.bookLocation),
+  };
+});
+function bookLocation(chapterId: string, location: number, fallback = 0): number {
+  const chapterIndex = chapterIds.value.indexOf(chapterId);
+  if (chapterIndex < 0 || chapterIds.value.length === 0) return fallback;
+  const chapterLocation = Math.min(1, Math.max(0, location));
+  return (chapterIndex + chapterLocation) / chapterIds.value.length;
+}
 const readerInitialProgress = computed(() => {
   const progress = currentProgress.value;
   return progress?.documentId === currentChapterId.value ? progress : null;
@@ -222,6 +235,10 @@ async function openChapter(chapterId: string) {
       documentId: chapterId,
       documentTitle: document.title,
       location: existing?.documentId === chapterId ? existing.location : 0,
+      bookLocation: bookLocation(
+        chapterId,
+        existing?.documentId === chapterId ? existing.location : 0,
+      ),
     });
     return document;
   });
@@ -272,6 +289,7 @@ function recordProgress(location: number) {
     documentId: currentChapterId.value,
     documentTitle: readerDocument.value.title,
     location,
+    bookLocation: bookLocation(currentChapterId.value, location),
   }).catch((error) => {
     errorMessage.value = describeError(error);
   });

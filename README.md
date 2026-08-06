@@ -11,6 +11,7 @@
 [![Vue.js](https://img.shields.io/badge/Vue.js-3-42B883?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
 [![Rust](https://img.shields.io/badge/Rust-2021-000000?logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 </div>
 
@@ -154,3 +155,7 @@ Movel/
 ## 声明
 
 Movel 仅作为技术学习与个人阅读工具。作品内容、封面及相关信息均来自对应的第三方书源，其版权归原作者及权利人所有。请遵守当地法律法规与内容提供方的使用条款，支持正版阅读。
+
+## 开源协议
+
+本项目基于 [MIT License](LICENSE) 开源。

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {
   ArrowRight,
-  Reading,
   RefreshLeft,
 } from "@element-plus/icons-vue";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
@@ -253,7 +252,6 @@ onBeforeUnmount(() => {
     <div v-if="settings.mode === 'scroll'" class="reader-body">
       <header class="reader-heading">
         <h1>{{ document.title }}</h1>
-        <div class="reader-rule"><span></span><el-icon><Reading /></el-icon><span></span></div>
       </header>
 
       <div class="reader-content">
@@ -289,7 +287,6 @@ onBeforeUnmount(() => {
       >
         <header class="paged-heading">
           <h1>{{ document.title }}</h1>
-          <div class="reader-rule"><span></span><el-icon><Reading /></el-icon><span></span></div>
         </header>
         <template v-for="(block, index) in document.blocks" :key="index">
           <p v-if="block.type === 'paragraph'">{{ block.text }}</p>

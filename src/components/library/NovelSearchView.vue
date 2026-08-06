@@ -22,36 +22,14 @@ const emit = defineEmits<{
   <section class="search-view">
     <div class="hero">
       <form class="search-box" @submit.prevent="emit('search')">
-        <el-select
-          v-model="selectedSource"
-          class="source-select"
-          size="large"
-          aria-label="小说来源"
-          @change="emit('sourceChange')"
-        >
-          <el-option
-            v-for="source in sourceOptions"
-            :key="source.id"
-            :label="source.name"
-            :value="source.id"
-          />
+        <el-select v-model="selectedSource" class="source-select" size="large" aria-label="小说来源"
+          @change="emit('sourceChange')">
+          <el-option v-for="source in sourceOptions" :key="source.id" :label="source.name" :value="source.id" />
         </el-select>
-        <el-input
-          v-model="query"
-          :prefix-icon="Search"
-          size="large"
-          clearable
-          :disabled="loading"
-          aria-label="小说名或作者"
-          placeholder="输入小说名或作者"
-        />
-        <el-button
-          native-type="submit"
-          type="primary"
-          size="large"
-          :loading="loading"
-          :disabled="loading || !selectedSource || !query.trim()"
-        >
+        <el-input v-model="query" :prefix-icon="Search" size="large" clearable :disabled="loading" aria-label="小说名或作者"
+          placeholder="输入小说名或作者" />
+        <el-button native-type="submit" type="primary" size="large" :loading="loading"
+          :disabled="loading || !selectedSource || !query.trim()">
           搜索作品
         </el-button>
       </form>
@@ -60,7 +38,6 @@ const emit = defineEmits<{
     <section class="library-section">
       <div v-if="results.length" class="section-heading">
         <div>
-          <span>SEARCH RESULTS</span>
           <h2>找到的作品</h2>
         </div>
         <el-tag round effect="plain">{{ results.length }} 本</el-tag>
@@ -83,33 +60,23 @@ const emit = defineEmits<{
       </el-empty>
 
       <div v-else class="result-grid">
-        <el-card
-          v-for="novel in results"
-          :key="`${novel.source}:${novel.id}`"
-          class="book-card"
-          :class="{ 'book-card--disabled': loading }"
-          shadow="hover"
-          :tabindex="loading ? -1 : 0"
-          :aria-disabled="loading"
-          @click="emit('openNovel', novel)"
-          @keydown.enter="emit('openNovel', novel)"
-        >
-          <el-image
-            v-if="novel.cover_url"
-            class="book-cover"
-            :src="novel.cover_url"
-            :alt="novel.title"
-            fit="cover"
-            lazy
-          >
+        <el-card v-for="novel in results" :key="`${novel.source}:${novel.id}`" class="book-card"
+          :class="{ 'book-card--disabled': loading }" shadow="hover" :tabindex="loading ? -1 : 0"
+          :aria-disabled="loading" @click="emit('openNovel', novel)" @keydown.enter="emit('openNovel', novel)">
+          <el-image v-if="novel.cover_url" class="book-cover" :src="novel.cover_url" :alt="novel.title" fit="cover"
+            lazy>
             <template #error>
               <div class="cover-placeholder">
-                <el-icon><Collection /></el-icon>
+                <el-icon>
+                  <Collection />
+                </el-icon>
               </div>
             </template>
           </el-image>
           <div v-else class="cover-placeholder">
-            <el-icon><Collection /></el-icon>
+            <el-icon>
+              <Collection />
+            </el-icon>
           </div>
           <div class="book-meta">
             <strong>{{ novel.title }}</strong>

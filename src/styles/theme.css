@@ -29,6 +29,10 @@
   --shadow-soft: 0 18px 50px rgb(51 119 168 / 10%);
   --shadow-panel: 0 24px 70px rgb(45 105 150 / 11%);
   --shadow-floating: 0 14px 40px rgb(41 104 151 / 16%);
+  --radius-control: 10px;
+  --radius-card: 14px;
+  --radius-panel: 20px;
+  --radius-pill: 999px;
 
   /* Element Plus inherits the same palette. */
   --el-color-primary: var(--color-primary);
@@ -41,7 +45,7 @@
   --el-text-color-primary: var(--color-text-strong);
   --el-text-color-regular: var(--color-text);
   --el-text-color-secondary: var(--color-text-muted);
-  --el-border-radius-base: 10px;
+  --el-border-radius-base: var(--radius-control);
   --el-border-color: var(--color-border);
   --el-border-color-light: #e5f1f9;
   --el-fill-color-light: var(--color-primary-softer);

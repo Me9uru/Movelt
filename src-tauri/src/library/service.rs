@@ -51,13 +51,18 @@ impl LibraryService {
                 "document id and title must not be empty".into(),
             ));
         }
-        if !progress.location.is_finite() {
+        if !progress.location.is_finite() || !progress.book_location.is_finite() {
             return Err(LibraryError::InvalidInput(
-                "reading location must be a finite number".into(),
+                "reading locations must be finite numbers".into(),
             ));
         }
-        self.repository
-            .save_progress(source, book_id, progress, progress.location.clamp(0.0, 1.0))
+        self.repository.save_progress(
+            source,
+            book_id,
+            progress,
+            progress.location.clamp(0.0, 1.0),
+            progress.book_location.clamp(0.0, 1.0),
+        )
     }
 
     pub(super) fn get_progress(
@@ -117,12 +122,14 @@ mod tests {
             document_id: "chapter-3".into(),
             document_title: "Chapter 3".into(),
             location: 0.45,
+            book_location: 0.245,
         };
 
         service.save_progress("test", "42", &progress).unwrap();
         let saved = service.get_progress("test", "42").unwrap().unwrap();
         assert_eq!(saved.document_id, "chapter-3");
         assert_eq!(saved.location, 0.45);
+        assert_eq!(saved.book_location, 0.245);
     }
 
     #[test]
@@ -131,6 +138,7 @@ mod tests {
             document_id: "chapter-3".into(),
             document_title: "Chapter 3".into(),
             location: f64::NAN,
+            book_location: 0.5,
         };
 
         assert!(matches!(

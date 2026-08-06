@@ -46,10 +46,26 @@ impl SqliteLibraryRepository {
                document_id TEXT NOT NULL,
                document_title TEXT NOT NULL,
                location REAL NOT NULL CHECK (location >= 0 AND location <= 1),
+               book_location REAL NOT NULL DEFAULT 0 CHECK (book_location >= 0 AND book_location <= 1),
                updated_at TEXT NOT NULL,
                PRIMARY KEY (source, book_id)
              );",
         )?;
+        let has_book_location = {
+            let mut statement = connection.prepare("PRAGMA table_info(reading_progress)")?;
+            let columns = statement.query_map([], |row| row.get::<_, String>(1))?;
+            columns
+                .collect::<Result<Vec<_>, _>>()?
+                .iter()
+                .any(|column| column == "book_location")
+        };
+        if !has_book_location {
+            connection.execute(
+                "ALTER TABLE reading_progress ADD COLUMN book_location REAL NOT NULL DEFAULT 0
+                 CHECK (book_location >= 0 AND book_location <= 1)",
+                [],
+            )?;
+        }
         Ok(Self {
             connection: Mutex::new(connection),
         })
@@ -101,7 +117,7 @@ impl SqliteLibraryRepository {
         let mut statement = connection.prepare(
             "SELECT b.source, b.book_id, b.title, b.author, b.status,
                     b.source_updated_at, b.description, b.cover_url, b.added_at,
-                    p.document_id, p.document_title, p.location, p.updated_at
+                    p.document_id, p.document_title, p.location, p.book_location, p.updated_at
              FROM bookshelf b
              LEFT JOIN reading_progress p
                ON p.source = b.source AND p.book_id = b.book_id
@@ -126,7 +142,8 @@ impl SqliteLibraryRepository {
                             document_id,
                             document_title: row.get(10)?,
                             location: row.get(11)?,
-                            updated_at: row.get(12)?,
+                            book_location: row.get(12)?,
+                            updated_at: row.get(13)?,
                         }),
                         None => None,
                     },
@@ -142,16 +159,18 @@ impl SqliteLibraryRepository {
         book_id: &str,
         progress: &ReadingProgressInput,
         location: f64,
+        book_location: f64,
     ) -> Result<ReadingProgress, LibraryError> {
         let connection = self.connection()?;
         connection.execute(
             "INSERT INTO reading_progress (
-               source, book_id, document_id, document_title, location, updated_at
-             ) VALUES (?1, ?2, ?3, ?4, ?5, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+               source, book_id, document_id, document_title, location, book_location, updated_at
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
              ON CONFLICT(source, book_id) DO UPDATE SET
                document_id = excluded.document_id,
                document_title = excluded.document_title,
                location = excluded.location,
+               book_location = excluded.book_location,
                updated_at = excluded.updated_at",
             params![
                 source,
@@ -159,6 +178,7 @@ impl SqliteLibraryRepository {
                 progress.document_id,
                 progress.document_title,
                 location,
+                book_location,
             ],
         )?;
         drop(connection);
@@ -174,7 +194,7 @@ impl SqliteLibraryRepository {
     ) -> Result<Option<ReadingProgress>, LibraryError> {
         self.connection()?
             .query_row(
-                "SELECT document_id, document_title, location, updated_at
+                "SELECT document_id, document_title, location, book_location, updated_at
                  FROM reading_progress WHERE source = ?1 AND book_id = ?2",
                 params![source, book_id],
                 |row| {
@@ -182,7 +202,8 @@ impl SqliteLibraryRepository {
                         document_id: row.get(0)?,
                         document_title: row.get(1)?,
                         location: row.get(2)?,
-                        updated_at: row.get(3)?,
+                        book_location: row.get(3)?,
+                        updated_at: row.get(4)?,
                     })
                 },
             )
@@ -194,5 +215,37 @@ impl SqliteLibraryRepository {
 impl From<rusqlite::Error> for LibraryError {
     fn from(error: rusqlite::Error) -> Self {
         Self::Database(error.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn adds_book_location_to_an_existing_progress_table() {
+        let connection = Connection::open_in_memory().unwrap();
+        connection
+            .execute_batch(
+                "CREATE TABLE reading_progress (
+                   source TEXT NOT NULL,
+                   book_id TEXT NOT NULL,
+                   document_id TEXT NOT NULL,
+                   document_title TEXT NOT NULL,
+                   location REAL NOT NULL CHECK (location >= 0 AND location <= 1),
+                   updated_at TEXT NOT NULL,
+                   PRIMARY KEY (source, book_id)
+                 );
+                 INSERT INTO reading_progress VALUES (
+                   'test', '42', 'chapter-3', 'Chapter 3', 0.45, '2026-01-01T00:00:00Z'
+                 );",
+            )
+            .unwrap();
+
+        let repository = SqliteLibraryRepository::from_connection(connection).unwrap();
+        let progress = repository.get_progress("test", "42").unwrap().unwrap();
+
+        assert_eq!(progress.location, 0.45);
+        assert_eq!(progress.book_location, 0.0);
     }
 }
