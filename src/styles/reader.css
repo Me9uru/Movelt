@@ -10,9 +10,9 @@
 .reader-body > .el-divider .el-divider__text { color: var(--reader-muted); background: var(--reader-bg); }
 .reader-next { display: flex; margin: 0 auto; }
 
-.reader--paged { display: flex; flex-direction: column; height: calc(100dvh - 76px); min-height: 540px; padding-bottom: 20px; overflow: hidden; }
-.paged-reader { display: flex; flex: 1; flex-direction: column; width: min(1100px, 100%); min-height: 0; margin: 0 auto; }
-.page-viewport { flex: 1; min-height: 0; padding: 42px 48px; overflow: hidden; outline: none; border: 1px solid var(--reader-border); border-radius: var(--radius-panel); background: var(--reader-surface); box-shadow: 0 22px 60px var(--reader-shadow); column-count: 1; column-gap: 64px; column-fill: auto; touch-action: pan-y; }
+.reader--paged { display: flex; flex-direction: column; height: 100%; min-height: 0; padding-bottom: 20px; overflow: hidden; }
+.paged-reader { display: grid; flex: 1; grid-template-rows: minmax(0, 1fr) 58px; width: min(1100px, 100%); min-height: 0; margin: 0 auto; }
+.page-viewport { height: 100%; min-height: 0; padding: 42px 48px; overflow: hidden; outline: none; border: 1px solid var(--reader-border); border-radius: var(--radius-panel); background: var(--reader-surface); box-shadow: 0 22px 60px var(--reader-shadow); column-count: 1; column-gap: 64px; column-fill: auto; touch-action: pan-y; }
 .paged-reader--spread .page-viewport { column-count: 2; column-gap: 72px; }
 .paged-heading { margin-bottom: 36px; text-align: center; break-inside: avoid; }
 .paged-heading h1 { margin: 0; font-size: clamp(26px, 4vw, 38px); }
@@ -41,7 +41,8 @@
   .reader { min-height: calc(100vh - 66px); padding: 12px 14px 60px; }
   .reader-heading { margin-bottom: 32px; }
   .reader-content { padding: 30px 22px; }
-  .reader--paged { height: calc(100dvh - 66px); min-height: 460px; padding-bottom: 8px; }
+  .reader--paged { padding-bottom: 8px; }
+  .paged-reader { grid-template-rows: minmax(0, 1fr) 50px; }
   .page-viewport { padding: 28px 24px; column-gap: 48px; }
   .paged-heading { margin-bottom: 28px; }
   .paged-heading h1 { font-size: 25px; }

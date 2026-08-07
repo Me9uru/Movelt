@@ -1,4 +1,5 @@
 mod bilinovel;
+pub(crate) mod local_epub;
 mod wuba;
 
 use std::sync::Arc;
@@ -8,6 +9,7 @@ use super::{
     error::NovelError,
 };
 use bilinovel::BilinovelSource;
+use local_epub::LocalEpubSource;
 use wuba::WubaSource;
 
 #[async_trait::async_trait]
@@ -24,8 +26,11 @@ pub(super) trait NovelSource: Send + Sync {
         -> Result<ChapterContent, NovelError>;
 }
 
-pub(super) fn built_in() -> Result<Vec<Arc<dyn NovelSource>>, NovelError> {
+pub(super) fn built_in(
+    local_epub_root: std::path::PathBuf,
+) -> Result<Vec<Arc<dyn NovelSource>>, NovelError> {
     Ok(vec![
+        Arc::new(LocalEpubSource::new(local_epub_root)?),
         Arc::new(WubaSource::new()?),
         Arc::new(BilinovelSource::new()?),
     ])

@@ -105,8 +105,13 @@ impl SqliteLibraryRepository {
     }
 
     pub(super) fn remove_book(&self, source: &str, book_id: &str) -> Result<(), LibraryError> {
-        self.connection()?.execute(
+        let connection = self.connection()?;
+        connection.execute(
             "DELETE FROM bookshelf WHERE source = ?1 AND book_id = ?2",
+            params![source, book_id],
+        )?;
+        connection.execute(
+            "DELETE FROM reading_progress WHERE source = ?1 AND book_id = ?2",
             params![source, book_id],
         )?;
         Ok(())

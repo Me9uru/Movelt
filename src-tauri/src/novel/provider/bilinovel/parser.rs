@@ -84,6 +84,7 @@ pub fn volume(volume: &ApiVolume) -> Volume {
                 title: chapter.title.clone(),
             })
             .collect(),
+        sections: Vec::new(),
     }
 }
 

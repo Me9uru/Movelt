@@ -15,9 +15,9 @@ pub(crate) struct NovelService {
 }
 
 impl NovelService {
-    pub(crate) fn new() -> Result<Self, NovelError> {
+    pub(crate) fn new(local_epub_root: std::path::PathBuf) -> Result<Self, NovelError> {
         Ok(Self {
-            providers: provider::built_in()?,
+            providers: provider::built_in(local_epub_root)?,
             chapter_cache: Arc::new(Mutex::new(ChapterCache::default())),
         })
     }
@@ -120,7 +120,7 @@ mod tests {
 
     #[test]
     fn rejects_unknown_source() {
-        let service = NovelService::new().unwrap();
+        let service = NovelService::new(std::env::temp_dir().join("movel-test-epub")).unwrap();
         assert!(matches!(
             service.provider("missing"),
             Err(NovelError::UnknownSource(source)) if source == "missing"

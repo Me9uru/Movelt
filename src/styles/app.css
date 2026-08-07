@@ -4,6 +4,7 @@ body { margin: 0; min-width: 320px; min-height: 100vh; }
 button, input { font: inherit; }
 button { cursor: pointer; }
 .page-bg { min-height: 100vh; color: var(--color-text); background: radial-gradient(circle at 50% -10%, var(--color-surface) 0, var(--color-background-soft) 38%, var(--color-background) 100%); transition: color .25s ease, background .25s ease; }
+.page-bg:has(.reader--paged) { display: flex; flex-direction: column; height: 100dvh; min-height: 0; overflow: hidden; }
 .topbar { position: sticky; top: 0; z-index: 20; padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); border-bottom: 1px solid var(--color-border); background: var(--color-topbar); backdrop-filter: blur(18px); }
 .topbar-inner { width: min(1160px, calc(100% - 48px)); height: 64px; margin: auto; display: flex; align-items: center; }
 .detail-topbar { justify-content: flex-start; }
@@ -17,13 +18,14 @@ button { cursor: pointer; }
 .back-button { background: var(--color-surface-glass); }
 
 .app-shell { width: min(1160px, calc(100% - 48px)); margin: 0 auto; padding: 0 0 112px; }
-.app-shell:has(.reader--paged) { padding-bottom: 0; }
+.app-shell:has(.reader--paged) { flex: 1; min-height: 0; padding-bottom: 0; }
 .error-alert { position: sticky; top: 88px; z-index: 15; margin: 16px auto -8px; max-width: 760px; box-shadow: 0 10px 30px rgb(100 45 38 / 10%); }
 .hero { padding: 56px 0 60px; text-align: center; }
 .hero .eyebrow { margin-bottom: 20px; letter-spacing: .12em; }
 .hero h1 { margin: 0; font-family: Georgia, "Noto Serif SC", serif; font-size: clamp(36px, 5vw, 58px); font-weight: 500; letter-spacing: -.035em; line-height: 1.25; }
 .hero > p { margin: 20px 0 34px; color: var(--color-text-muted); font-size: 16px; }
 .search-box { display: flex; gap: 10px; width: min(680px, 100%); margin: 0 auto; padding: 7px; border: 1px solid var(--color-border); border-radius: var(--radius-card); background: var(--color-surface-glass); box-shadow: var(--shadow-soft); }
+.search-box .el-input { min-width: 0; }
 .search-box .el-input__wrapper { box-shadow: none; background: transparent; }
 .search-box .source-select { width: 150px; flex: 0 0 150px; }
 .search-box .source-select .el-select__wrapper { box-shadow: none; background: transparent; }
@@ -43,6 +45,12 @@ button { cursor: pointer; }
 .book-cover, .cover-placeholder { display: block; width: 100%; aspect-ratio: 3 / 4; border-radius: var(--radius-control); overflow: hidden; background: linear-gradient(145deg, var(--color-cover-start), var(--color-cover-end)); }
 .cover-placeholder { display: grid; place-items: center; color: var(--color-text-subtle); }
 .cover-placeholder .el-icon { font-size: 36px; }
+.import-epub-card { border-style: dashed; }
+.import-epub-cover { position: relative; background: linear-gradient(145deg, color-mix(in srgb, var(--color-cover-start) 72%, white), color-mix(in srgb, var(--color-cover-end) 72%, white)); }
+.import-epub-cover > .el-icon { font-size: 62px; }
+.import-epub-cover .import-epub-plus { position: absolute; right: calc(50% - 42px); bottom: calc(50% - 42px); display: grid; width: 32px; height: 32px; place-items: center; border: 2px solid var(--color-surface-card); border-radius: 50%; background: var(--color-primary); color: white; }
+.import-epub-cover .import-epub-plus svg { width: 19px; height: 19px; }
+.import-epub-meta { text-align: center; }
 .book-meta { padding: 14px 5px 0; }
 .book-meta strong { display: -webkit-box; overflow: hidden; min-height: 44px; color: var(--color-text-strong); font-size: 14px; line-height: 1.55; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .book-meta > span { display: block; margin-top: 8px; color: var(--color-primary-deep); font-size: 12px; }

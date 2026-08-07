@@ -43,6 +43,7 @@ pub struct NovelOverview {
 pub struct Volume {
     pub title: String,
     pub chapters: Vec<ChapterSummary>,
+    pub sections: Vec<Volume>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

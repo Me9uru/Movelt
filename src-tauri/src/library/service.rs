@@ -25,7 +25,7 @@ impl LibraryService {
         })
     }
 
-    pub(super) fn add_book(&self, book: &NovelDetail) -> Result<(), LibraryError> {
+    pub(crate) fn add_book(&self, book: &NovelDetail) -> Result<(), LibraryError> {
         validate_key(&book.source, &book.id)?;
         self.repository.add_book(book)
     }

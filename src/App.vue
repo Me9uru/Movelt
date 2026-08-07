@@ -5,6 +5,7 @@ import {
   Collection,
   Search,
 } from "@element-plus/icons-vue";
+import { open } from "@tauri-apps/plugin-dialog";
 import {
   getNovelOverview,
   listNovelSources,
@@ -16,6 +17,13 @@ import {
 } from "./services/novel";
 import type { ReaderDocument } from "./domain/reader";
 import { networkNovelSource } from "./sources/networkNovel";
+import { localEpubSource } from "./sources/localEpub";
+import {
+  canUseLocalEpubAssets,
+  getLocalEpubOverview,
+  importEpub,
+  localEpubSourceId,
+} from "./services/localEpub";
 import BookshelfView from "./components/library/BookshelfView.vue";
 import LoadingOverlay from "./components/common/LoadingOverlay.vue";
 import NovelDetailView from "./components/library/NovelDetailView.vue";
@@ -26,7 +34,7 @@ import { useReaderSettings } from "./composables/useReaderSettings";
 
 type LibraryView = "search" | "bookshelf";
 type View = LibraryView | "detail" | "reader";
-type LoadingAction = "search" | "novel" | "chapter" | "bookshelf";
+type LoadingAction = "search" | "novel" | "chapter" | "bookshelf" | "import";
 
 const historyViewKey = "movelView";
 
@@ -56,9 +64,24 @@ const {
   saveProgress,
 } = useLibrary();
 
-const chapterIds = computed(() =>
-  catalogue.value.flatMap((volume) => volume.chapters.map((chapter) => chapter.id)),
-);
+function collectChapterIds(volumes: Volume[]): string[] {
+  return volumes.flatMap((volume) => [
+    ...volume.chapters.map((chapter) => chapter.id),
+    ...collectChapterIds(volume.sections),
+  ]);
+}
+
+function findChapter(volumes: Volume[], chapterId: string): { id: string; title: string } | undefined {
+  for (const volume of volumes) {
+    const chapter = volume.chapters.find((item) => item.id === chapterId);
+    if (chapter) return chapter;
+    const nested = findChapter(volume.sections, chapterId);
+    if (nested) return nested;
+  }
+  return undefined;
+}
+
+const chapterIds = computed(() => collectChapterIds(catalogue.value));
 const nextChapterId = computed(() => {
   if (!currentChapterId.value) return null;
   const currentIndex = chapterIds.value.indexOf(currentChapterId.value);
@@ -93,6 +116,8 @@ const loadingCopy = computed(() => {
       return { title: "正在加载章节", hint: "内容较多时可能需要稍候" };
     case "bookshelf":
       return { title: "正在更新书架", hint: "请稍候" };
+    case "import":
+      return { title: "正在导入 EPUB", hint: "正在保存并解析书籍" };
     default:
       return { title: "正在加载", hint: "请稍候" };
   }
@@ -213,8 +238,21 @@ async function openNovel(novel: NovelSummary) {
     lastLibraryView.value = view.value;
   }
   const response = await run("novel", async () => {
-    const overview = await getNovelOverview(novel.source, novel.id);
-    await loadProgress(overview.detail);
+    const overview = novel.source === localEpubSourceId
+      ? await getLocalEpubOverview(novel.id)
+      : await getNovelOverview(novel.source, novel.id);
+    const progress = await loadProgress(overview.detail);
+    if (overview.detail.source === localEpubSourceId && progress) {
+      const chapter = findChapter(overview.volumes, progress.documentId);
+      if (chapter && chapter.title !== progress.documentTitle) {
+        await saveProgress(overview.detail, {
+          documentId: progress.documentId,
+          documentTitle: chapter.title,
+          location: progress.location,
+          bookLocation: progress.bookLocation,
+        });
+      }
+    }
     return overview;
   });
   if (response) {
@@ -229,7 +267,8 @@ async function openChapter(chapterId: string) {
   const isChangingChapter = view.value === "reader";
   const response = await run("chapter", async () => {
     const book = detail.value!;
-    const document = await networkNovelSource(book.source).loadDocument(book.id, chapterId);
+    const source = book.source === localEpubSourceId ? localEpubSource : networkNovelSource(book.source);
+    const document = await source.loadDocument(book.id, chapterId);
     const existing = progressFor(book);
     await saveProgress(book, {
       documentId: chapterId,
@@ -263,6 +302,7 @@ function prefetchFollowingChapters(chapterId: string) {
   if (followingIds.length === 0) return;
 
   const book = detail.value;
+  if (book.source === localEpubSourceId) return;
   const source = networkNovelSource(book.source);
   void source.prefetchDocuments?.(book.id, followingIds).catch((error: unknown) => {
     console.warn("章节预取失败", error);
@@ -277,6 +317,27 @@ async function toggleBookshelf() {
   if (!detail.value) return;
   const book = detail.value;
   await run("bookshelf", () => isOnBookshelf(book) ? removeBook(book) : addBook(book));
+}
+
+async function chooseAndImportEpub() {
+  if (!canUseLocalEpubAssets()) {
+    errorMessage.value = "导入 EPUB 仅支持桌面应用；浏览器调试可查看已导入的书籍。";
+    return;
+  }
+  const selected = await open({
+    multiple: false,
+    directory: false,
+    filters: [{ name: "EPUB", extensions: ["epub"] }],
+  });
+  if (!selected || Array.isArray(selected)) return;
+  const overview = await run("import", () => importEpub(selected));
+  if (!overview) return;
+  await refreshBooks();
+  detail.value = overview.detail;
+  catalogue.value = overview.volumes;
+  await loadProgress(overview.detail);
+  lastLibraryView.value = "bookshelf";
+  enterHistoryView("detail");
 }
 
 function continueReading() {
@@ -366,6 +427,7 @@ onBeforeUnmount(() => {
         :loading="loading"
         :bookshelf-loading="bookshelfLoading"
         @browse="openLibraryView('search')"
+        @import-epub="chooseAndImportEpub"
         @open-novel="openNovel"
       />
 

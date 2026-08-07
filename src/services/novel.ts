@@ -28,6 +28,7 @@ export interface NovelDetail extends NovelSummary {
 export interface Volume {
   title: string;
   chapters: ChapterSummary[];
+  sections: Volume[];
 }
 
 export interface NovelOverview {
