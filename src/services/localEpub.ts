@@ -1,16 +1,10 @@
-import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke, isTauri } from "@tauri-apps/api/core";
 import type { ChapterContent, NovelOverview } from "./novel";
 
 export const localEpubSourceId = "local_epub";
 
-type TauriWindow = Window & {
-  __TAURI_INTERNALS__?: {
-    convertFileSrc?: (path: string, protocol?: string) => string;
-  };
-};
-
 export function canUseLocalEpubAssets(): boolean {
-  return typeof (window as TauriWindow).__TAURI_INTERNALS__?.convertFileSrc === "function";
+  return isTauri();
 }
 
 export function importEpub(path: string): Promise<NovelOverview> {

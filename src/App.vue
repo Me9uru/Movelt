@@ -3,19 +3,17 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import {
   ArrowLeft,
   Collection,
-  Search,
+  Compass,
 } from "@element-plus/icons-vue";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
   getNovelOverview,
-  listNovelSources,
-  searchNovels,
   type NovelDetail,
-  type NovelSourceInfo,
   type NovelSummary,
   type Volume,
 } from "./services/novel";
 import type { ReaderDocument } from "./domain/reader";
+import type { BookshelfEntry } from "./domain/library";
 import { networkNovelSource } from "./sources/networkNovel";
 import { localEpubSource } from "./sources/localEpub";
 import {
@@ -25,25 +23,22 @@ import {
   localEpubSourceId,
 } from "./services/localEpub";
 import BookshelfView from "./components/library/BookshelfView.vue";
+import DiscoveryView from "./components/library/DiscoveryView.vue";
 import LoadingOverlay from "./components/common/LoadingOverlay.vue";
 import NovelDetailView from "./components/library/NovelDetailView.vue";
-import NovelSearchView from "./components/library/NovelSearchView.vue";
 import NovelReader from "./components/reader/NovelReader.vue";
 import { useLibrary } from "./composables/useLibrary";
 import { useReaderSettings } from "./composables/useReaderSettings";
+import { useDiscovery } from "./composables/useDiscovery";
 
-type LibraryView = "search" | "bookshelf";
+type LibraryView = "discovery" | "bookshelf";
 type View = LibraryView | "detail" | "reader";
-type LoadingAction = "search" | "novel" | "chapter" | "bookshelf" | "import";
+type LoadingAction = "novel" | "chapter" | "bookshelf" | "import";
 
 const historyViewKey = "movelView";
 
-const view = ref<View>("search");
-const lastLibraryView = ref<LibraryView>("search");
-const query = ref("");
-const sourceOptions = ref<NovelSourceInfo[]>([]);
-const selectedSource = ref("");
-const results = ref<NovelSummary[]>([]);
+const view = ref<View>("discovery");
+const lastLibraryView = ref<LibraryView>("discovery");
 const detail = ref<NovelDetail | null>(null);
 const catalogue = ref<Volume[]>([]);
 const readerDocument = ref<ReaderDocument | null>(null);
@@ -51,11 +46,15 @@ const currentChapterId = ref<string | null>(null);
 const loading = ref(false);
 const loadingAction = ref<LoadingAction | null>(null);
 const bookshelfLoading = ref(true);
+const bookshelfQuery = ref("");
+const bookshelfResults = ref<BookshelfEntry[] | null>(null);
 const errorMessage = ref("");
 const { settings: readerSettings } = useReaderSettings();
+const discovery = useDiscovery();
 const {
   books,
   refreshBooks,
+  searchBooks,
   addBook,
   removeBook,
   isOnBookshelf,
@@ -63,6 +62,7 @@ const {
   loadProgress,
   saveProgress,
 } = useLibrary();
+const visibleBooks = computed(() => bookshelfResults.value ?? books.value);
 
 function collectChapterIds(volumes: Volume[]): string[] {
   return volumes.flatMap((volume) => [
@@ -82,6 +82,11 @@ function findChapter(volumes: Volume[], chapterId: string): { id: string; title:
 }
 
 const chapterIds = computed(() => collectChapterIds(catalogue.value));
+const previousChapterId = computed(() => {
+  if (!currentChapterId.value) return null;
+  const currentIndex = chapterIds.value.indexOf(currentChapterId.value);
+  return currentIndex > 0 ? chapterIds.value[currentIndex - 1] ?? null : null;
+});
 const nextChapterId = computed(() => {
   if (!currentChapterId.value) return null;
   const currentIndex = chapterIds.value.indexOf(currentChapterId.value);
@@ -108,8 +113,6 @@ const readerInitialProgress = computed(() => {
 });
 const loadingCopy = computed(() => {
   switch (loadingAction.value) {
-    case "search":
-      return { title: "正在搜索作品", hint: "首次加载书库索引可能需要十几秒" };
     case "novel":
       return { title: "正在加载作品详情", hint: "正在获取简介与章节目录" };
     case "chapter":
@@ -173,14 +176,14 @@ async function run<T>(action: LoadingAction, task: () => Promise<T>): Promise<T 
   }
 }
 
-async function search() {
-  if (!query.value.trim()) return;
-  const searchQuery = query.value.trim();
-  const response = await run("search", () => searchNovels(selectedSource.value, searchQuery));
-  if (response) {
-    results.value = response.items;
-    view.value = "search";
+async function searchShelf() {
+  const searchQuery = bookshelfQuery.value.trim();
+  if (!searchQuery) {
+    bookshelfResults.value = null;
+    return;
   }
+  const response = await run("bookshelf", () => searchBooks(searchQuery));
+  if (response) bookshelfResults.value = response;
 }
 
 function openLibraryView(nextView: LibraryView) {
@@ -215,7 +218,7 @@ function handleHistoryBack(event: PopStateEvent) {
     view.value = "reader";
   } else if (nextView === "detail" && detail.value) {
     view.value = "detail";
-  } else if (nextView === "bookshelf" || nextView === "search") {
+  } else if (nextView === "bookshelf" || nextView === "discovery") {
     view.value = nextView;
     lastLibraryView.value = nextView;
   } else {
@@ -234,7 +237,7 @@ function handleAndroidBack(event: Event) {
 }
 
 async function openNovel(novel: NovelSummary) {
-  if (view.value === "search" || view.value === "bookshelf") {
+  if (view.value === "discovery" || view.value === "bookshelf") {
     lastLibraryView.value = view.value;
   }
   const response = await run("novel", async () => {
@@ -268,7 +271,7 @@ async function openChapter(chapterId: string) {
   const response = await run("chapter", async () => {
     const book = detail.value!;
     const source = book.source === localEpubSourceId ? localEpubSource : networkNovelSource(book.source);
-    const document = await source.loadDocument(book.id, chapterId);
+    const document = await source.loadDocument(book.id, chapterId, findChapter(catalogue.value, chapterId)?.title);
     const existing = progressFor(book);
     await saveProgress(book, {
       documentId: chapterId,
@@ -304,7 +307,8 @@ function prefetchFollowingChapters(chapterId: string) {
   const book = detail.value;
   if (book.source === localEpubSourceId) return;
   const source = networkNovelSource(book.source);
-  void source.prefetchDocuments?.(book.id, followingIds).catch((error: unknown) => {
+  const followingTitles = followingIds.map((id) => findChapter(catalogue.value, id)?.title || "章节");
+  void source.prefetchDocuments?.(book.id, followingIds, followingTitles).catch((error: unknown) => {
     console.warn("章节预取失败", error);
   });
 }
@@ -313,10 +317,20 @@ function openNextChapter() {
   if (nextChapterId.value) void openChapter(nextChapterId.value);
 }
 
+function openPreviousChapter() {
+  if (previousChapterId.value) void openChapter(previousChapterId.value);
+}
+
 async function toggleBookshelf() {
   if (!detail.value) return;
   const book = detail.value;
-  await run("bookshelf", () => isOnBookshelf(book) ? removeBook(book) : addBook(book));
+  await run("bookshelf", async () => {
+    await (isOnBookshelf(book) ? removeBook(book) : addBook(book));
+    const searchQuery = bookshelfQuery.value.trim();
+    if (bookshelfResults.value && searchQuery) {
+      bookshelfResults.value = await searchBooks(searchQuery);
+    }
+  });
 }
 
 async function chooseAndImportEpub() {
@@ -365,19 +379,18 @@ function back() {
   window.history.back();
 }
 
-onMounted(async () => {
+onMounted(() => {
   replaceHistoryView(view.value);
   window.addEventListener("popstate", handleHistoryBack);
   window.addEventListener("movel:android-back", handleAndroidBack);
-  try {
-    const [, sources] = await Promise.all([refreshBooks(), listNovelSources()]);
-    sourceOptions.value = sources;
-    selectedSource.value = sources[0]?.id ?? "";
-  } catch (error) {
-    errorMessage.value = describeError(error);
-  } finally {
-    bookshelfLoading.value = false;
-  }
+  void discovery.initialize();
+  void refreshBooks()
+    .catch((error: unknown) => {
+      errorMessage.value = describeError(error);
+    })
+    .finally(() => {
+      bookshelfLoading.value = false;
+    });
 });
 
 onBeforeUnmount(() => {
@@ -392,8 +405,8 @@ onBeforeUnmount(() => {
   <div class="page-bg">
     <header v-if="view === 'detail' || view === 'reader'" class="topbar">
       <div class="topbar-inner detail-topbar">
-        <el-button class="back-button" :icon="ArrowLeft" round @click="back">
-          {{ view === "reader" ? "返回目录" : `返回${lastLibraryView === "bookshelf" ? "书架" : "小说"}` }}
+        <el-button class="back-button" :icon="ArrowLeft" @click="back">
+          {{ view === "reader" ? "返回目录" : `返回${lastLibraryView === "bookshelf" ? "书架" : "发现"}` }}
         </el-button>
       </div>
     </header>
@@ -409,24 +422,39 @@ onBeforeUnmount(() => {
         @close="errorMessage = ''"
       />
 
-      <NovelSearchView
-        v-if="view === 'search'"
-        v-model:query="query"
-        v-model:selected-source="selectedSource"
-        :source-options="sourceOptions"
-        :results="results"
-        :loading="loading"
-        @search="search"
-        @source-change="results = []"
+      <DiscoveryView
+        v-if="view === 'discovery'"
+        v-model:ranking-sort="discovery.rankingSort.value"
+        v-model:category-sort="discovery.categorySort.value"
+        v-model:custom-tag="discovery.customTag.value"
+        v-model:search-query="discovery.searchQuery.value"
+        :unavailable-message="discovery.unavailableMessage.value"
+        :recommendations="discovery.recommendations.value"
+        :ranking="discovery.ranking.value"
+        :category="discovery.category.value"
+        :category-tag="discovery.categoryTag.value"
+        :search-result="discovery.search.value"
+        :loading="discovery.loading.value"
+        :errors="discovery.errors.value"
+        @initialize="discovery.initialize"
+        @retry-recommendations="discovery.loadRecommendations"
+        @load-ranking="discovery.loadRanking"
+        @load-category="discovery.loadCategory"
+        @search="discovery.runSearch"
+        @select-category="discovery.selectCategory"
         @open-novel="openNovel"
       />
 
       <BookshelfView
         v-else-if="view === 'bookshelf'"
-        :books="books"
+        v-model:query="bookshelfQuery"
+        :books="visibleBooks"
+        :total-books="books.length"
+        :search-active="bookshelfResults !== null"
         :loading="loading"
         :bookshelf-loading="bookshelfLoading"
-        @browse="openLibraryView('search')"
+        @search="searchShelf"
+        @browse="openLibraryView('discovery')"
         @import-epub="chooseAndImportEpub"
         @open-novel="openNovel"
       />
@@ -448,7 +476,9 @@ onBeforeUnmount(() => {
         :document="readerDocument"
         :loading="loading"
         :initial-progress="readerInitialProgress"
+        :has-previous-chapter="Boolean(previousChapterId)"
         :has-next-chapter="Boolean(nextChapterId)"
+        @previous="openPreviousChapter"
         @next="openNextChapter"
         @progress="recordProgress"
       />
@@ -456,15 +486,15 @@ onBeforeUnmount(() => {
 
     <LoadingOverlay :visible="showLoadingOverlay" :label="loadingLabel" />
 
-    <nav v-if="view === 'search' || view === 'bookshelf'" class="view-dock" aria-label="主栏目">
+    <nav v-if="view === 'discovery' || view === 'bookshelf'" class="view-dock" aria-label="主栏目">
       <button
         type="button"
-        :class="{ active: view === 'search' }"
-        :aria-current="view === 'search' ? 'page' : undefined"
-        @click="openLibraryView('search')"
+        :class="{ active: view === 'discovery' }"
+        :aria-current="view === 'discovery' ? 'page' : undefined"
+        @click="openLibraryView('discovery')"
       >
-        <el-icon><Search /></el-icon>
-        <span>小说</span>
+        <el-icon><Compass /></el-icon>
+        <span>发现</span>
       </button>
       <button
         type="button"

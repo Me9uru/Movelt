@@ -229,6 +229,7 @@ impl LocalEpubSource {
                 updated_at: None,
                 description: package.description,
                 cover_url,
+                tags: Vec::new(),
             },
             volumes,
         })

@@ -7,6 +7,7 @@ import {
   listBookshelf,
   removeFromBookshelf,
   saveReadingProgress,
+  searchBookshelf,
 } from "../services/library";
 
 const books = ref<BookshelfEntry[]>([]);
@@ -24,6 +25,10 @@ export function useLibrary() {
     for (const entry of entries) {
       if (entry.progress) progress.value[keyFor(entry.book)] = entry.progress;
     }
+  }
+
+  function searchBooks(query: string): Promise<BookshelfEntry[]> {
+    return searchBookshelf(query);
   }
 
   function isOnBookshelf(book: Pick<NovelDetail, "source" | "id">): boolean {
@@ -77,6 +82,7 @@ export function useLibrary() {
   return {
     books,
     refreshBooks,
+    searchBooks,
     addBook,
     removeBook,
     isOnBookshelf,

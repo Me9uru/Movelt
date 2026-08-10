@@ -6,8 +6,8 @@ export function networkNovelSource(sourceId: string): ReaderSource {
   return {
     id: sourceId,
 
-    async loadDocument(bookId, documentId): Promise<ReaderDocument> {
-      const chapter = await getChapter(sourceId, bookId, documentId);
+    async loadDocument(bookId, documentId, documentTitle): Promise<ReaderDocument> {
+      const chapter = await getChapter(sourceId, bookId, documentId, documentTitle);
       return {
         id: `${chapter.source}:${chapter.novel_id}:${chapter.chapter_id}`,
         sourceId: chapter.source,
@@ -17,8 +17,8 @@ export function networkNovelSource(sourceId: string): ReaderSource {
       };
     },
 
-    async prefetchDocuments(bookId, documentIds): Promise<void> {
-      await prefetchChapters(sourceId, bookId, documentIds);
+    async prefetchDocuments(bookId, documentIds, documentTitles): Promise<void> {
+      await prefetchChapters(sourceId, bookId, documentIds, documentTitles);
     },
   };
 }

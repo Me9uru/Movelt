@@ -1,24 +1,48 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct NovelSourceInfo {
-    pub id: String,
-    pub name: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct SearchResult {
-    pub page: u32,
-    pub total_pages: u32,
-    pub items: Vec<NovelSummary>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NovelSummary {
     pub source: String,
     pub id: String,
     pub title: String,
     pub cover_url: Option<String>,
+    #[serde(default)]
+    pub author: Option<String>,
+    #[serde(default)]
+    pub status: Option<String>,
+    #[serde(default)]
+    pub updated_at: Option<String>,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub tags: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct PageInfo {
+    pub page: u32,
+    pub previous: Option<u32>,
+    pub next: Option<u32>,
+    pub first: u32,
+    pub last: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct DiscoveryList {
+    pub items: Vec<NovelSummary>,
+    pub pagination: PageInfo,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct RecommendBlock {
+    pub title: String,
+    pub items: Vec<NovelSummary>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct HealthStatus {
+    pub logged_in: bool,
+    pub base_url: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -31,6 +55,8 @@ pub struct NovelDetail {
     pub updated_at: Option<String>,
     pub description: Option<String>,
     pub cover_url: Option<String>,
+    #[serde(default)]
+    pub tags: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

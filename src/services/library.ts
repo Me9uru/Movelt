@@ -6,6 +6,10 @@ export function listBookshelf(): Promise<BookshelfEntry[]> {
   return invoke("list_bookshelf");
 }
 
+export function searchBookshelf(query: string): Promise<BookshelfEntry[]> {
+  return invoke("search_bookshelf", { query });
+}
+
 export function addToBookshelf(book: NovelDetail): Promise<void> {
   return invoke("add_to_bookshelf", { book });
 }

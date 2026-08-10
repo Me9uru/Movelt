@@ -26,12 +26,12 @@
   --color-border-strong: #c4dff1;
   --color-cover-start: #edf8ff;
   --color-cover-end: #d7ebf8;
-  --shadow-soft: 0 18px 50px rgb(51 119 168 / 10%);
-  --shadow-panel: 0 24px 70px rgb(45 105 150 / 11%);
-  --shadow-floating: 0 14px 40px rgb(41 104 151 / 16%);
-  --radius-control: 10px;
-  --radius-card: 14px;
-  --radius-panel: 20px;
+  --shadow-soft: 0 10px 28px rgb(51 119 168 / 7%);
+  --shadow-panel: 0 16px 40px rgb(45 105 150 / 8%);
+  --shadow-floating: 0 10px 30px rgb(41 104 151 / 12%);
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-panel: 16px;
   --radius-pill: 999px;
 
   /* Element Plus inherits the same palette. */
@@ -76,9 +76,9 @@
   --color-border-strong: #cfc3b2;
   --color-cover-start: #eee9df;
   --color-cover-end: #ddd5c8;
-  --shadow-soft: 0 18px 50px rgb(70 61 48 / 10%);
-  --shadow-panel: 0 24px 70px rgb(65 58 47 / 9%);
-  --shadow-floating: 0 14px 40px rgb(50 45 38 / 16%);
+  --shadow-soft: 0 10px 28px rgb(70 61 48 / 7%);
+  --shadow-panel: 0 16px 40px rgb(65 58 47 / 7%);
+  --shadow-floating: 0 10px 30px rgb(50 45 38 / 13%);
   --el-color-primary-light-3: #b09d86;
   --el-color-primary-light-5: #c6b8a7;
   --el-color-primary-light-7: #ded5c9;
@@ -118,9 +118,9 @@
   --color-border-strong: #435664;
   --color-cover-start: #2b3944;
   --color-cover-end: #202a32;
-  --shadow-soft: 0 18px 50px rgb(0 0 0 / 18%);
-  --shadow-panel: 0 24px 70px rgb(0 0 0 / 24%);
-  --shadow-floating: 0 14px 40px rgb(0 0 0 / 28%);
+  --shadow-soft: 0 10px 28px rgb(0 0 0 / 14%);
+  --shadow-panel: 0 16px 40px rgb(0 0 0 / 18%);
+  --shadow-floating: 0 10px 30px rgb(0 0 0 / 22%);
   --el-color-primary-light-3: #609ac6;
   --el-color-primary-light-5: #4d7c9f;
   --el-color-primary-light-7: #395d78;

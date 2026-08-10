@@ -11,17 +11,16 @@ use crate::novel::provider::local_epub::LocalEpubSource;
 #[tauri::command]
 pub(crate) fn list_bookshelf(
     service: State<'_, LibraryService>,
-    local_epub: State<'_, LocalEpubSource>,
 ) -> Result<Vec<BookshelfEntry>, LibraryError> {
-    let mut entries = service.list_books()?;
-    for entry in &mut entries {
-        if entry.book.source == LocalEpubSource::SOURCE_ID {
-            if let Ok(overview) = local_epub.overview(&entry.book.id) {
-                entry.book = overview.detail;
-            }
-        }
-    }
-    Ok(entries)
+    service.list_books()
+}
+
+#[tauri::command]
+pub(crate) fn search_bookshelf(
+    service: State<'_, LibraryService>,
+    query: String,
+) -> Result<Vec<BookshelfEntry>, LibraryError> {
+    service.search_books(&query)
 }
 
 #[tauri::command]

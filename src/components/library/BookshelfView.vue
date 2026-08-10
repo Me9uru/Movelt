@@ -9,22 +9,27 @@ import {
   localEpubSourceId,
 } from "../../services/localEpub";
 import ReadingProgressBar from "./ReadingProgressBar.vue";
+import BookSearchBar from "../common/BookSearchBar.vue";
 
 const props = defineProps<{
   books: BookshelfEntry[];
   loading: boolean;
   bookshelfLoading: boolean;
+  query: string;
+  totalBooks: number;
+  searchActive: boolean;
 }>();
 
 const emit = defineEmits<{
   browse: [];
   importEpub: [];
   openNovel: [novel: NovelSummary];
+  search: [];
+  "update:query": [value: string];
 }>();
 
 const canImportEpub = canUseLocalEpubAssets();
 const localCoverUrls = ref<Record<string, string | null>>({});
-
 watch(
   () => props.books,
   async (books) => {
@@ -48,8 +53,19 @@ watch(
         <div>
           <h2>我的书架</h2>
         </div>
-        <el-tag round effect="plain">{{ books.length }} 本</el-tag>
+        <el-tag effect="plain">
+          {{ searchActive ? `${books.length} / ${totalBooks} 本` : `${totalBooks} 本` }}
+        </el-tag>
       </div>
+
+      <BookSearchBar
+        class="bookshelf-search"
+        :model-value="query"
+        :loading="loading"
+        @update:model-value="emit('update:query', $event)"
+        @clear="emit('search')"
+        @submit="emit('search')"
+      />
 
       <div class="result-grid">
         <el-card
@@ -69,7 +85,6 @@ watch(
             :src="entry.book.source === localEpubSourceId ? localCoverUrls[entry.book.id] ?? undefined : entry.book.cover_url"
             :alt="entry.book.title"
             fit="cover"
-            :lazy="entry.book.source !== localEpubSourceId"
           >
             <template #error>
               <div class="cover-placeholder">
@@ -97,6 +112,7 @@ watch(
           aria-label="导入 EPUB"
           @click="emit('importEpub')"
           @keydown.enter="emit('importEpub')"
+          @keydown.space.prevent="emit('importEpub')"
         >
           <div class="cover-placeholder import-epub-cover" aria-hidden="true">
             <el-icon><Collection /></el-icon>
@@ -109,7 +125,13 @@ watch(
         </el-card>
       </div>
 
-      <el-empty v-if="!bookshelfLoading && books.length === 0 && !canImportEpub" :image-size="112" description="书架还是空的">
+      <el-empty
+        v-if="!bookshelfLoading && searchActive && books.length === 0"
+        :image-size="112"
+        description="没有找到匹配的书籍"
+      />
+
+      <el-empty v-else-if="!bookshelfLoading && books.length === 0 && !canImportEpub" :image-size="112" description="书架还是空的">
         <el-button type="primary" plain @click="emit('browse')">
           去找小说
         </el-button>

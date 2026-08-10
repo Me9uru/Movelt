@@ -1,37 +1,26 @@
-mod bilinovel;
 pub(crate) mod local_epub;
-mod wuba;
-
-use std::sync::Arc;
+pub(super) mod wenku8_api;
 
 use super::{
-    domain::{ChapterContent, NovelOverview, SearchResult},
+    domain::{ChapterContent, NovelOverview},
     error::NovelError,
 };
-use bilinovel::BilinovelSource;
-use local_epub::LocalEpubSource;
-use wuba::WubaSource;
 
 #[async_trait::async_trait]
 pub(super) trait NovelSource: Send + Sync {
     fn id(&self) -> &'static str;
 
-    fn name(&self) -> &'static str;
-
-    async fn search(&self, query: &str, page: u32) -> Result<SearchResult, NovelError>;
-
     async fn overview(&self, novel_id: &str) -> Result<NovelOverview, NovelError>;
 
     async fn chapter(&self, novel_id: &str, chapter_id: &str)
         -> Result<ChapterContent, NovelError>;
-}
 
-pub(super) fn built_in(
-    local_epub_root: std::path::PathBuf,
-) -> Result<Vec<Arc<dyn NovelSource>>, NovelError> {
-    Ok(vec![
-        Arc::new(LocalEpubSource::new(local_epub_root)?),
-        Arc::new(WubaSource::new()?),
-        Arc::new(BilinovelSource::new()?),
-    ])
+    async fn chapter_with_title(
+        &self,
+        novel_id: &str,
+        chapter_id: &str,
+        _title: Option<&str>,
+    ) -> Result<ChapterContent, NovelError> {
+        self.chapter(novel_id, chapter_id).await
+    }
 }

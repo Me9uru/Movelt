@@ -39,6 +39,19 @@ impl LibraryService {
         self.repository.list_books()
     }
 
+    pub(super) fn search_books(&self, query: &str) -> Result<Vec<BookshelfEntry>, LibraryError> {
+        let query = query.trim();
+        if query.is_empty() {
+            return self.list_books();
+        }
+        if query.chars().count() > 100 {
+            return Err(LibraryError::InvalidInput(
+                "bookshelf search query must not exceed 100 characters".into(),
+            ));
+        }
+        self.repository.search_books(query)
+    }
+
     pub(super) fn save_progress(
         &self,
         source: &str,
@@ -102,6 +115,7 @@ mod tests {
             updated_at: None,
             description: Some("Description".into()),
             cover_url: None,
+            tags: Vec::new(),
         }
     }
 
@@ -143,6 +157,38 @@ mod tests {
 
         assert!(matches!(
             service().save_progress("test", "42", &progress),
+            Err(LibraryError::InvalidInput(_))
+        ));
+    }
+
+    #[test]
+    fn searches_bookshelf_by_title_only() {
+        let service = service();
+        service.add_book(&book()).unwrap();
+
+        assert_eq!(service.search_books("a book").unwrap().len(), 1);
+        assert!(service.search_books("author").unwrap().is_empty());
+        assert!(service.search_books("script").unwrap().is_empty());
+        assert!(service.search_books("missing").unwrap().is_empty());
+    }
+
+    #[test]
+    fn empty_bookshelf_search_returns_all_books() {
+        let service = service();
+        service.add_book(&book()).unwrap();
+
+        assert_eq!(
+            service.search_books("  ").unwrap(),
+            service.list_books().unwrap()
+        );
+    }
+
+    #[test]
+    fn rejects_an_excessively_long_bookshelf_query() {
+        let query = "x".repeat(101);
+
+        assert!(matches!(
+            service().search_books(&query),
             Err(LibraryError::InvalidInput(_))
         ));
     }

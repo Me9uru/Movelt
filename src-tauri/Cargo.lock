@@ -2035,7 +2035,6 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
- "ego-tree",
  "futures",
  "quick-xml 0.37.5",
  "reqwest 0.12.28",

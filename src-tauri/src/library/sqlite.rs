@@ -118,43 +118,65 @@ impl SqliteLibraryRepository {
     }
 
     pub(super) fn list_books(&self) -> Result<Vec<BookshelfEntry>, LibraryError> {
+        self.query_books(None)
+    }
+
+    pub(super) fn search_books(&self, query: &str) -> Result<Vec<BookshelfEntry>, LibraryError> {
+        self.query_books(Some(query))
+    }
+
+    fn query_books(&self, query: Option<&str>) -> Result<Vec<BookshelfEntry>, LibraryError> {
         let connection = self.connection()?;
-        let mut statement = connection.prepare(
+        let where_clause = if query.is_some() {
+            "WHERE instr(lower(b.title), lower(?1)) > 0"
+        } else {
+            ""
+        };
+        let sql = format!(
             "SELECT b.source, b.book_id, b.title, b.author, b.status,
                     b.source_updated_at, b.description, b.cover_url, b.added_at,
                     p.document_id, p.document_title, p.location, p.book_location, p.updated_at
              FROM bookshelf b
              LEFT JOIN reading_progress p
                ON p.source = b.source AND p.book_id = b.book_id
-             ORDER BY COALESCE(p.updated_at, b.added_at) DESC",
-        )?;
-        let entries = statement
-            .query_map([], |row| {
-                Ok(BookshelfEntry {
-                    book: NovelDetail {
-                        source: row.get(0)?,
-                        id: row.get(1)?,
-                        title: row.get(2)?,
-                        author: row.get(3)?,
-                        status: row.get(4)?,
-                        updated_at: row.get(5)?,
-                        description: row.get(6)?,
-                        cover_url: row.get(7)?,
-                    },
-                    added_at: row.get(8)?,
-                    progress: match row.get::<_, Option<String>>(9)? {
-                        Some(document_id) => Some(ReadingProgress {
-                            document_id,
-                            document_title: row.get(10)?,
-                            location: row.get(11)?,
-                            book_location: row.get(12)?,
-                            updated_at: row.get(13)?,
-                        }),
-                        None => None,
-                    },
-                })
-            })?
-            .collect::<Result<Vec<_>, _>>()?;
+             {where_clause}
+             ORDER BY COALESCE(p.updated_at, b.added_at) DESC"
+        );
+        let mut statement = connection.prepare(&sql)?;
+        let map_entry = |row: &rusqlite::Row<'_>| {
+            Ok(BookshelfEntry {
+                book: NovelDetail {
+                    source: row.get(0)?,
+                    id: row.get(1)?,
+                    title: row.get(2)?,
+                    author: row.get(3)?,
+                    status: row.get(4)?,
+                    updated_at: row.get(5)?,
+                    description: row.get(6)?,
+                    cover_url: row.get(7)?,
+                    tags: Vec::new(),
+                },
+                added_at: row.get(8)?,
+                progress: match row.get::<_, Option<String>>(9)? {
+                    Some(document_id) => Some(ReadingProgress {
+                        document_id,
+                        document_title: row.get(10)?,
+                        location: row.get(11)?,
+                        book_location: row.get(12)?,
+                        updated_at: row.get(13)?,
+                    }),
+                    None => None,
+                },
+            })
+        };
+        let entries = match query {
+            Some(query) => statement
+                .query_map([query], map_entry)?
+                .collect::<Result<Vec<_>, _>>()?,
+            None => statement
+                .query_map([], map_entry)?
+                .collect::<Result<Vec<_>, _>>()?,
+        };
         Ok(entries)
     }
 

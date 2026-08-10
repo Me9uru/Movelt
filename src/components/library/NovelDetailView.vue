@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import { Check, Collection, Star, VideoPlay } from "@element-plus/icons-vue";
+import { Check, Star, VideoPlay } from "@element-plus/icons-vue";
 import type { ReadingProgress } from "../../domain/library";
 import type { NovelDetail, Volume } from "../../services/novel";
-import { localEpubAssetUrl, localEpubSourceId } from "../../services/localEpub";
 import ReadingProgressBar from "./ReadingProgressBar.vue";
 import CatalogueBranch from "./CatalogueBranch.vue";
+import NovelCover from "./NovelCover.vue";
 
 const props = defineProps<{
   detail: NovelDetail;
@@ -22,18 +22,6 @@ const emit = defineEmits<{
 }>();
 
 const activeVolume = ref<number | string>("");
-const localCoverUrl = ref<string | null>(null);
-
-watch(
-  () => [props.detail.id, props.detail.source, props.detail.cover_url] as const,
-  async ([bookId, source, coverUrl]) => {
-    localCoverUrl.value = source === localEpubSourceId
-      ? await localEpubAssetUrl(bookId, coverUrl)
-      : coverUrl;
-  },
-  { immediate: true },
-);
-
 const chapterCount = computed(() =>
   props.catalogue.reduce((total, volume) => total + countChapters(volume), 0),
 );
@@ -70,13 +58,13 @@ function containsChapter(volume: Volume, chapterId: string): boolean {
   <section class="detail-view">
     <el-card class="book-profile" shadow="never">
       <div class="book-heading">
-        <el-image v-if="localCoverUrl" class="detail-cover" :src="localCoverUrl" :alt="detail.title"
-          fit="cover" />
-        <div v-else class="detail-cover cover-placeholder">
-          <el-icon>
-            <Collection />
-          </el-icon>
-        </div>
+        <NovelCover
+          class="detail-cover"
+          :source="detail.source"
+          :novel-id="detail.id"
+          :title="detail.title"
+          :cover-url="detail.cover_url"
+        />
 
         <div class="detail-copy">
           <h1>{{ detail.title }}</h1>
@@ -88,15 +76,18 @@ function containsChapter(volume: Volume, chapterId: string): boolean {
             </template>
           </p>
           <div class="stats">
-            <span><strong>{{ catalogue.length }}</strong> 卷</span>
+            <span><strong>{{ catalogue.length }}</strong> 篇</span>
             <el-divider direction="vertical" />
-            <span><strong>{{ chapterCount }}</strong> 章</span>
+            <span><strong>{{ chapterCount }}</strong> 话</span>
             <template v-if="detail.updated_at">
               <el-divider direction="vertical" />
               <span>更新于 {{ detail.updated_at }}</span>
             </template>
           </div>
           <p class="description">{{ detail.description || "暂无作品简介。" }}</p>
+          <div v-if="detail.tags.length" class="detail-tags">
+            <el-tag v-for="tag in detail.tags" :key="tag" effect="plain">{{ tag }}</el-tag>
+          </div>
         </div>
 
         <div class="detail-rail">
@@ -120,17 +111,17 @@ function containsChapter(volume: Volume, chapterId: string): boolean {
         <div>
           <h2>作品目录</h2>
         </div>
-        <p>共 {{ catalogue.length }} 卷 · {{ chapterCount }} 章</p>
+        <p>共 {{ catalogue.length }} 篇 · {{ chapterCount }} 话</p>
       </div>
 
       <el-collapse v-model="activeVolume" accordion class="catalogue">
         <el-collapse-item v-for="(volume, volumeIndex) in catalogue" :key="`${volume.title}-${volumeIndex}`"
-          :name="volumeIndex">
+          class="catalogue-volume" :name="volumeIndex">
           <template #title>
-            <div class="volume-title">
+            <div class="volume-title volume-title--part">
               <span class="volume-index">{{ String(volumeIndex + 1).padStart(2, "0") }}</span>
               <strong>{{ volume.title }}</strong>
-              <el-tag size="small" round effect="plain">{{ countChapters(volume) }} 话</el-tag>
+              <el-tag size="small" effect="plain">{{ countChapters(volume) }} 话</el-tag>
             </div>
           </template>
           <CatalogueBranch v-if="activeVolume === volumeIndex" :volume="volume" :loading="loading"

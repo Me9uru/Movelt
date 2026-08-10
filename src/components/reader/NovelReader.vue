@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  ArrowLeft,
   ArrowRight,
   RefreshLeft,
 } from "@element-plus/icons-vue";
@@ -12,10 +13,12 @@ const props = defineProps<{
   document: ReaderDocument;
   loading?: boolean;
   initialProgress?: ReadingProgress | null;
+  hasPreviousChapter?: boolean;
   hasNextChapter?: boolean;
 }>();
 
 const emit = defineEmits<{
+  previous: [];
   next: [];
   progress: [location: number];
 }>();
@@ -38,6 +41,7 @@ let paginationResetPending = false;
 let pageLocation = 0;
 let hasRestoredScroll = false;
 let hasRestoredPage = false;
+let nextChapterRequested = false;
 
 const pageLabel = computed(() => `${currentPage.value + 1} / ${pageCount.value}`);
 
@@ -104,6 +108,12 @@ function cancelPaginationUpdate() {
 function goToPage(page: number) {
   const viewport = pageViewport.value;
   if (!viewport) return;
+  if (page >= pageCount.value) {
+    emit("progress", 1);
+    requestNextChapter();
+    return;
+  }
+  if (page < pageCount.value - 1) nextChapterRequested = false;
   currentPage.value = Math.min(Math.max(page, 0), pageCount.value - 1);
   if (pageCount.value > 1) {
     pageLocation = currentPage.value / (pageCount.value - 1);
@@ -119,11 +129,18 @@ function scrollMetrics(): { start: number; distance: number } | null {
   return { start, distance: Math.max(1, reader.scrollHeight - window.innerHeight) };
 }
 
-function recordScrollProgress() {
+function recordScrollProgress(): number | null {
   const metrics = scrollMetrics();
-  if (!metrics) return;
+  if (!metrics) return null;
   pageLocation = clampLocation((window.scrollY - metrics.start) / metrics.distance);
   emit("progress", pageLocation);
+  return pageLocation;
+}
+
+function requestNextChapter() {
+  if (nextChapterRequested || props.loading || !props.hasNextChapter) return;
+  nextChapterRequested = true;
+  emit("next");
 }
 
 function handleScroll() {
@@ -131,7 +148,10 @@ function handleScroll() {
   if (scrollTimer !== null) window.clearTimeout(scrollTimer);
   scrollTimer = window.setTimeout(() => {
     scrollTimer = null;
-    recordScrollProgress();
+    const location = recordScrollProgress();
+    if (location === null) return;
+    if (location >= 0.995) requestNextChapter();
+    else if (location < 0.98 && !props.loading) nextChapterRequested = false;
   }, 120);
 }
 
@@ -203,6 +223,7 @@ watch(
 );
 
 watch(() => props.document, () => {
+  nextChapterRequested = false;
   hasRestoredPage = false;
   pageLocation = clampLocation(props.initialProgress?.location ?? 0);
   updatePagination(true);
@@ -249,6 +270,30 @@ onBeforeUnmount(() => {
     :style="style"
     @click="handleReaderClick"
   >
+    <Teleport to="body">
+      <Transition name="reader-chapter-nav">
+        <nav v-if="settingsVisible" class="reader-chapter-nav" aria-label="章节导航">
+          <el-button
+            circle
+            :icon="ArrowLeft"
+            :disabled="!hasPreviousChapter || loading"
+            :title="hasPreviousChapter ? '上一话' : '已是第一话'"
+            aria-label="上一话"
+            @click="emit('previous')"
+          />
+          <strong :title="document.title">{{ document.title }}</strong>
+          <el-button
+            circle
+            :icon="ArrowRight"
+            :disabled="!hasNextChapter || loading"
+            :title="hasNextChapter ? '下一话' : '已是最后一话'"
+            aria-label="下一话"
+            @click="emit('next')"
+          />
+        </nav>
+      </Transition>
+    </Teleport>
+
     <div v-if="settings.mode === 'scroll'" class="reader-body">
       <header class="reader-heading">
         <h1>{{ document.title }}</h1>
@@ -262,17 +307,6 @@ onBeforeUnmount(() => {
       </div>
 
       <el-divider>本章结束</el-divider>
-      <el-button
-        class="reader-next"
-        type="primary"
-        :icon="ArrowRight"
-        :disabled="!hasNextChapter || loading"
-        :title="hasNextChapter ? undefined : '已是最后一节'"
-        round
-        @click="$emit('next')"
-      >
-        下一节
-      </el-button>
     </div>
 
     <div v-else class="paged-reader" :class="{ 'paged-reader--spread': isSpread }">
@@ -297,17 +331,6 @@ onBeforeUnmount(() => {
 
       <nav class="page-controls" aria-label="分页状态与章节导航">
         <span class="page-status">{{ isSpread ? "双页" : "单页" }} · {{ pageLabel }}</span>
-        <el-button
-          v-if="currentPage >= pageCount - 1"
-          class="paged-next"
-          type="primary"
-          :disabled="!hasNextChapter || loading"
-          :title="hasNextChapter ? undefined : '已是最后一节'"
-          round
-          @click="$emit('next')"
-        >
-          下一节
-        </el-button>
       </nav>
     </div>
 
@@ -315,8 +338,9 @@ onBeforeUnmount(() => {
       v-model="settingsVisible"
       class="reader-settings-drawer"
       direction="btt"
-      size="min(680px, 78dvh)"
+      size="min(680px, calc(100dvh - env(safe-area-inset-top) - 138px))"
       :with-header="false"
+      :z-index="2000"
       append-to-body
     >
       <div class="settings-panel">
