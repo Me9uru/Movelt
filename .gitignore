@@ -29,3 +29,8 @@ src/components.d.ts
 
 # Claude Code
 .claude
+
+# Agents
+.agents/
+AGENTS.md
+api.md
