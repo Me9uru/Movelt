@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import type { ReaderDocument } from "../domain/reader";
 
 export interface NovelSummary {
   source: string;
@@ -39,31 +40,23 @@ export interface ChapterSummary {
   title: string;
 }
 
-export interface ChapterContent {
-  source: string;
-  novel_id: string;
-  chapter_id: string;
-  title: string;
-  nodes: ChapterNode[];
-}
-
 export type ChapterNode =
   | { type: "paragraph"; text: string }
   | { type: "image"; url: string; alt: string | null };
 
-export function getNovelOverview(source: string, novelId: string): Promise<NovelOverview> {
-  return invoke("get_novel_overview", { source, novelId });
+export function getReaderOverview(source: string, bookId: string): Promise<NovelOverview> {
+  return invoke("get_reader_overview", { source, bookId });
 }
 
 const coverDataUrlCache = new Map<string, Promise<string>>();
 
-export function getNovelCoverDataUrl(source: string, novelId: string): Promise<string> {
-  const key = `${source}:${novelId}`;
+export function getReaderCoverDataUrl(source: string, bookId: string): Promise<string> {
+  const key = `${source}:${bookId}`;
   const cached = coverDataUrlCache.get(key);
   if (cached) {
     return cached;
   }
-  const request = invoke<string>("get_novel_cover_data_url", { source, novelId })
+  const request = invoke<string>("get_reader_cover_data_url", { source, bookId })
     .catch((error) => {
       coverDataUrlCache.delete(key);
       throw error;
@@ -72,22 +65,13 @@ export function getNovelCoverDataUrl(source: string, novelId: string): Promise<s
   return request;
 }
 
-export function getChapter(
+export function getReaderDocument(
   source: string,
-  novelId: string,
-  chapterId: string,
-  chapterTitle?: string,
-): Promise<ChapterContent> {
-  return invoke("get_chapter", { source, novelId, chapterId, chapterTitle });
-}
-
-export function prefetchChapters(
-  source: string,
-  novelId: string,
-  chapterIds: string[],
-  chapterTitles?: string[],
-): Promise<void> {
-  return invoke("prefetch_chapters", { source, novelId, chapterIds, chapterTitles });
+  bookId: string,
+  documentId: string,
+  documentTitle?: string,
+): Promise<ReaderDocument> {
+  return invoke("get_reader_document", { source, bookId, documentId, documentTitle });
 }
 
 export function getDiscoveryHealth(): Promise<HealthStatus> {

@@ -6,7 +6,7 @@ These instructions apply to the Rust backend under `src-tauri/src/`.
 
 - Keep `lib.rs` limited to application setup, managed state registration, plugins, and Tauri command registration.
 - Tauri commands should validate input and orchestrate work. Keep HTTP fetching, parsing, persistence, and domain conversion out of command bodies.
-- Keep source-independent novel types in `novel/domain.rs`, provider code under its provider module, and reusable error mapping in `novel/error.rs`.
+- Keep source-independent novel types in the root `domain.rs`, capability-specific types in that capability's `domain.rs`, shared provider code under `sources/`, and reusable error mapping in `error.rs`.
 - Within a provider, keep transport concerns in `client.rs` and HTML/content extraction in `parser.rs`. Parsers should accept fetched input and remain deterministic where practical.
 - Keep SQLite ownership and bookshelf/progress operations in the library layer. Do not share database connections or mutable state outside their managed-state abstraction without a clear synchronization strategy.
 

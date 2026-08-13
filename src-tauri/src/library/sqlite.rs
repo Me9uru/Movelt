@@ -1,12 +1,7 @@
-use std::{path::Path, sync::Mutex};
-
+use super::domain::{BookshelfEntry, ReadingProgress, ReadingProgressInput};
+use crate::{domain::NovelDetail, error::LibraryError};
 use rusqlite::{params, Connection, OptionalExtension};
-
-use super::{
-    domain::{BookshelfEntry, ReadingProgress, ReadingProgressInput},
-    error::LibraryError,
-};
-use crate::novel::domain::NovelDetail;
+use std::{path::Path, sync::Mutex};
 
 pub(super) struct SqliteLibraryRepository {
     connection: Mutex<Connection>,

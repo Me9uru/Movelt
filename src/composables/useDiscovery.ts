@@ -36,7 +36,6 @@ export function useDiscovery() {
   const category = ref<DiscoveryList | null>(null);
   const search = ref<DiscoveryList | null>(null);
   const rankingSort = ref<RankingSort>("allvisit");
-  const categorySort = ref<RankingSort>("lastupdate");
   const categoryTag = ref("奇幻");
   const customTag = ref("");
   const searchQuery = ref("");
@@ -79,7 +78,7 @@ export function useDiscovery() {
   }
   async function loadCategory(page = 1): Promise<void> {
     const tag = customTag.value.trim() || categoryTag.value;
-    await run("category", async () => { category.value = await getCategory(tag, categorySort.value, page); });
+    await run("category", async () => { category.value = await getCategory(tag, "lastupdate", page); });
   }
   async function runSearch(page = 1): Promise<void> {
     const query = searchQuery.value.trim();
@@ -108,7 +107,7 @@ export function useDiscovery() {
 
   return {
     health, unavailableMessage, recommendations, ranking, category, search,
-    rankingSort, categorySort, categoryTag, customTag, searchQuery,
+    rankingSort, categoryTag, customTag, searchQuery,
     loading, errors, initialize, loadRecommendations, loadRanking, loadCategory,
     runSearch, selectCategory,
   };

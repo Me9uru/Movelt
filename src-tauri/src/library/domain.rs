@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::novel::domain::NovelDetail;
+use crate::domain::NovelDetail;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]

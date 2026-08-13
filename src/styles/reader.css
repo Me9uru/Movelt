@@ -1,4 +1,7 @@
 .reader { --reader-bg: var(--color-background); --reader-surface: var(--color-surface-panel); --reader-text: var(--color-text-strong); --reader-muted: var(--color-text-muted); --reader-border: var(--color-border); --reader-accent: var(--color-primary); --reader-shadow: color-mix(in srgb, var(--color-text) 9%, transparent); min-height: calc(100vh - 76px); margin: 0 calc(50% - 50vw); padding: 18px max(24px, calc(50vw - 580px)) 80px; background: var(--reader-bg); transition: background .25s, color .25s; }
+.reader--paper { --reader-bg: #f4f0e7; --reader-surface: #fffdf7; --reader-text: #34312c; --reader-muted: #7d756a; --reader-border: #ded6c8; --reader-accent: #836c50; }
+.reader--light { --reader-bg: #f7fbff; --reader-surface: #ffffff; --reader-text: #19364f; --reader-muted: #698399; --reader-border: #d7e9f6; --reader-accent: #2778ba; }
+.reader--night { --reader-bg: #191f25; --reader-surface: #222b33; --reader-text: #e2ebf1; --reader-muted: #91a2af; --reader-border: #35434e; --reader-accent: #74b8ec; }
 .reader-body { width: min(var(--reader-width), 100%); margin: 0 auto; transition: width .2s; }
 .reader-heading { margin: 0 auto 40px; text-align: center; }
 .reader-heading h1, .paged-heading h1 { color: var(--reader-text); font-family: var(--reader-font-family); font-weight: 500; line-height: 1.4; }

@@ -1,13 +1,15 @@
+use std::sync::Arc;
+
 use tauri::State;
 
+use super::local_epub::LocalEpubSource;
 use super::{
     domain::{BookshelfEntry, ReadingProgress, ReadingProgressInput},
-    error::LibraryError,
     LibraryService,
 };
-use crate::novel::domain::NovelDetail;
-use crate::novel::provider::local_epub::LocalEpubSource;
+use crate::{domain::NovelDetail, error::LibraryError};
 
+/// 返回书架中保存的全部书籍。
 #[tauri::command]
 pub(crate) fn list_bookshelf(
     service: State<'_, LibraryService>,
@@ -15,6 +17,7 @@ pub(crate) fn list_bookshelf(
     service.list_books()
 }
 
+/// 按书名搜索书架中的书籍。
 #[tauri::command]
 pub(crate) fn search_bookshelf(
     service: State<'_, LibraryService>,
@@ -23,6 +26,7 @@ pub(crate) fn search_bookshelf(
     service.search_books(&query)
 }
 
+/// 向书架添加或更新一本书。
 #[tauri::command]
 pub(crate) fn add_to_bookshelf(
     service: State<'_, LibraryService>,
@@ -31,10 +35,11 @@ pub(crate) fn add_to_bookshelf(
     service.add_book(&book)
 }
 
+/// 从书架移除书籍及其关联的本地 EPUB 数据。
 #[tauri::command]
 pub(crate) fn remove_from_bookshelf(
     service: State<'_, LibraryService>,
-    local_epub: State<'_, LocalEpubSource>,
+    local_epub: State<'_, Arc<LocalEpubSource>>,
     source: String,
     book_id: String,
 ) -> Result<(), LibraryError> {
@@ -47,6 +52,7 @@ pub(crate) fn remove_from_bookshelf(
     Ok(())
 }
 
+/// 返回一本书已保存的阅读进度。
 #[tauri::command]
 pub(crate) fn get_reading_progress(
     service: State<'_, LibraryService>,
@@ -56,6 +62,7 @@ pub(crate) fn get_reading_progress(
     service.get_progress(&source, &book_id)
 }
 
+/// 校验并保存一本书的当前阅读进度。
 #[tauri::command]
 pub(crate) fn save_reading_progress(
     service: State<'_, LibraryService>,

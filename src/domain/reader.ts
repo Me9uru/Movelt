@@ -17,5 +17,4 @@ export interface ReaderDocument {
 export interface ReaderSource {
   readonly id: string;
   loadDocument(bookId: string, documentId: string, documentTitle?: string): Promise<ReaderDocument>;
-  prefetchDocuments?(bookId: string, documentIds: string[], documentTitles?: string[]): Promise<void>;
 }

@@ -2,10 +2,9 @@ use std::path::Path;
 
 use super::{
     domain::{BookshelfEntry, ReadingProgress, ReadingProgressInput},
-    error::LibraryError,
     sqlite::SqliteLibraryRepository,
 };
-use crate::novel::domain::NovelDetail;
+use crate::{domain::NovelDetail, error::LibraryError};
 
 pub(crate) struct LibraryService {
     repository: SqliteLibraryRepository,

@@ -22,7 +22,6 @@ tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-dev-invoke = "0.2"
 tauri-plugin-dialog = "2"
 futures = "0.3"
-async-trait = "0.1"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "http2", "brotli", "gzip"] }
 rusqlite = { version = "0.37", features = ["bundled"] }
 scraper = "0.24"

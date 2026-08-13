@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { RouterView, useRoute, useRouter } from "vue-router";
 import {
   ArrowLeft,
   Collection,
@@ -7,7 +8,7 @@ import {
 } from "@element-plus/icons-vue";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
-  getNovelOverview,
+  getReaderOverview,
   type NovelDetail,
   type NovelSummary,
   type Volume,
@@ -18,27 +19,25 @@ import { networkNovelSource } from "./sources/networkNovel";
 import { localEpubSource } from "./sources/localEpub";
 import {
   canUseLocalEpubAssets,
-  getLocalEpubOverview,
   importEpub,
   localEpubSourceId,
 } from "./services/localEpub";
-import BookshelfView from "./components/library/BookshelfView.vue";
-import DiscoveryView from "./components/library/DiscoveryView.vue";
 import LoadingOverlay from "./components/common/LoadingOverlay.vue";
-import NovelDetailView from "./components/library/NovelDetailView.vue";
-import NovelReader from "./components/reader/NovelReader.vue";
 import { useLibrary } from "./composables/useLibrary";
-import { useReaderSettings } from "./composables/useReaderSettings";
 import { useDiscovery } from "./composables/useDiscovery";
+import type { AppRouteName, LibraryRouteName } from "./router";
 
-type LibraryView = "discovery" | "bookshelf";
-type View = LibraryView | "detail" | "reader";
 type LoadingAction = "novel" | "chapter" | "bookshelf" | "import";
 
-const historyViewKey = "movelView";
-
-const view = ref<View>("discovery");
-const lastLibraryView = ref<LibraryView>("discovery");
+const route = useRoute();
+const router = useRouter();
+const view = computed<AppRouteName>(() => {
+  const routeName = route.name;
+  return routeName === "bookshelf" || routeName === "detail" || routeName === "reader"
+    ? routeName
+    : "discovery";
+});
+const lastLibraryView = ref<LibraryRouteName>("discovery");
 const detail = ref<NovelDetail | null>(null);
 const catalogue = ref<Volume[]>([]);
 const readerDocument = ref<ReaderDocument | null>(null);
@@ -49,7 +48,6 @@ const bookshelfLoading = ref(true);
 const bookshelfQuery = ref("");
 const bookshelfResults = ref<BookshelfEntry[] | null>(null);
 const errorMessage = ref("");
-const { settings: readerSettings } = useReaderSettings();
 const discovery = useDiscovery();
 const {
   books,
@@ -134,13 +132,6 @@ const loadingLabel = computed(() =>
     : loadingCopy.value.title,
 );
 
-const stopThemeSync = watch(
-  () => readerSettings.theme,
-  (theme) => {
-    document.documentElement.dataset.readerTheme = theme;
-  },
-  { immediate: true },
-);
 
 function describeError(error: unknown): string {
   if (typeof error === "string") return error;
@@ -186,47 +177,10 @@ async function searchShelf() {
   if (response) bookshelfResults.value = response;
 }
 
-function openLibraryView(nextView: LibraryView) {
-  view.value = nextView;
+function openLibraryView(nextView: LibraryRouteName) {
   lastLibraryView.value = nextView;
-  replaceHistoryView(nextView);
   errorMessage.value = "";
-  window.scrollTo({ top: 0 });
-}
-
-function historyState(nextView: View): Record<string, unknown> {
-  const currentState = window.history.state;
-  const state = currentState && typeof currentState === "object"
-    ? currentState as Record<string, unknown>
-    : {};
-  return { ...state, [historyViewKey]: nextView };
-}
-
-function replaceHistoryView(nextView: View) {
-  window.history.replaceState(historyState(nextView), "");
-}
-
-function enterHistoryView(nextView: "detail" | "reader") {
-  view.value = nextView;
-  window.history.pushState(historyState(nextView), "");
-  window.scrollTo({ top: 0 });
-}
-
-function handleHistoryBack(event: PopStateEvent) {
-  const nextView = event.state?.[historyViewKey];
-  if (nextView === "reader" && readerDocument.value) {
-    view.value = "reader";
-  } else if (nextView === "detail" && detail.value) {
-    view.value = "detail";
-  } else if (nextView === "bookshelf" || nextView === "discovery") {
-    view.value = nextView;
-    lastLibraryView.value = nextView;
-  } else {
-    view.value = lastLibraryView.value;
-    replaceHistoryView(lastLibraryView.value);
-  }
-  errorMessage.value = "";
-  window.scrollTo({ top: 0 });
+  void router.replace({ name: nextView });
 }
 
 function handleAndroidBack(event: Event) {
@@ -236,14 +190,9 @@ function handleAndroidBack(event: Event) {
   }
 }
 
-async function openNovel(novel: NovelSummary) {
-  if (view.value === "discovery" || view.value === "bookshelf") {
-    lastLibraryView.value = view.value;
-  }
+async function loadNovel(source: string, novelId: string): Promise<boolean> {
   const response = await run("novel", async () => {
-    const overview = novel.source === localEpubSourceId
-      ? await getLocalEpubOverview(novel.id)
-      : await getNovelOverview(novel.source, novel.id);
+    const overview = await getReaderOverview(source, novelId);
     const progress = await loadProgress(overview.detail);
     if (overview.detail.source === localEpubSourceId && progress) {
       const chapter = findChapter(overview.volumes, progress.documentId);
@@ -261,11 +210,25 @@ async function openNovel(novel: NovelSummary) {
   if (response) {
     detail.value = response.detail;
     catalogue.value = response.volumes;
-    enterHistoryView("detail");
+    return true;
+  }
+  return false;
+}
+
+async function openNovel(novel: NovelSummary) {
+  if (view.value === "discovery" || view.value === "bookshelf") {
+    lastLibraryView.value = view.value;
+  }
+  if (await loadNovel(novel.source, novel.id)) {
+    await router.push({
+      name: "detail",
+      params: { source: novel.source, bookId: novel.id },
+      query: { from: lastLibraryView.value },
+    });
   }
 }
 
-async function openChapter(chapterId: string) {
+async function openChapter(chapterId: string, navigate = true) {
   if (!detail.value) return;
   const isChangingChapter = view.value === "reader";
   const response = await run("chapter", async () => {
@@ -287,30 +250,29 @@ async function openChapter(chapterId: string) {
   if (response) {
     readerDocument.value = response;
     currentChapterId.value = chapterId;
-    prefetchFollowingChapters(chapterId);
+    if (!navigate) return;
     if (isChangingChapter) {
-      window.scrollTo({ top: 0 });
+      await router.replace({
+        name: "reader",
+        params: {
+          source: detail.value.source,
+          bookId: detail.value.id,
+          chapterId,
+        },
+        query: route.query,
+      });
     } else {
-      enterHistoryView("reader");
+      await router.push({
+        name: "reader",
+        params: {
+          source: detail.value.source,
+          bookId: detail.value.id,
+          chapterId,
+        },
+        query: route.query,
+      });
     }
   }
-}
-
-function prefetchFollowingChapters(chapterId: string) {
-  if (!detail.value) return;
-  const currentIndex = chapterIds.value.indexOf(chapterId);
-  if (currentIndex < 0) return;
-
-  const followingIds = chapterIds.value.slice(currentIndex + 1, currentIndex + 3);
-  if (followingIds.length === 0) return;
-
-  const book = detail.value;
-  if (book.source === localEpubSourceId) return;
-  const source = networkNovelSource(book.source);
-  const followingTitles = followingIds.map((id) => findChapter(catalogue.value, id)?.title || "章节");
-  void source.prefetchDocuments?.(book.id, followingIds, followingTitles).catch((error: unknown) => {
-    console.warn("章节预取失败", error);
-  });
 }
 
 function openNextChapter() {
@@ -351,7 +313,11 @@ async function chooseAndImportEpub() {
   catalogue.value = overview.volumes;
   await loadProgress(overview.detail);
   lastLibraryView.value = "bookshelf";
-  enterHistoryView("detail");
+  await router.push({
+    name: "detail",
+    params: { source: overview.detail.source, bookId: overview.detail.id },
+    query: { from: "bookshelf" },
+  });
 }
 
 function continueReading() {
@@ -376,12 +342,60 @@ function back() {
     loading.value = false;
     loadingAction.value = null;
   }
-  window.history.back();
+  if (window.history.state?.back) {
+    router.back();
+  } else if (view.value === "reader" && detail.value) {
+    void router.replace({
+      name: "detail",
+      params: { source: detail.value.source, bookId: detail.value.id },
+      query: route.query,
+    });
+  } else {
+    void router.replace({ name: lastLibraryView.value });
+  }
 }
 
+watch(
+  () => [route.name, route.params.source, route.params.bookId, route.params.chapterId, route.query.from],
+  async () => {
+    const routeName = view.value;
+    if (routeName === "discovery" || routeName === "bookshelf") {
+      lastLibraryView.value = routeName;
+      errorMessage.value = "";
+      return;
+    }
+
+    if (route.query.from === "bookshelf" || route.query.from === "discovery") {
+      lastLibraryView.value = route.query.from;
+    }
+    const source = typeof route.params.source === "string" ? route.params.source : "";
+    const bookId = typeof route.params.bookId === "string" ? route.params.bookId : "";
+    if (!source || !bookId) {
+      await router.replace({ name: lastLibraryView.value });
+      return;
+    }
+
+    if (detail.value?.source !== source || detail.value.id !== bookId) {
+      const loaded = await loadNovel(source, bookId);
+      if (!loaded) return;
+    }
+    if (routeName === "reader") {
+      const chapterId = typeof route.params.chapterId === "string" ? route.params.chapterId : "";
+      if (!chapterId) {
+        await router.replace({
+          name: "detail",
+          params: { source, bookId },
+          query: route.query,
+        });
+      } else if (!readerDocument.value || currentChapterId.value !== chapterId) {
+        await openChapter(chapterId, false);
+      }
+    }
+  },
+  { immediate: true },
+);
+
 onMounted(() => {
-  replaceHistoryView(view.value);
-  window.addEventListener("popstate", handleHistoryBack);
   window.addEventListener("movel:android-back", handleAndroidBack);
   void discovery.initialize();
   void refreshBooks()
@@ -394,9 +408,6 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  stopThemeSync();
-  delete document.documentElement.dataset.readerTheme;
-  window.removeEventListener("popstate", handleHistoryBack);
   window.removeEventListener("movel:android-back", handleAndroidBack);
 });
 </script>
@@ -422,66 +433,71 @@ onBeforeUnmount(() => {
         @close="errorMessage = ''"
       />
 
-      <DiscoveryView
-        v-if="view === 'discovery'"
-        v-model:ranking-sort="discovery.rankingSort.value"
-        v-model:category-sort="discovery.categorySort.value"
-        v-model:custom-tag="discovery.customTag.value"
-        v-model:search-query="discovery.searchQuery.value"
-        :unavailable-message="discovery.unavailableMessage.value"
-        :recommendations="discovery.recommendations.value"
-        :ranking="discovery.ranking.value"
-        :category="discovery.category.value"
-        :category-tag="discovery.categoryTag.value"
-        :search-result="discovery.search.value"
-        :loading="discovery.loading.value"
-        :errors="discovery.errors.value"
-        @initialize="discovery.initialize"
-        @retry-recommendations="discovery.loadRecommendations"
-        @load-ranking="discovery.loadRanking"
-        @load-category="discovery.loadCategory"
-        @search="discovery.runSearch"
-        @select-category="discovery.selectCategory"
-        @open-novel="openNovel"
-      />
+      <RouterView v-slot="{ Component }">
+        <component
+          :is="Component"
+          v-if="view === 'discovery'"
+          v-model:ranking-sort="discovery.rankingSort.value"
+          v-model:custom-tag="discovery.customTag.value"
+          v-model:search-query="discovery.searchQuery.value"
+          :unavailable-message="discovery.unavailableMessage.value"
+          :recommendations="discovery.recommendations.value"
+          :ranking="discovery.ranking.value"
+          :category="discovery.category.value"
+          :category-tag="discovery.categoryTag.value"
+          :search-result="discovery.search.value"
+          :loading="discovery.loading.value"
+          :errors="discovery.errors.value"
+          @initialize="discovery.initialize"
+          @retry-recommendations="discovery.loadRecommendations"
+          @load-ranking="discovery.loadRanking"
+          @load-category="discovery.loadCategory"
+          @search="discovery.runSearch"
+          @select-category="discovery.selectCategory"
+          @open-novel="openNovel"
+        />
 
-      <BookshelfView
-        v-else-if="view === 'bookshelf'"
-        v-model:query="bookshelfQuery"
-        :books="visibleBooks"
-        :total-books="books.length"
-        :search-active="bookshelfResults !== null"
-        :loading="loading"
-        :bookshelf-loading="bookshelfLoading"
-        @search="searchShelf"
-        @browse="openLibraryView('discovery')"
-        @import-epub="chooseAndImportEpub"
-        @open-novel="openNovel"
-      />
+        <component
+          :is="Component"
+          v-else-if="view === 'bookshelf'"
+          v-model:query="bookshelfQuery"
+          :books="visibleBooks"
+          :total-books="books.length"
+          :search-active="bookshelfResults !== null"
+          :loading="loading"
+          :bookshelf-loading="bookshelfLoading"
+          @search="searchShelf"
+          @browse="openLibraryView('discovery')"
+          @import-epub="chooseAndImportEpub"
+          @open-novel="openNovel"
+        />
 
-      <NovelDetailView
-        v-else-if="view === 'detail' && detail"
-        :detail="detail"
-        :catalogue="catalogue"
-        :loading="loading"
-        :on-bookshelf="onBookshelf"
-        :current-progress="currentProgress"
-        @toggle-bookshelf="toggleBookshelf"
-        @continue-reading="continueReading"
-        @open-chapter="openChapter"
-      />
+        <component
+          :is="Component"
+          v-else-if="view === 'detail' && detail"
+          :detail="detail"
+          :catalogue="catalogue"
+          :loading="loading"
+          :on-bookshelf="onBookshelf"
+          :current-progress="currentProgress"
+          @toggle-bookshelf="toggleBookshelf"
+          @continue-reading="continueReading"
+          @open-chapter="openChapter"
+        />
 
-      <NovelReader
-        v-else-if="view === 'reader' && readerDocument"
-        :document="readerDocument"
-        :loading="loading"
-        :initial-progress="readerInitialProgress"
-        :has-previous-chapter="Boolean(previousChapterId)"
-        :has-next-chapter="Boolean(nextChapterId)"
-        @previous="openPreviousChapter"
-        @next="openNextChapter"
-        @progress="recordProgress"
-      />
+        <component
+          :is="Component"
+          v-else-if="view === 'reader' && readerDocument"
+          :document="readerDocument"
+          :loading="loading"
+          :initial-progress="readerInitialProgress"
+          :has-previous-chapter="Boolean(previousChapterId)"
+          :has-next-chapter="Boolean(nextChapterId)"
+          @previous="openPreviousChapter"
+          @next="openNextChapter"
+          @progress="recordProgress"
+        />
+      </RouterView>
     </main>
 
     <LoadingOverlay :visible="showLoadingOverlay" :label="loadingLabel" />

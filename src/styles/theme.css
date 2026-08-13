@@ -1,37 +1,37 @@
 :root {
   font-family: Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif;
-  color: #28445d;
-  background: #eef8ff;
+  color: #1d3652;
+  background: #f3f8fd;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 
   /* Brand palette: change these tokens to retheme the whole application. */
-  --color-primary: #5aa7e8;
-  --color-primary-hover: #3f91d4;
-  --color-primary-deep: #2778ba;
-  --color-primary-soft: #e8f5ff;
-  --color-primary-softer: #f3faff;
-  --color-text: #28445d;
-  --color-text-strong: #19364f;
-  --color-text-muted: #698399;
-  --color-text-subtle: #8ba1b3;
+  --color-primary: #2583d8;
+  --color-primary-hover: #146dbb;
+  --color-primary-deep: #155c9d;
+  --color-primary-soft: #e3f2ff;
+  --color-primary-softer: #f2f8fe;
+  --color-text: #35516d;
+  --color-text-strong: #183551;
+  --color-text-muted: #6e879e;
+  --color-text-subtle: #99adbd;
   --color-surface: #ffffff;
-  --color-surface-glass: rgb(255 255 255 / 88%);
-  --color-surface-card: rgb(255 255 255 / 78%);
-  --color-surface-panel: rgb(255 255 255 / 80%);
-  --color-topbar: rgb(247 251 255 / 86%);
-  --color-background: #eef8ff;
-  --color-background-soft: #f7fbff;
-  --color-border: #d7e9f6;
-  --color-border-strong: #c4dff1;
-  --color-cover-start: #edf8ff;
-  --color-cover-end: #d7ebf8;
-  --shadow-soft: 0 10px 28px rgb(51 119 168 / 7%);
-  --shadow-panel: 0 16px 40px rgb(45 105 150 / 8%);
-  --shadow-floating: 0 10px 30px rgb(41 104 151 / 12%);
-  --radius-control: 8px;
-  --radius-card: 12px;
-  --radius-panel: 16px;
+  --color-surface-glass: rgb(255 255 255 / 92%);
+  --color-surface-card: #ffffff;
+  --color-surface-panel: #ffffff;
+  --color-topbar: rgb(255 255 255 / 91%);
+  --color-background: #edf5fc;
+  --color-background-soft: #f8fbff;
+  --color-border: #dceaf5;
+  --color-border-strong: #c9dfef;
+  --color-cover-start: #e8f4fe;
+  --color-cover-end: #cfe4f5;
+  --shadow-soft: 0 8px 22px rgb(36 98 145 / 8%);
+  --shadow-panel: 0 18px 44px rgb(36 98 145 / 10%);
+  --shadow-floating: 0 10px 28px rgb(36 98 145 / 16%);
+  --radius-control: 9px;
+  --radius-card: 14px;
+  --radius-panel: 20px;
   --radius-pill: 999px;
 
   /* Element Plus inherits the same palette. */

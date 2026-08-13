@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import { Collection } from "@element-plus/icons-vue";
-import { getNovelCoverDataUrl } from "../../services/novel";
+import { getReaderCoverDataUrl } from "../../services/novel";
 import { localEpubAssetUrl, localEpubSourceId } from "../../services/localEpub";
 
 const props = withDefaults(defineProps<{
@@ -30,7 +30,7 @@ watch(
     try {
       const url = source === localEpubSourceId
         ? await localEpubAssetUrl(novelId, coverUrl)
-        : await getNovelCoverDataUrl(source, novelId);
+        : await getReaderCoverDataUrl(source, novelId);
       if (active) {
         resolvedUrl.value = url;
       }

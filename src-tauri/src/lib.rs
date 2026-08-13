@@ -1,5 +1,11 @@
+mod discovery;
+mod domain;
+mod error;
 mod library;
-mod novel;
+mod reader;
+mod sources;
+
+use std::sync::Arc;
 
 use tauri::Manager;
 
@@ -12,30 +18,33 @@ pub fn run() {
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
             let epub_root = data_dir.join("local_epub");
-            let novel_config = novel::NovelConfig::load()?;
-            app.manage(novel::NovelService::new(&novel_config.wenku8_api_base_url)?);
-            app.manage(novel::provider::local_epub::LocalEpubSource::new(
-                epub_root,
+            let novel_config = discovery::NovelConfig::load()?;
+            let wenku8_api = Arc::new(sources::wenku8_api::Wenku8ApiSource::new(
+                &novel_config.wenku8_api_base_url,
             )?);
+            app.manage(Arc::clone(&wenku8_api));
+            let local_epub = Arc::new(library::local_epub::LocalEpubSource::new(epub_root)?);
+            app.manage(reader::ReaderService::new(
+                wenku8_api,
+                Arc::clone(&local_epub),
+            ));
+            app.manage(local_epub);
             app.manage(library::LibraryService::open(
                 &data_dir.join("library.sqlite3"),
             )?);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            novel::commands::discovery_health,
-            novel::commands::get_recommendations,
-            novel::commands::get_ranking,
-            novel::commands::get_category,
-            novel::commands::search_discovery,
-            novel::commands::get_novel_overview,
-            novel::commands::get_novel_cover_data_url,
-            novel::commands::get_chapter,
-            novel::commands::prefetch_chapters,
-            novel::provider::local_epub::commands::import_epub,
-            novel::provider::local_epub::commands::get_local_epub_overview,
-            novel::provider::local_epub::commands::get_local_epub_chapter,
-            novel::provider::local_epub::commands::get_local_epub_asset_data_url,
+            discovery::commands::discovery_health,
+            discovery::commands::get_recommendations,
+            discovery::commands::get_ranking,
+            discovery::commands::get_category,
+            discovery::commands::search_discovery,
+            reader::commands::get_reader_overview,
+            reader::commands::get_reader_cover_data_url,
+            reader::commands::get_reader_document,
+            library::local_epub::commands::import_epub,
+            library::local_epub::commands::get_local_epub_asset_data_url,
             library::commands::list_bookshelf,
             library::commands::search_bookshelf,
             library::commands::add_to_bookshelf,
