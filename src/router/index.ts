@@ -21,12 +21,12 @@ export const router = createRouter({
     { path: "/manga/:mangaId", name: "manga-detail", component: () => import("../pages/manga/MangaDetailPage.vue") },
     { path: "/manga/:mangaId/read/:chapterId", name: "manga-reader", component: () => import("../pages/manga/MangaReaderPage.vue") },
     {
-      path: "/library/:source/:bookId",
+      path: "/library/:bookId",
       name: "detail",
       component: () => import("../pages/library/NovelDetailPage.vue"),
     },
     {
-      path: "/library/:source/:bookId/read/:chapterId",
+      path: "/library/:bookId/read/:chapterId",
       name: "reader",
       component: () => import("../pages/reader/ReaderPage.vue"),
     },

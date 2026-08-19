@@ -1,14 +1,8 @@
 <script setup lang="ts">
-import { Collection, Plus, Search } from "@element-plus/icons-vue";
-import { nextTick, ref, watch } from "vue";
-import type { BookshelfEntry } from "../../domain/library";
+import { Collection, Search } from "@element-plus/icons-vue";
+import { nextTick, ref } from "vue";
+import type { BookshelfEntry } from "../../services/library";
 import type { NovelSummary } from "../../services/novel";
-import {
-  canUseLocalEpubAssets,
-  localEpubAssetUrl,
-  localEpubSourceId,
-} from "../../services/localEpub";
-import ReadingProgressBar from "../../components/library/ReadingProgressBar.vue";
 import BookSearchBar from "../../components/common/BookSearchBar.vue";
 
 const props = defineProps<{
@@ -22,14 +16,11 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   browse: [];
-  importEpub: [];
   openNovel: [novel: NovelSummary];
   search: [];
   "update:query": [value: string];
 }>();
 
-const canImportEpub = canUseLocalEpubAssets();
-const localCoverUrls = ref<Record<string, string | null>>({});
 const searchDialogVisible = ref(false);
 
 function focusSearchInput() {
@@ -46,20 +37,6 @@ function submitSearch() {
   emit("search");
   searchDialogVisible.value = false;
 }
-
-watch(
-  () => props.books,
-  async (books) => {
-    const covers = await Promise.all(books
-      .filter((entry) => entry.book.source === localEpubSourceId && entry.book.cover_url)
-      .map(async (entry) => [
-        entry.book.id,
-        await localEpubAssetUrl(entry.book.id, entry.book.cover_url),
-      ] as const));
-    localCoverUrls.value = Object.fromEntries(covers);
-  },
-  { immediate: true },
-);
 
 </script>
 
@@ -96,7 +73,7 @@ watch(
           <el-image
             v-if="entry.book.cover_url"
             class="book-cover"
-            :src="entry.book.source === localEpubSourceId ? localCoverUrls[entry.book.id] ?? undefined : entry.book.cover_url"
+            :src="entry.book.cover_url"
             :alt="entry.book.title"
             fit="cover"
           >
@@ -111,30 +88,7 @@ watch(
           </div>
           <div class="book-meta">
             <strong>{{ entry.book.title }}</strong>
-            <ReadingProgressBar v-if="entry.progress" :progress="entry.progress" />
-            <span v-else>尚未开始阅读</span>
-          </div>
-        </el-card>
-        <el-card
-          v-if="canImportEpub"
-          class="book-card shelf-card import-epub-card"
-          :class="{ 'book-card--disabled': loading }"
-          shadow="hover"
-          :tabindex="loading ? -1 : 0"
-          :aria-disabled="loading"
-          role="button"
-          aria-label="导入 EPUB"
-          @click="emit('importEpub')"
-          @keydown.enter="emit('importEpub')"
-          @keydown.space.prevent="emit('importEpub')"
-        >
-          <div class="cover-placeholder import-epub-cover" aria-hidden="true">
-            <el-icon><Collection /></el-icon>
-            <el-icon class="import-epub-plus"><Plus /></el-icon>
-          </div>
-          <div class="book-meta import-epub-meta">
-            <strong>导入 EPUB</strong>
-            <span>添加本地书籍</span>
+            <span>LightNovelShelf</span>
           </div>
         </el-card>
       </div>
@@ -145,7 +99,7 @@ watch(
         description="没有找到匹配的书籍"
       />
 
-      <el-empty v-else-if="!bookshelfLoading && books.length === 0 && !canImportEpub" :image-size="112" description="书架还是空的">
+      <el-empty v-else-if="!bookshelfLoading && books.length === 0" :image-size="112" description="书架还是空的">
         <el-button type="primary" plain @click="emit('browse')">
           去找小说
         </el-button>

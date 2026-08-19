@@ -19,10 +19,7 @@
     ],
     "security": {
       "csp": null,
-      "assetProtocol": {
-        "enable": true,
-        "scope": ["$APPDATA/local_epub/**"]
-      }
+      "assetProtocol": { "enable": false }
     }
   },
   "bundle": {

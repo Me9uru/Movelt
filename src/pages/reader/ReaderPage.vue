@@ -5,14 +5,13 @@ import {
   RefreshLeft,
 } from "@element-plus/icons-vue";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import type { ReadingProgress } from "../../domain/library";
 import type { ReaderDocument } from "../../domain/reader";
 import { useReaderSettings } from "../../composables/useReaderSettings";
 
 const props = defineProps<{
   document: ReaderDocument;
   loading?: boolean;
-  initialProgress?: ReadingProgress | null;
+  initialProgress?: { location: number } | null;
   hasPreviousChapter?: boolean;
   hasNextChapter?: boolean;
 }>();
@@ -20,12 +19,13 @@ const props = defineProps<{
 const emit = defineEmits<{
   previous: [];
   next: [];
-  progress: [location: number];
+  progress: [xpath: string];
 }>();
 
 const { settings, style, reset } = useReaderSettings();
 const readerRoot = ref<HTMLElement | null>(null);
 const pageViewport = ref<HTMLElement | null>(null);
+const readerContent = ref<HTMLElement | null>(null);
 const currentPage = ref(0);
 const pageCount = ref(1);
 const isSpread = ref(false);
@@ -109,7 +109,7 @@ function goToPage(page: number) {
   const viewport = pageViewport.value;
   if (!viewport) return;
   if (page >= pageCount.value) {
-    emit("progress", 1);
+    emit("progress", visibleXPath());
     requestNextChapter();
     return;
   }
@@ -119,7 +119,7 @@ function goToPage(page: number) {
     pageLocation = currentPage.value / (pageCount.value - 1);
   }
   viewport.scrollTo({ left: currentPage.value * pageStep(), behavior: "smooth" });
-  emit("progress", pageCount.value <= 1 ? 1 : pageLocation);
+  emit("progress", visibleXPath());
 }
 
 function scrollMetrics(): { start: number; distance: number } | null {
@@ -133,8 +133,36 @@ function recordScrollProgress(): number | null {
   const metrics = scrollMetrics();
   if (!metrics) return null;
   pageLocation = clampLocation((window.scrollY - metrics.start) / metrics.distance);
-  emit("progress", pageLocation);
+  emit("progress", visibleXPath());
   return pageLocation;
+}
+
+function visibleXPath(): string {
+  const root = readerContent.value;
+  if (!root) return "//*";
+  const target = [...root.querySelectorAll<HTMLElement>("p, img, li, h1, h2, h3, blockquote")]
+    .find((node) => node.getBoundingClientRect().bottom >= 0);
+  if (!target) return "//*";
+  const path: string[] = [];
+  let current: Element | null = target;
+  while (current && current !== root) {
+    const siblings = [...(current.parentElement?.children ?? [])].filter((item) => item.tagName === current!.tagName);
+    path.unshift(`${current.tagName.toLowerCase()}[${siblings.indexOf(current) + 1}]`);
+    current = current.parentElement;
+  }
+  return `//*${path.length ? `/${path.join("/")}` : ""}`;
+}
+
+function restoreServerPosition() {
+  const position = props.document.readPosition;
+  const root = readerContent.value;
+  if (!position || !root || position.chapterId !== props.document.serverChapterId || !position.position) return;
+  try {
+    const target = document.evaluate(position.position, root, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+    if (target instanceof HTMLElement) target.scrollIntoView({ block: "start", behavior: "auto" });
+  } catch {
+    // Old or malformed server positions must not block chapter rendering.
+  }
 }
 
 function requestNextChapter() {
@@ -227,6 +255,7 @@ watch(() => props.document, () => {
   hasRestoredPage = false;
   pageLocation = clampLocation(props.initialProgress?.location ?? 0);
   updatePagination(true);
+  void nextTick(restoreServerPosition);
 });
 
 watch(() => settings.mode, (mode) => {
@@ -249,6 +278,7 @@ onMounted(() => {
   window.addEventListener("scroll", handleScroll, { passive: true });
   updatePagination(true);
   restoreScrollProgress();
+  void nextTick(restoreServerPosition);
 });
 
 onBeforeUnmount(() => {
@@ -299,12 +329,7 @@ onBeforeUnmount(() => {
         <h1>{{ document.title }}</h1>
       </header>
 
-      <div class="reader-content">
-        <template v-for="(block, index) in document.blocks" :key="index">
-          <p v-if="block.type === 'paragraph'">{{ block.text }}</p>
-          <el-image v-else class="chapter-image" :src="block.url" :alt="block.alt || '小说插图'" fit="contain" />
-        </template>
-      </div>
+      <div ref="readerContent" class="reader-content" v-html="document.html" />
 
       <el-divider>本章结束</el-divider>
     </div>
@@ -322,10 +347,7 @@ onBeforeUnmount(() => {
         <header class="paged-heading">
           <h1>{{ document.title }}</h1>
         </header>
-        <template v-for="(block, index) in document.blocks" :key="index">
-          <p v-if="block.type === 'paragraph'">{{ block.text }}</p>
-          <img v-else class="chapter-image" :src="block.url" :alt="block.alt || '小说插图'" @load="updatePagination()" />
-        </template>
+        <div ref="readerContent" class="reader-content" v-html="document.html" />
         <p class="chapter-end">— 本章结束 —</p>
       </div>
 

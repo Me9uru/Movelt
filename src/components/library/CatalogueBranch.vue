@@ -1,13 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { Reading } from "@element-plus/icons-vue";
-import type { ReadingProgress } from "../../domain/library";
 import type { ChapterSummary, Volume } from "../../services/novel";
 
 const props = defineProps<{
   volume: Volume;
   loading: boolean;
-  currentProgress: ReadingProgress | null;
   depth?: number;
 }>();
 
@@ -28,9 +25,6 @@ function countChapters(volume: Volume): number {
   return volume.chapters.length + volume.sections.reduce((total, section) => total + countChapters(section), 0);
 }
 
-function chapterProgressPercent(progress: ReadingProgress): number {
-  return Math.round(progress.location * 100);
-}
 </script>
 
 <template>
@@ -44,25 +38,19 @@ function chapterProgressPercent(progress: ReadingProgress): number {
           <el-tag class="count-tag" size="small" effect="plain">{{ countChapters(section) }} 话</el-tag>
         </div>
       </template>
-      <CatalogueBranch :volume="section" :loading="loading" :current-progress="currentProgress" :depth="(depth ?? 0) + 1"
+      <CatalogueBranch :volume="section" :loading="loading" :depth="(depth ?? 0) + 1"
         @open-chapter="emit('openChapter', $event)" />
     </el-collapse-item>
   </el-collapse>
 
   <div v-if="volume.chapters.length" class="chapter-list">
     <button v-for="(item, index) in visibleChapters" :key="item.id" type="button"
-      :class="{ 'chapter-current': currentProgress?.documentId === item.id }" :disabled="loading"
+      :disabled="loading"
       @click="emit('openChapter', item.id)">
       <span class="chapter-number">{{ String((page - 1) * chaptersPerPage + index + 1).padStart(2, "0") }}</span>
       <span>
         {{ item.title }}
-        <small v-if="currentProgress?.documentId === item.id">
-          上次读到 {{ chapterProgressPercent(currentProgress) }}%
-        </small>
       </span>
-      <el-icon v-if="currentProgress?.documentId === item.id">
-        <Reading />
-      </el-icon>
     </button>
   </div>
   <div v-if="volume.chapters.length > chaptersPerPage" class="chapter-pagination">

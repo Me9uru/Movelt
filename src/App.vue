@@ -6,29 +6,26 @@ import {
   Collection,
   Compass,
   Picture,
+  User,
 } from "@element-plus/icons-vue";
-import { open } from "@tauri-apps/plugin-dialog";
 import {
+  getReaderDocument,
   getReaderOverview,
+  lightNovelSourceId,
+  saveReadPosition,
   type NovelDetail,
   type NovelSummary,
   type Volume,
 } from "./services/novel";
 import type { ReaderDocument } from "./domain/reader";
-import type { BookshelfEntry } from "./domain/library";
-import { networkNovelSource } from "./sources/networkNovel";
-import { localEpubSource } from "./sources/localEpub";
-import {
-  canUseLocalEpubAssets,
-  importEpub,
-  localEpubSourceId,
-} from "./services/localEpub";
+import type { BookshelfEntry } from "./services/library";
 import LoadingOverlay from "./components/common/LoadingOverlay.vue";
 import { useLibrary } from "./composables/useLibrary";
 import { useDiscovery } from "./composables/useDiscovery";
+import { login, logout, restoreUser, type LightNovelUser } from "./services/auth";
 import type { AppRouteName, LibraryRouteName } from "./router";
 
-type LoadingAction = "novel" | "chapter" | "bookshelf" | "import";
+type LoadingAction = "novel" | "chapter" | "bookshelf";
 
 const route = useRoute();
 const router = useRouter();
@@ -44,12 +41,18 @@ const detail = ref<NovelDetail | null>(null);
 const catalogue = ref<Volume[]>([]);
 const readerDocument = ref<ReaderDocument | null>(null);
 const currentChapterId = ref<string | null>(null);
+const resumeChapterId = ref<string | null>(null);
 const loading = ref(false);
 const loadingAction = ref<LoadingAction | null>(null);
 const bookshelfLoading = ref(true);
 const bookshelfQuery = ref("");
 const bookshelfResults = ref<BookshelfEntry[] | null>(null);
 const errorMessage = ref("");
+const user = ref<LightNovelUser | null>(null);
+const loginVisible = ref(false);
+const loginEmail = ref("");
+const loginPassword = ref("");
+const loginLoading = ref(false);
 const discovery = useDiscovery();
 const {
   books,
@@ -58,9 +61,6 @@ const {
   addBook,
   removeBook,
   isOnBookshelf,
-  progressFor,
-  loadProgress,
-  saveProgress,
 } = useLibrary();
 const visibleBooks = computed(() => bookshelfResults.value ?? books.value);
 
@@ -69,16 +69,6 @@ function collectChapterIds(volumes: Volume[]): string[] {
     ...volume.chapters.map((chapter) => chapter.id),
     ...collectChapterIds(volume.sections),
   ]);
-}
-
-function findChapter(volumes: Volume[], chapterId: string): { id: string; title: string } | undefined {
-  for (const volume of volumes) {
-    const chapter = volume.chapters.find((item) => item.id === chapterId);
-    if (chapter) return chapter;
-    const nested = findChapter(volume.sections, chapterId);
-    if (nested) return nested;
-  }
-  return undefined;
 }
 
 const chapterIds = computed(() => collectChapterIds(catalogue.value));
@@ -93,24 +83,6 @@ const nextChapterId = computed(() => {
   return currentIndex >= 0 ? chapterIds.value[currentIndex + 1] ?? null : null;
 });
 const onBookshelf = computed(() => detail.value ? isOnBookshelf(detail.value) : false);
-const currentProgress = computed(() => {
-  const saved = detail.value ? progressFor(detail.value) : null;
-  if (!saved) return null;
-  return {
-    ...saved,
-    bookLocation: bookLocation(saved.documentId, saved.location, saved.bookLocation),
-  };
-});
-function bookLocation(chapterId: string, location: number, fallback = 0): number {
-  const chapterIndex = chapterIds.value.indexOf(chapterId);
-  if (chapterIndex < 0 || chapterIds.value.length === 0) return fallback;
-  const chapterLocation = Math.min(1, Math.max(0, location));
-  return (chapterIndex + chapterLocation) / chapterIds.value.length;
-}
-const readerInitialProgress = computed(() => {
-  const progress = currentProgress.value;
-  return progress?.documentId === currentChapterId.value ? progress : null;
-});
 const loadingCopy = computed(() => {
   switch (loadingAction.value) {
     case "novel":
@@ -119,8 +91,6 @@ const loadingCopy = computed(() => {
       return { title: "正在加载章节", hint: "内容较多时可能需要稍候" };
     case "bookshelf":
       return { title: "正在更新书架", hint: "请稍候" };
-    case "import":
-      return { title: "正在导入 EPUB", hint: "正在保存并解析书籍" };
     default:
       return { title: "正在加载", hint: "请稍候" };
   }
@@ -185,6 +155,26 @@ function openLibraryView(nextView: LibraryRouteName) {
   void router.replace({ name: nextView });
 }
 
+async function submitLogin() {
+  if (!loginEmail.value || !loginPassword.value) return;
+  loginLoading.value = true;
+  try {
+    user.value = await login(loginEmail.value, loginPassword.value);
+    loginVisible.value = false;
+    await Promise.all([refreshBooks(), discovery.initialize()]);
+  } catch (error) {
+    errorMessage.value = describeError(error);
+  } finally {
+    loginLoading.value = false;
+  }
+}
+
+async function signOut() {
+  await logout();
+  user.value = null;
+  books.value = [];
+}
+
 function handleAndroidBack(event: Event) {
   if (view.value === "detail" || view.value === "reader") {
     event.preventDefault();
@@ -195,23 +185,12 @@ function handleAndroidBack(event: Event) {
 async function loadNovel(source: string, novelId: string): Promise<boolean> {
   const response = await run("novel", async () => {
     const overview = await getReaderOverview(source, novelId);
-    const progress = await loadProgress(overview.detail);
-    if (overview.detail.source === localEpubSourceId && progress) {
-      const chapter = findChapter(overview.volumes, progress.documentId);
-      if (chapter && chapter.title !== progress.documentTitle) {
-        await saveProgress(overview.detail, {
-          documentId: progress.documentId,
-          documentTitle: chapter.title,
-          location: progress.location,
-          bookLocation: progress.bookLocation,
-        });
-      }
-    }
     return overview;
   });
   if (response) {
     detail.value = response.detail;
     catalogue.value = response.volumes;
+    resumeChapterId.value = response.readPosition?.chapterId ?? null;
     return true;
   }
   return false;
@@ -224,7 +203,7 @@ async function openNovel(novel: NovelSummary) {
   if (await loadNovel(novel.source, novel.id)) {
     await router.push({
       name: "detail",
-      params: { source: novel.source, bookId: novel.id },
+      params: { bookId: novel.id },
       query: { from: lastLibraryView.value },
     });
   }
@@ -234,20 +213,7 @@ async function openChapter(chapterId: string, navigate = true) {
   if (!detail.value) return;
   const isChangingChapter = view.value === "reader";
   const response = await run("chapter", async () => {
-    const book = detail.value!;
-    const source = book.source === localEpubSourceId ? localEpubSource : networkNovelSource(book.source);
-    const document = await source.loadDocument(book.id, chapterId, findChapter(catalogue.value, chapterId)?.title);
-    const existing = progressFor(book);
-    await saveProgress(book, {
-      documentId: chapterId,
-      documentTitle: document.title,
-      location: existing?.documentId === chapterId ? existing.location : 0,
-      bookLocation: bookLocation(
-        chapterId,
-        existing?.documentId === chapterId ? existing.location : 0,
-      ),
-    });
-    return document;
+    return getReaderDocument(detail.value!.source, detail.value!.id, chapterId);
   });
   if (response) {
     readerDocument.value = response;
@@ -257,7 +223,6 @@ async function openChapter(chapterId: string, navigate = true) {
       await router.replace({
         name: "reader",
         params: {
-          source: detail.value.source,
           bookId: detail.value.id,
           chapterId,
         },
@@ -267,7 +232,6 @@ async function openChapter(chapterId: string, navigate = true) {
       await router.push({
         name: "reader",
         params: {
-          source: detail.value.source,
           bookId: detail.value.id,
           chapterId,
         },
@@ -285,6 +249,10 @@ function openPreviousChapter() {
   if (previousChapterId.value) void openChapter(previousChapterId.value);
 }
 
+function continueReading() {
+  if (resumeChapterId.value) void openChapter(resumeChapterId.value);
+}
+
 async function toggleBookshelf() {
   if (!detail.value) return;
   const book = detail.value;
@@ -297,43 +265,9 @@ async function toggleBookshelf() {
   });
 }
 
-async function chooseAndImportEpub() {
-  if (!canUseLocalEpubAssets()) {
-    errorMessage.value = "导入 EPUB 仅支持桌面应用；浏览器调试可查看已导入的书籍。";
-    return;
-  }
-  const selected = await open({
-    multiple: false,
-    directory: false,
-    filters: [{ name: "EPUB", extensions: ["epub"] }],
-  });
-  if (!selected || Array.isArray(selected)) return;
-  const overview = await run("import", () => importEpub(selected));
-  if (!overview) return;
-  await refreshBooks();
-  detail.value = overview.detail;
-  catalogue.value = overview.volumes;
-  await loadProgress(overview.detail);
-  lastLibraryView.value = "bookshelf";
-  await router.push({
-    name: "detail",
-    params: { source: overview.detail.source, bookId: overview.detail.id },
-    query: { from: "bookshelf" },
-  });
-}
-
-function continueReading() {
-  if (currentProgress.value) void openChapter(currentProgress.value.documentId);
-}
-
-function recordProgress(location: number) {
+function recordProgress(xpath: string) {
   if (!detail.value || !readerDocument.value || !currentChapterId.value) return;
-  void saveProgress(detail.value, {
-    documentId: currentChapterId.value,
-    documentTitle: readerDocument.value.title,
-    location,
-    bookLocation: bookLocation(currentChapterId.value, location),
-  }).catch((error) => {
+  void saveReadPosition(detail.value.id, readerDocument.value.serverChapterId, xpath).catch((error) => {
     errorMessage.value = describeError(error);
   });
 }
@@ -349,7 +283,7 @@ function back() {
   } else if (view.value === "reader" && detail.value) {
     void router.replace({
       name: "detail",
-      params: { source: detail.value.source, bookId: detail.value.id },
+      params: { bookId: detail.value.id },
       query: route.query,
     });
   } else {
@@ -358,7 +292,7 @@ function back() {
 }
 
 watch(
-  () => [route.name, route.params.source, route.params.bookId, route.params.chapterId, route.query.from],
+  () => [route.name, route.params.bookId, route.params.chapterId, route.query.from],
   async () => {
     const routeName = view.value;
     if (routeName === "manga" || routeName === "manga-detail" || routeName === "manga-reader") {
@@ -374,7 +308,7 @@ watch(
     if (route.query.from === "bookshelf" || route.query.from === "discovery") {
       lastLibraryView.value = route.query.from;
     }
-    const source = typeof route.params.source === "string" ? route.params.source : "";
+    const source = lightNovelSourceId;
     const bookId = typeof route.params.bookId === "string" ? route.params.bookId : "";
     if (!source || !bookId) {
       await router.replace({ name: lastLibraryView.value });
@@ -390,7 +324,7 @@ watch(
       if (!chapterId) {
         await router.replace({
           name: "detail",
-          params: { source, bookId },
+          params: { bookId },
           query: route.query,
         });
       } else if (!readerDocument.value || currentChapterId.value !== chapterId) {
@@ -403,14 +337,14 @@ watch(
 
 onMounted(() => {
   window.addEventListener("movel:android-back", handleAndroidBack);
+  void restoreUser().then((value) => {
+    user.value = value;
+    if (value) {
+      return refreshBooks().catch((error: unknown) => { errorMessage.value = describeError(error); });
+    }
+    return undefined;
+  }).finally(() => { bookshelfLoading.value = false; });
   void discovery.initialize();
-  void refreshBooks()
-    .catch((error: unknown) => {
-      errorMessage.value = describeError(error);
-    })
-    .finally(() => {
-      bookshelfLoading.value = false;
-    });
 });
 
 onBeforeUnmount(() => {
@@ -420,6 +354,11 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="page-bg">
+    <div class="auth-bar">
+      <span v-if="user">{{ user.UserName }}</span>
+      <el-button v-if="user" text @click="signOut">退出登录</el-button>
+      <el-button v-else :icon="User" text @click="loginVisible = true">登录</el-button>
+    </div>
     <header v-if="view === 'detail'" class="topbar">
       <div class="topbar-inner detail-topbar">
         <el-button class="back-button" :icon="ArrowLeft" @click="back">
@@ -474,7 +413,6 @@ onBeforeUnmount(() => {
           :bookshelf-loading="bookshelfLoading"
           @search="searchShelf"
           @browse="openLibraryView('discovery')"
-          @import-epub="chooseAndImportEpub"
           @open-novel="openNovel"
         />
 
@@ -485,7 +423,7 @@ onBeforeUnmount(() => {
           :catalogue="catalogue"
           :loading="loading"
           :on-bookshelf="onBookshelf"
-          :current-progress="currentProgress"
+          :resume-chapter-id="resumeChapterId"
           @toggle-bookshelf="toggleBookshelf"
           @continue-reading="continueReading"
           @open-chapter="openChapter"
@@ -496,7 +434,6 @@ onBeforeUnmount(() => {
           v-else-if="view === 'reader' && readerDocument"
           :document="readerDocument"
           :loading="loading"
-          :initial-progress="readerInitialProgress"
           :has-previous-chapter="Boolean(previousChapterId)"
           :has-next-chapter="Boolean(nextChapterId)"
           @previous="openPreviousChapter"
@@ -509,6 +446,14 @@ onBeforeUnmount(() => {
     </main>
 
     <LoadingOverlay :visible="showLoadingOverlay" :label="loadingLabel" />
+
+    <el-dialog v-model="loginVisible" title="登录 LightNovelShelf" width="min(420px, calc(100vw - 32px))" append-to-body>
+      <el-form @submit.prevent="submitLogin">
+        <el-form-item label="邮箱"><el-input v-model="loginEmail" autocomplete="email" /></el-form-item>
+        <el-form-item label="密码"><el-input v-model="loginPassword" type="password" autocomplete="current-password" show-password /></el-form-item>
+        <el-button type="primary" :loading="loginLoading" native-type="submit">登录</el-button>
+      </el-form>
+    </el-dialog>
 
     <nav v-if="view === 'discovery' || view === 'bookshelf' || view === 'manga'" class="view-dock" aria-label="主栏目">
       <button

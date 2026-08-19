@@ -1,34 +1,29 @@
-import { invoke } from "@tauri-apps/api/core";
-import type { BookshelfEntry, ReadingProgress } from "../domain/library";
-import type { NovelDetail } from "./novel";
+import { requestWithHub } from "./lightnovel";
+import { getBooksByIds, type NovelDetail, type NovelSummary } from "./novel";
 
-export function listBookshelf(): Promise<BookshelfEntry[]> {
-  return invoke("list_bookshelf");
+export interface BookshelfEntry { book: NovelSummary; addedAt: string; progress: null; }
+type ShelfItem = { id: number; type: "BOOK" | "book" | number; parents?: string[]; index?: number; updateAt?: string };
+type RemoteShelf = { data?: ShelfItem[]; ver?: string };
+
+async function shelf(): Promise<RemoteShelf> { return requestWithHub<RemoteShelf>("GetBookShelf"); }
+async function save(data: ShelfItem[], ver?: string): Promise<void> { await requestWithHub("SaveBookShelf", { data, ver: ver ?? "20220211" }); }
+
+export async function listBookshelf(): Promise<BookshelfEntry[]> {
+  const remote = await shelf();
+  const items = (remote.data ?? []).filter((item) => item.type === "BOOK" || item.type === "book" || item.type === 0);
+  const books = await getBooksByIds(items.map((item) => item.id));
+  const byId = new Map(books.map((book) => [Number(book.id), book]));
+  return items.map((item) => ({ book: byId.get(item.id), addedAt: item.updateAt ?? "" , progress: null })).filter((entry): entry is BookshelfEntry => Boolean(entry.book));
 }
-
-export function searchBookshelf(query: string): Promise<BookshelfEntry[]> {
-  return invoke("search_bookshelf", { query });
+export async function searchBookshelf(query: string): Promise<BookshelfEntry[]> {
+  const needle = query.trim().toLowerCase();
+  return (await listBookshelf()).filter((entry) => !needle || entry.book.title.toLowerCase().includes(needle));
 }
-
-export function addToBookshelf(book: NovelDetail): Promise<void> {
-  return invoke("add_to_bookshelf", { book });
+export async function addToBookshelf(book: NovelDetail): Promise<void> {
+  const remote = await shelf(); const data = remote.data ?? [];
+  if (!data.some((item) => item.id === Number(book.id))) data.unshift({ id: Number(book.id), type: "BOOK", parents: [], index: 0, updateAt: new Date().toISOString() });
+  await save(data, remote.ver);
 }
-
-export function removeFromBookshelf(source: string, bookId: string): Promise<void> {
-  return invoke("remove_from_bookshelf", { source, bookId });
-}
-
-export function getReadingProgress(
-  source: string,
-  bookId: string,
-): Promise<ReadingProgress | null> {
-  return invoke("get_reading_progress", { source, bookId });
-}
-
-export function saveReadingProgress(
-  source: string,
-  bookId: string,
-  progress: Omit<ReadingProgress, "updatedAt">,
-): Promise<ReadingProgress> {
-  return invoke("save_reading_progress", { source, bookId, progress });
+export async function removeFromBookshelf(_source: string, bookId: string): Promise<void> {
+  const remote = await shelf(); await save((remote.data ?? []).filter((item) => item.id !== Number(bookId)), remote.ver);
 }

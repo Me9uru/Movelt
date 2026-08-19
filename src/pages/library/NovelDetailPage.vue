@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { Check, Star, VideoPlay } from "@element-plus/icons-vue";
-import type { ReadingProgress } from "../../domain/library";
 import type { NovelDetail, Volume } from "../../services/novel";
-import ReadingProgressBar from "../../components/library/ReadingProgressBar.vue";
 import CatalogueBranch from "../../components/library/CatalogueBranch.vue";
 import NovelCover from "../../components/library/NovelCover.vue";
 
@@ -12,7 +10,7 @@ const props = defineProps<{
   catalogue: Volume[];
   loading: boolean;
   onBookshelf: boolean;
-  currentProgress: ReadingProgress | null;
+  resumeChapterId?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -27,18 +25,9 @@ const chapterCount = computed(() =>
 );
 
 watch(
-  [() => props.catalogue, () => props.currentProgress?.documentId],
-  ([catalogue, currentDocumentId]) => {
+  [() => props.catalogue],
+  ([catalogue]) => {
     let activeVolumeIndex = catalogue.length > 0 ? 0 : -1;
-    if (currentDocumentId) {
-      for (const [volumeIndex, volume] of catalogue.entries()) {
-        if (containsChapter(volume, currentDocumentId)) {
-          activeVolumeIndex = volumeIndex;
-          break;
-        }
-      }
-    }
-
     activeVolume.value = activeVolumeIndex >= 0 ? activeVolumeIndex : "";
   },
   { immediate: true },
@@ -48,10 +37,6 @@ function countChapters(volume: Volume): number {
   return volume.chapters.length + volume.sections.reduce((total, section) => total + countChapters(section), 0);
 }
 
-function containsChapter(volume: Volume, chapterId: string): boolean {
-  return volume.chapters.some((chapter) => chapter.id === chapterId)
-    || volume.sections.some((section) => containsChapter(section, chapterId));
-}
 </script>
 
 <template>
@@ -91,16 +76,12 @@ function containsChapter(volume: Volume, chapterId: string): boolean {
         </div>
 
         <div class="detail-rail">
-          <ReadingProgressBar v-if="currentProgress" class="detail-progress" :progress="currentProgress" />
           <div class="detail-actions">
             <el-button :type="onBookshelf ? 'default' : 'primary'" :icon="onBookshelf ? Check : Star" size="large"
               :disabled="loading" @click="emit('toggleBookshelf')">
               {{ onBookshelf ? "已加入书架" : "加入书架" }}
             </el-button>
-            <el-button v-if="currentProgress" :icon="VideoPlay" size="large" :disabled="loading"
-              @click="emit('continueReading')">
-              继续阅读 · {{ currentProgress.documentTitle }}
-            </el-button>
+            <el-button v-if="resumeChapterId" :icon="VideoPlay" size="large" :disabled="loading" @click="emit('continueReading')">继续阅读</el-button>
           </div>
         </div>
       </div>
@@ -125,7 +106,7 @@ function containsChapter(volume: Volume, chapterId: string): boolean {
             </div>
           </template>
           <CatalogueBranch v-if="activeVolume === volumeIndex" :volume="volume" :loading="loading"
-            :current-progress="currentProgress" @open-chapter="emit('openChapter', $event)" />
+            @open-chapter="emit('openChapter', $event)" />
         </el-collapse-item>
       </el-collapse>
     </section>

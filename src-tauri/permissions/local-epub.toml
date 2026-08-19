@@ -1,9 +1,0 @@
-[[permission]]
-identifier = "allow-import-epub"
-description = "Allows importing an EPUB file into the private local library."
-commands.allow = ["import_epub"]
-
-[[permission]]
-identifier = "allow-get-local-epub-asset-data-url"
-description = "Allows reading a declared imported EPUB image resource."
-commands.allow = ["get_local_epub_asset_data_url"]

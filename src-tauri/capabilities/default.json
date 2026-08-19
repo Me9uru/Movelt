@@ -4,28 +4,6 @@
   "description": "Capability for the main window",
   "windows": ["main"],
   "permissions": [
-    "core:default",
-    "dialog:default",
-    "allow-discovery-health",
-    "allow-get-recommendations",
-    "allow-get-ranking",
-    "allow-get-category",
-    "allow-search-discovery",
-    "allow-get-reader-overview",
-    "allow-get-reader-cover-data-url",
-    "allow-get-reader-document",
-    "allow-prefetch-reader-documents",
-    "allow-import-epub",
-    "allow-get-local-epub-asset-data-url",
-    "allow-list-bookshelf",
-    "allow-search-bookshelf",
-    "allow-add-to-bookshelf",
-    "allow-remove-from-bookshelf",
-    "allow-get-reading-progress",
-    "allow-save-reading-progress",
-    "allow-browse-manga",
-    "allow-get-manga",
-    "allow-get-manga-chapter-pages",
-    "allow-get-manga-page-batch"
+    "core:default"
   ]
 }
