@@ -22,14 +22,17 @@ tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-dev-invoke = "0.2"
 tauri-plugin-dialog = "2"
 futures = "0.3"
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "http2", "brotli", "gzip"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "http2", "brotli", "gzip", "json"] }
 rusqlite = { version = "0.37", features = ["bundled"] }
 scraper = "0.24"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
-tokio = { version = "1", features = ["sync", "time"] }
+tokio = { version = "1", features = ["net", "sync", "time"] }
+tokio-tungstenite = { version = "0.24", default-features = false, features = ["connect", "rustls-tls-webpki-roots"] }
 url = "2"
+rmp-serde = "1"
+rmpv = { version = "1", features = ["with-serde"] }
 quick-xml = "0.37"
 base64 = "0.22"
 sha2 = "0.10"

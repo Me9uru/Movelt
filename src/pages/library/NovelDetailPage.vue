@@ -121,7 +121,7 @@ function containsChapter(volume: Volume, chapterId: string): boolean {
             <div class="volume-title volume-title--part">
               <span class="volume-index">{{ String(volumeIndex + 1).padStart(2, "0") }}</span>
               <strong>{{ volume.title }}</strong>
-              <el-tag size="small" effect="plain">{{ countChapters(volume) }} 话</el-tag>
+              <el-tag class="count-tag" size="small" effect="plain">{{ countChapters(volume) }} 话</el-tag>
             </div>
           </template>
           <CatalogueBranch v-if="activeVolume === volumeIndex" :volume="volume" :loading="loading"

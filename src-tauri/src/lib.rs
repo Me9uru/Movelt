@@ -2,6 +2,7 @@ mod discovery;
 mod domain;
 mod error;
 mod library;
+mod manga;
 mod reader;
 mod sources;
 
@@ -23,6 +24,9 @@ pub fn run() {
                 &novel_config.wenku8_api_base_url,
             )?);
             app.manage(Arc::clone(&wenku8_api));
+            app.manage(Arc::new(sources::lnovel_api::LnovelApiSource::new(
+                &novel_config.lnovel_api_base_url,
+            )?));
             let local_epub = Arc::new(library::local_epub::LocalEpubSource::new(epub_root)?);
             app.manage(reader::ReaderService::new(
                 wenku8_api,
@@ -50,7 +54,11 @@ pub fn run() {
             library::commands::add_to_bookshelf,
             library::commands::remove_from_bookshelf,
             library::commands::get_reading_progress,
-            library::commands::save_reading_progress
+            library::commands::save_reading_progress,
+            manga::browse_manga,
+            manga::get_manga,
+            manga::get_manga_chapter_pages,
+            manga::get_manga_page_batch
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

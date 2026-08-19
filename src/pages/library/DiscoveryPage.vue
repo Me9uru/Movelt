@@ -118,15 +118,6 @@ watch(activeTab, (tab) => {
 
 <template>
   <section class="discovery-view">
-    <header class="discovery-hero">
-      <div>
-        <h1>发现</h1>
-      </div>
-      <button class="hero-search" type="button" aria-label="打开作品搜索" @click="openSearchDialog">
-        <el-icon><Search /></el-icon>
-        <span>搜索作品</span>
-      </button>
-    </header>
     <el-alert
       v-if="unavailableMessage"
       class="service-alert"
@@ -157,7 +148,7 @@ watch(activeTab, (tab) => {
         <BookGrid v-else-if="loading.recommend" :books="[]" loading />
         <el-empty v-else-if="recommendations.length === 0" description="暂无推荐内容" />
         <section v-for="block in recommendations" v-else :key="block.title" class="discovery-block">
-          <div class="section-heading"><h2>{{ block.title }}</h2><el-tag effect="plain">{{ block.items.length }} 本</el-tag></div>
+          <div class="section-heading"><h2>{{ block.title }}</h2><el-tag class="count-tag" effect="plain">{{ block.items.length }} 本</el-tag></div>
           <BookGrid :books="block.items" @open-novel="emit('openNovel', $event)" />
         </section>
       </el-tab-pane>
@@ -201,7 +192,7 @@ watch(activeTab, (tab) => {
 
       <el-tab-pane name="search" lazy>
         <template #label>
-          <el-icon class="discovery-search-icon" aria-label="搜索作品"><Search /></el-icon>
+          <el-icon class="library-search-trigger discovery-search-trigger" aria-label="搜索作品"><Search /></el-icon>
         </template>
         <el-result v-if="errors.search" icon="error" title="搜索失败" :sub-title="errors.search">
           <template #extra><el-button @click="emit('search', searchResult?.pagination.page || 1)">重试</el-button></template>
@@ -221,7 +212,8 @@ watch(activeTab, (tab) => {
       width="min(560px, calc(100vw - 32px))"
       align-center
       destroy-on-close
-      title="搜索作品"
+      :with-header="false"
+      :show-close="false"
       @opened="focusSearchInput"
     >
       <BookSearchBar

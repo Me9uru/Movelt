@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   Collection,
   Compass,
+  Picture,
 } from "@element-plus/icons-vue";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
@@ -34,6 +35,7 @@ const router = useRouter();
 const view = computed<AppRouteName>(() => {
   const routeName = route.name;
   return routeName === "bookshelf" || routeName === "detail" || routeName === "reader"
+    || routeName === "manga" || routeName === "manga-detail" || routeName === "manga-reader"
     ? routeName
     : "discovery";
 });
@@ -359,6 +361,10 @@ watch(
   () => [route.name, route.params.source, route.params.bookId, route.params.chapterId, route.query.from],
   async () => {
     const routeName = view.value;
+    if (routeName === "manga" || routeName === "manga-detail" || routeName === "manga-reader") {
+      errorMessage.value = "";
+      return;
+    }
     if (routeName === "discovery" || routeName === "bookshelf") {
       lastLibraryView.value = routeName;
       errorMessage.value = "";
@@ -414,10 +420,10 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="page-bg">
-    <header v-if="view === 'detail' || view === 'reader'" class="topbar">
+    <header v-if="view === 'detail'" class="topbar">
       <div class="topbar-inner detail-topbar">
         <el-button class="back-button" :icon="ArrowLeft" @click="back">
-          {{ view === "reader" ? "返回目录" : `返回${lastLibraryView === "bookshelf" ? "书架" : "发现"}` }}
+          {{ `返回${lastLibraryView === "bookshelf" ? "书架" : "发现"}` }}
         </el-button>
       </div>
     </header>
@@ -497,12 +503,14 @@ onBeforeUnmount(() => {
           @next="openNextChapter"
           @progress="recordProgress"
         />
+
+        <component :is="Component" v-else />
       </RouterView>
     </main>
 
     <LoadingOverlay :visible="showLoadingOverlay" :label="loadingLabel" />
 
-    <nav v-if="view === 'discovery' || view === 'bookshelf'" class="view-dock" aria-label="主栏目">
+    <nav v-if="view === 'discovery' || view === 'bookshelf' || view === 'manga'" class="view-dock" aria-label="主栏目">
       <button
         type="button"
         :class="{ active: view === 'discovery' }"
@@ -521,6 +529,15 @@ onBeforeUnmount(() => {
         <el-icon><Collection /></el-icon>
         <span>书架</span>
         <small v-if="books.length">{{ books.length }}</small>
+      </button>
+      <button
+        type="button"
+        :class="{ active: view === 'manga' }"
+        :aria-current="view === 'manga' ? 'page' : undefined"
+        @click="openLibraryView('manga')"
+      >
+        <el-icon><Picture /></el-icon>
+        <span>漫画</span>
       </button>
     </nav>
   </div>

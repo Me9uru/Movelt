@@ -67,17 +67,13 @@ watch(
   <section class="bookshelf-view">
     <section class="bookshelf-section">
       <div class="section-heading">
-        <div>
-          <h2>我的书架</h2>
-        </div>
         <div class="bookshelf-heading-actions">
-          <el-tag effect="plain">
+          <el-tag class="count-tag" effect="plain">
             {{ searchActive ? `${books.length} / ${totalBooks} 本` : `${totalBooks} 本` }}
           </el-tag>
           <el-button
-            class="bookshelf-search-trigger"
+            class="library-search-trigger"
             :icon="Search"
-            circle
             aria-label="搜索书架"
             title="搜索书架"
             @click="searchDialogVisible = true"
@@ -163,7 +159,8 @@ watch(
       width="min(560px, calc(100vw - 32px))"
       align-center
       destroy-on-close
-      title="搜索书架"
+      :with-header="false"
+      :show-close="false"
       @opened="focusSearchInput"
     >
       <BookSearchBar

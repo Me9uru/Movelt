@@ -41,7 +41,7 @@ function chapterProgressPercent(progress: ReadingProgress): number {
         <div class="volume-title volume-title--section">
           <span class="volume-index">{{ String(index + 1).padStart(2, "0") }}</span>
           <strong>{{ section.title }}</strong>
-          <el-tag size="small" effect="plain">{{ countChapters(section) }} 话</el-tag>
+          <el-tag class="count-tag" size="small" effect="plain">{{ countChapters(section) }} 话</el-tag>
         </div>
       </template>
       <CatalogueBranch :volume="section" :loading="loading" :current-progress="currentProgress" :depth="(depth ?? 0) + 1"

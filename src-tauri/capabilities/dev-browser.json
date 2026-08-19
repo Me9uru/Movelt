@@ -24,6 +24,10 @@
     "allow-add-to-bookshelf",
     "allow-remove-from-bookshelf",
     "allow-get-reading-progress",
-    "allow-save-reading-progress"
+    "allow-save-reading-progress",
+    "allow-browse-manga",
+    "allow-get-manga",
+    "allow-get-manga-chapter-pages",
+    "allow-get-manga-page-batch"
   ]
 }

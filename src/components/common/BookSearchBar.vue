@@ -4,6 +4,8 @@ import { Search } from "@element-plus/icons-vue";
 defineProps<{
   modelValue: string;
   loading: boolean;
+  placeholder?: string;
+  ariaLabel?: string;
 }>();
 
 const emit = defineEmits<{
@@ -20,13 +22,18 @@ const emit = defineEmits<{
       :prefix-icon="Search"
       clearable
       maxlength="100"
-      placeholder="输入书名"
-      aria-label="按书名搜索"
+      :placeholder="placeholder || '输入书名'"
+      :aria-label="ariaLabel || '按书名搜索'"
       @update:model-value="emit('update:modelValue', $event)"
       @clear="emit('clear')"
     />
-    <el-button type="primary" native-type="submit" :loading="loading">
-      搜索
-    </el-button>
+    <el-button
+      type="primary"
+      native-type="submit"
+      :icon="Search"
+      :loading="loading"
+      aria-label="搜索"
+      title="搜索"
+    />
   </form>
 </template>

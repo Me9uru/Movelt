@@ -34,6 +34,18 @@
   --radius-panel: 20px;
   --radius-pill: 999px;
 
+  /* Layout rhythm: use these tokens for all spatial relationships. */
+  --space-1: 4px; /* optical adjustment only */
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --space-6: 40px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --layout-gutter: 24px;
+  --layout-gutter-compact: 16px;
+
   /* Element Plus inherits the same palette. */
   --el-color-primary: var(--color-primary);
   --el-color-primary-light-3: #83bdec;

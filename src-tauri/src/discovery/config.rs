@@ -1,15 +1,19 @@
 use crate::error::NovelError;
 
 const DEFAULT_WENKU8_API_BASE_URL: &str = "http://127.0.0.1:8000/";
+const DEFAULT_LNOVEL_API_BASE_URL: &str = "http://127.0.0.1:8000/";
 
 pub(crate) struct NovelConfig {
     pub(crate) wenku8_api_base_url: String,
+    pub(crate) lnovel_api_base_url: String,
 }
 
 impl NovelConfig {
     pub(crate) fn load() -> Result<Self, NovelError> {
         let base_url = std::env::var("MOVEL_WENKU8_API_BASE_URL")
             .unwrap_or_else(|_| DEFAULT_WENKU8_API_BASE_URL.into());
+        let lnovel_base_url = std::env::var("MOVEL_LNOVEL_API_BASE_URL")
+            .unwrap_or_else(|_| DEFAULT_LNOVEL_API_BASE_URL.into());
         let parsed = url::Url::parse(base_url.trim()).map_err(|error| {
             NovelError::configuration(format!("invalid Wenku8 API URL: {error}"))
         })?;
@@ -28,8 +32,27 @@ impl NovelConfig {
                 "Wenku8 API URL must not contain a query or fragment",
             ));
         }
+        let lnovel_parsed = url::Url::parse(lnovel_base_url.trim()).map_err(|error| {
+            NovelError::configuration(format!("invalid lnovelApi URL: {error}"))
+        })?;
+        if !matches!(lnovel_parsed.scheme(), "http" | "https") || lnovel_parsed.host_str().is_none()
+        {
+            return Err(NovelError::configuration(
+                "lnovelApi URL must be an absolute http(s) URL",
+            ));
+        }
+        if !lnovel_parsed.username().is_empty()
+            || lnovel_parsed.password().is_some()
+            || lnovel_parsed.query().is_some()
+            || lnovel_parsed.fragment().is_some()
+        {
+            return Err(NovelError::configuration(
+                "lnovelApi URL must not contain credentials, a query, or a fragment",
+            ));
+        }
         Ok(Self {
             wenku8_api_base_url: parsed.as_str().trim_end_matches('/').into(),
+            lnovel_api_base_url: lnovel_parsed.as_str().trim_end_matches('/').into(),
         })
     }
 }
@@ -42,5 +65,6 @@ mod tests {
     fn loads_embedded_novel_configuration() {
         let config = NovelConfig::load().unwrap();
         assert!(!config.wenku8_api_base_url.is_empty());
+        assert!(!config.lnovel_api_base_url.is_empty());
     }
 }
