@@ -8,6 +8,7 @@ import {
   lightNovelSourceId,
   saveReadPosition,
   type NovelDetail,
+  type ServerReadPosition,
   type NovelSummary,
   type Volume,
 } from "./services/novel";
@@ -46,6 +47,7 @@ const catalogue = ref<Volume[]>([]);
 const readerDocument = ref<ReaderDocument | null>(null);
 const currentChapterId = ref<string | null>(null);
 const resumeChapterId = ref<string | null>(null);
+const resumeReadPosition = ref<ServerReadPosition | null>(null);
 const loading = ref(false);
 const loadingAction = ref<LoadingAction | null>(null);
 const bookshelfQuery = ref("");
@@ -220,6 +222,7 @@ async function loadNovel(source: string, novelId: string): Promise<boolean> {
     detail.value = response.detail;
     catalogue.value = response.volumes;
     resumeChapterId.value = response.readPosition?.chapterId ?? null;
+    resumeReadPosition.value = response.readPosition;
     return true;
   }
   return false;
@@ -300,6 +303,11 @@ async function toggleBookshelf() {
 
 function recordProgress(xpath: string) {
   if (!detail.value || !readerDocument.value || !currentChapterId.value) return;
+  resumeChapterId.value = currentChapterId.value;
+  resumeReadPosition.value = {
+    chapterId: currentChapterId.value,
+    position: xpath,
+  };
   void saveReadPosition(
     detail.value.id,
     readerDocument.value.serverChapterId,
@@ -509,6 +517,7 @@ onBeforeUnmount(() => {
           :is="Component"
           v-else-if="view === 'reader' && readerDocument"
           :document="readerDocument"
+          :resume-position="resumeReadPosition"
           :loading="loading"
           :has-previous-chapter="Boolean(previousChapterId)"
           :has-next-chapter="Boolean(nextChapterId)"

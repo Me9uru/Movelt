@@ -13,13 +13,20 @@
 .reader-content h2 { margin: .3em 0 .5em; font-size: 1.25em; font-weight: 700; line-height: 1.2; text-align: center; }
 .reader-content h3 { margin: .2em 0; font-size: .95em; font-weight: 700; line-height: 1.2; text-align: center; text-indent: 0; }
 .reader--chapter-font .reader-content, .reader--chapter-font .reader-content :is(p, div, span, li, blockquote, h1, h2, h3, h4, h5, h6) { font-family: "movel-chapter", sans-serif; }
-.reader-content p, .page-viewport p { margin: 0 0 var(--reader-paragraph-spacing); color: var(--reader-text); font-family: var(--reader-font-family); font-size: var(--reader-font-size); line-height: var(--reader-line-height); letter-spacing: var(--reader-letter-spacing); text-align: start; overflow-wrap: anywhere; }
+.reader-content p, .page-viewport p { margin: 0 0 var(--reader-paragraph-spacing); color: var(--reader-text); font-family: var(--reader-font-family); font-size: var(--reader-font-size); line-height: var(--reader-line-height); letter-spacing: var(--reader-letter-spacing); text-align: start; overflow-wrap: break-word; }
 .reader-content img { display: inline-block; width: auto; max-width: 100%; height: auto; max-height: 80vh; margin: 0 4px; object-fit: contain; vertical-align: middle; }
 .reader-content :is(.illus, .illu, .duokan-image-single) { display: flex; align-items: center; justify-content: center; gap: 2px; flex-wrap: wrap; break-inside: avoid; }
 .reader-content :is(.illus, .illu, .duokan-image-single) img { display: block; margin: var(--space-5) auto; cursor: zoom-in; box-shadow: 0 0 3px color-mix(in srgb, #000 55%, transparent); border: 1px solid var(--reader-border); }
 .reader-content :is(.illus, .illu, .duokan-image-single) img.no-preview { cursor: default; }
 .chapter-image { display: block; width: auto; max-width: 100%; height: auto; max-height: 80vh; margin: var(--space-5) auto; object-fit: contain; break-inside: avoid; }
 .reader-content a.duokan-footnote { color: var(--reader-accent); cursor: help; font-family: inherit; font-weight: 700; text-decoration: none; }
+.reader-footnote-dialog { width: min(440px, calc(100vw - var(--space-6))); }
+.reader-footnote-dialog .el-message-box__content { max-height: min(50dvh, 360px); overflow-y: auto; }
+.reader-footnote-dialog .el-message-box__message { color: var(--color-text-strong); font-family: var(--reader-font-family); line-height: var(--reader-line-height); overflow-wrap: anywhere; }
+.reader-footnote-dialog--chapter-font .el-message-box__message,
+.reader-footnote-dialog--chapter-font .el-message-box__message :is(p, div, span, li, ol, ul) { font-family: "movel-chapter", sans-serif; }
+.reader-footnote-dialog .duokan-footnote-content { margin: 0; padding: 0; list-style: none; }
+.reader-footnote-dialog .duokan-footnote-item { margin: 0; }
 .reader-content :is(.right, .author) { text-indent: 0; text-align: right; }
 .reader-content .left { text-indent: 0; text-align: left; }
 .reader-content .center { text-indent: 0; text-align: center; }

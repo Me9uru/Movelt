@@ -1,1 +1,0 @@
-com.meguru.movel.credentials

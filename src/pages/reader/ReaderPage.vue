@@ -5,6 +5,7 @@ import {
   RefreshLeft,
 } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox } from "element-plus";
+import "element-plus/es/components/message-box/style/css";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { ReaderDocument } from "../../domain/reader";
 import { useReaderSettings } from "../../composables/useReaderSettings";
@@ -12,6 +13,7 @@ import { clearWebviewCache } from "../../services/settings";
 
 const props = defineProps<{
   document: ReaderDocument;
+  resumePosition?: { chapterId: string; position: string } | null;
   loading?: boolean;
   initialProgress?: { location: number } | null;
   hasPreviousChapter?: boolean;
@@ -45,6 +47,7 @@ let paginationResetPending = false;
 let pageLocation = 0;
 let hasRestoredScroll = false;
 let hasRestoredPage = false;
+let hasRestoredServerPosition = false;
 let nextChapterRequested = false;
 const chapterFontStyle = document.createElement("style");
 document.head.append(chapterFontStyle);
@@ -93,6 +96,7 @@ function performPagination(resetPage: boolean) {
   currentPage.value = Math.round(pageLocation * Math.max(0, pageCount.value - 1));
   hasRestoredPage = true;
   viewport.scrollTo({ left: currentPage.value * step, behavior: "auto" });
+  restoreServerPosition();
 }
 
 function updatePagination(resetPage = false) {
@@ -142,6 +146,7 @@ function prepareFootnotes(content: HTMLElement): void {
       event.preventDefault();
       event.stopPropagation();
       void ElMessageBox.alert(note.innerHTML, "注释", {
+        customClass: props.document.fontUrl ? "reader-footnote-dialog reader-footnote-dialog--chapter-font" : "reader-footnote-dialog",
         dangerouslyUseHTMLString: true,
         confirmButtonText: "关闭",
       });
@@ -241,8 +246,18 @@ function recordScrollProgress(): number | null {
 function visibleXPath(): string {
   const root = readerContent.value;
   if (!root) return "//*";
-  const target = [...root.querySelectorAll<HTMLElement>("p, img, li, h1, h2, h3, blockquote")]
-    .find((node) => node.getBoundingClientRect().bottom >= 0);
+  const nodes = [...root.querySelectorAll<HTMLElement>("p, img, li, h1, h2, h3, blockquote")];
+  const viewport = pageViewport.value;
+  const target = settings.mode === "paged" && viewport
+    ? (() => {
+      const bounds = viewport.getBoundingClientRect();
+      // CSS 多栏分页下，每段都处于相同的纵向坐标；要按横向视口选择当前页的首个元素。
+      return nodes.find((node) => {
+        const rect = node.getBoundingClientRect();
+        return rect.right > bounds.left && rect.left < bounds.right;
+      });
+    })()
+    : nodes.find((node) => node.getBoundingClientRect().bottom >= 0);
   if (!target) return "//*";
   const path: string[] = [];
   let current: Element | null = target;
@@ -255,12 +270,23 @@ function visibleXPath(): string {
 }
 
 function restoreServerPosition() {
-  const position = props.document.readPosition;
+  if (hasRestoredServerPosition) return;
+  const position = props.resumePosition?.chapterId === props.document.chapterId
+    ? props.resumePosition
+    : props.document.readPosition?.chapterId === props.document.serverChapterId
+      ? props.document.readPosition
+      : null;
   const root = readerContent.value;
-  if (!position || !root || position.chapterId !== props.document.serverChapterId || !position.position) return;
+  if (!position || !root || !position.position) return;
   try {
     const target = document.evaluate(position.position, root, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-    if (target instanceof HTMLElement) target.scrollIntoView({ block: "start", behavior: "auto" });
+    if (!(target instanceof HTMLElement)) return;
+    target.scrollIntoView({ block: "start", behavior: "auto" });
+    if (settings.mode === "paged" && pageViewport.value) {
+      currentPage.value = Math.round(pageViewport.value.scrollLeft / pageStep());
+      pageLocation = pageCount.value > 1 ? currentPage.value / (pageCount.value - 1) : 0;
+    }
+    hasRestoredServerPosition = true;
   } catch {
     // Old or malformed server positions must not block chapter rendering.
   }
@@ -354,11 +380,12 @@ watch(
 watch(() => props.document, () => {
   nextChapterRequested = false;
   hasRestoredPage = false;
+  hasRestoredServerPosition = false;
   pageLocation = clampLocation(props.initialProgress?.location ?? 0);
   void nextTick(() => {
     observeChapterContent();
     updatePagination(true);
-    restoreServerPosition();
+    if (settings.mode === "scroll") restoreServerPosition();
   });
 }, { immediate: true });
 
@@ -386,10 +413,13 @@ onMounted(() => {
   updatePagination(true);
   void nextTick(observeChapterContent);
   restoreScrollProgress();
-  void nextTick(restoreServerPosition);
+  if (settings.mode === "scroll") void nextTick(restoreServerPosition);
 });
 
 onBeforeUnmount(() => {
+  // 路由返回会立即销毁阅读器；此时仍可从挂载的正文取到最后可见锚点。
+  // 不能只依赖滚动事件或翻页操作，否则分页模式直接返回会漏掉最后进度。
+  emit("progress", visibleXPath());
   cancelPaginationUpdate();
   spreadQuery?.removeEventListener("change", updateSpread);
   resizeObserver?.disconnect();
@@ -398,7 +428,6 @@ onBeforeUnmount(() => {
   window.removeEventListener("scroll", handleScroll);
   if (scrollTimer !== null) window.clearTimeout(scrollTimer);
   chapterFontStyle.remove();
-  if (settings.mode === "scroll") recordScrollProgress();
 });
 </script>
 
