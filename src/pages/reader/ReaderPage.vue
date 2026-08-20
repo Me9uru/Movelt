@@ -4,9 +4,11 @@ import {
   ArrowRight,
   RefreshLeft,
 } from "@element-plus/icons-vue";
+import { ElMessage, ElMessageBox } from "element-plus";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { ReaderDocument } from "../../domain/reader";
 import { useReaderSettings } from "../../composables/useReaderSettings";
+import { clearWebviewCache } from "../../services/settings";
 
 const props = defineProps<{
   document: ReaderDocument;
@@ -28,6 +30,7 @@ const pageViewport = ref<HTMLElement | null>(null);
 const readerContent = ref<HTMLElement | null>(null);
 const currentPage = ref(0);
 const pageCount = ref(1);
+const previewImageUrl = ref<string | null>(null);
 const isSpread = ref(false);
 const settingsVisible = ref(false);
 let resizeObserver: ResizeObserver | undefined;
@@ -112,13 +115,72 @@ function updatePagination(resetPage = false) {
 function observeChapterContent() {
   const content = readerContent.value;
   if (!content) return;
+  prepareFootnotes(content);
   contentResizeObserver?.disconnect();
   contentResizeObserver?.observe(content);
   content.querySelectorAll("img").forEach((image) => contentResizeObserver?.observe(image));
 }
 
+function prepareFootnotes(content: HTMLElement): void {
+  content.querySelectorAll<HTMLAnchorElement>("a.duokan-footnote").forEach((footnote) => {
+    if (footnote.dataset.movelFootnoteReady) return;
+    footnote.dataset.movelFootnoteReady = "true";
+
+    const targetId = footnote.getAttribute("href")?.replace(/^#/, "");
+    if (!targetId) return;
+    const note = content.querySelector<HTMLElement>(`#${CSS.escape(targetId)}`);
+    if (!note) return;
+
+    note.hidden = true;
+    footnote.removeAttribute("href");
+    footnote.querySelectorAll<HTMLImageElement>("img.footnote").forEach((image) => {
+      image.replaceWith(document.createTextNode("*"));
+    });
+    footnote.setAttribute("aria-label", "查看注释");
+    footnote.title = note.textContent?.trim() || "查看注释";
+    footnote.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      void ElMessageBox.alert(note.innerHTML, "注释", {
+        dangerouslyUseHTMLString: true,
+        confirmButtonText: "关闭",
+      });
+    });
+  });
+}
+
 function handleChapterImageLoad(event: Event) {
   if (event.target instanceof HTMLImageElement) updatePagination();
+}
+
+function handleChapterImageClick(event: MouseEvent) {
+  const image = event.target;
+  if (!(image instanceof HTMLImageElement)) return;
+  if (!image.closest(".illus, .illu, .duokan-image-single, .image-preview")) return;
+  event.stopPropagation();
+  previewImageUrl.value = image.currentSrc || image.src;
+}
+
+function handleChapterLinkClick(event: MouseEvent) {
+  const target = event.target;
+  if (!(target instanceof Element)) return;
+  const link = target.closest<HTMLAnchorElement>("a[href]");
+  if (!link) return;
+  const href = link.getAttribute("href");
+  if (!href) return;
+  if (href.startsWith("#")) {
+    event.preventDefault();
+    document.getElementById(href.slice(1))?.scrollIntoView({ block: "start", behavior: "smooth" });
+    return;
+  }
+  try {
+    const url = new URL(href, window.location.href);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return;
+    event.preventDefault();
+    window.open(url.href, "_blank", "noopener,noreferrer");
+  } catch {
+    event.preventDefault();
+  }
 }
 
 function cancelPaginationUpdate() {
@@ -127,6 +189,15 @@ function cancelPaginationUpdate() {
   if (paginationFrame !== null) {
     window.cancelAnimationFrame(paginationFrame);
     paginationFrame = null;
+  }
+}
+
+async function clearBrowsingData(): Promise<void> {
+  try {
+    await clearWebviewCache();
+    ElMessage.success("已清除 WebView 浏览数据");
+  } catch {
+    ElMessage.error("清除 WebView 数据失败");
   }
 }
 
@@ -145,6 +216,11 @@ function goToPage(page: number) {
   }
   viewport.scrollTo({ left: currentPage.value * pageStep(), behavior: "smooth" });
   emit("progress", visibleXPath());
+}
+
+function pageOffsetForSide(side: "left" | "right"): number {
+  const leftOffset = settings.pageTurnDirection === "left-next" ? 1 : -1;
+  return side === "left" ? leftOffset : -leftOffset;
 }
 
 function scrollMetrics(): { start: number; distance: number } | null {
@@ -259,9 +335,9 @@ function handleReaderClick(event: MouseEvent) {
   const middleStart = window.innerWidth / 3;
   const middleEnd = middleStart * 2;
   if (event.clientX < middleStart && settings.mode === "paged") {
-    goToPage(currentPage.value - 1);
+    goToPage(currentPage.value + pageOffsetForSide("left"));
   } else if (event.clientX > middleEnd && settings.mode === "paged") {
-    goToPage(currentPage.value + 1);
+    goToPage(currentPage.value + pageOffsetForSide("right"));
   } else if (event.clientX >= middleStart && event.clientX <= middleEnd) {
     settingsVisible.value = true;
   }
@@ -367,7 +443,7 @@ onBeforeUnmount(() => {
         <h1>{{ document.title }}</h1>
       </header>
 
-      <div ref="readerContent" class="reader-content" v-html="document.html" @load.capture="handleChapterImageLoad" />
+      <div ref="readerContent" class="reader-content" v-html="document.html" @click="handleChapterLinkClick" @click.capture="handleChapterImageClick" @load.capture="handleChapterImageLoad" />
 
       <el-divider>本章结束</el-divider>
     </div>
@@ -385,7 +461,7 @@ onBeforeUnmount(() => {
         <header class="paged-heading">
           <h1>{{ document.title }}</h1>
         </header>
-        <div ref="readerContent" class="reader-content" v-html="document.html" @load.capture="handleChapterImageLoad" />
+        <div ref="readerContent" class="reader-content" v-html="document.html" @click="handleChapterLinkClick" @click.capture="handleChapterImageClick" @load.capture="handleChapterImageLoad" />
         <p class="chapter-end">— 本章结束 —</p>
       </div>
 
@@ -416,6 +492,14 @@ onBeforeUnmount(() => {
           <el-radio-button value="paged">分页阅读</el-radio-button>
         </el-radio-group>
 
+        <template v-if="settings.mode === 'paged'">
+          <label>翻页点击方向</label>
+          <el-radio-group v-model="settings.pageTurnDirection" size="small">
+            <el-radio-button value="left-previous">左边上一页 · 右边下一页</el-radio-button>
+            <el-radio-button value="left-next">左边下一页 · 右边上一页</el-radio-button>
+          </el-radio-group>
+        </template>
+
         <label>背景主题</label>
         <el-radio-group v-model="settings.theme" size="small">
           <el-radio-button value="paper">纸张</el-radio-button>
@@ -428,6 +512,16 @@ onBeforeUnmount(() => {
           <el-radio-button value="serif">衬线</el-radio-button>
           <el-radio-button value="sans">无衬线</el-radio-button>
         </el-radio-group>
+
+        <label>文字转换</label>
+        <el-radio-group v-model="settings.convert" size="small">
+          <el-radio-button value="original">原文</el-radio-button>
+          <el-radio-button value="t2s">繁转简</el-radio-button>
+          <el-radio-button value="s2t">简转繁</el-radio-button>
+        </el-radio-group>
+
+        <label>存储</label>
+        <el-button size="small" @click="clearBrowsingData">清除 WebView 数据</el-button>
 
         <label><span>字体大小</span><b>{{ settings.fontSize }} px</b></label>
         <el-slider v-model="settings.fontSize" :min="14" :max="30" :step="1" />
@@ -445,5 +539,11 @@ onBeforeUnmount(() => {
         <el-slider v-model="settings.contentWidth" :min="560" :max="1100" :step="20" />
       </div>
     </el-drawer>
+
+    <el-image-viewer
+      v-if="previewImageUrl"
+      :url-list="[previewImageUrl]"
+      @close="previewImageUrl = null"
+    />
   </article>
 </template>

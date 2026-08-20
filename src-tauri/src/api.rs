@@ -5,20 +5,23 @@ use std::{
 };
 
 use futures_util::{SinkExt, StreamExt};
-use keyring::Entry;
 use reqwest::{header, Client};
 use rmpv::Value as MessagePackValue;
 use serde_json::{json, Value};
-use sha2::{Digest, Sha256};
 use tokio::sync::Mutex;
 use tokio_tungstenite::{connect_async, tungstenite::Message, MaybeTlsStream, WebSocketStream};
 use url::Url;
 use uuid::Uuid;
 
 use crate::error::{AppError, Result};
+use tauri_plugin_movel_credentials::CredentialStore;
+
+mod bookshelf;
+mod manga;
+mod novel;
+mod user;
 
 const API_BASE: &str = "https://api.lightnovel.life";
-const CREDENTIAL_SERVICE: &str = "com.meguru.movel";
 const REFRESH_ACCOUNT: &str = "lightnovel-refresh-token";
 const DEVICE_ACCOUNT: &str = "lightnovel-device-id";
 // The official Web client intentionally keeps a session token for only 30 seconds
@@ -30,6 +33,7 @@ const SESSION_TOKEN_TTL: Duration = Duration::from_secs(30);
 struct Session {
     token: String,
     expires_at: Option<Instant>,
+    refresh_token: Option<String>,
 }
 
 type HubSocket = WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>;
@@ -45,93 +49,37 @@ pub(crate) struct OfficialClient {
     session: Arc<Mutex<Session>>,
     refresh_lock: Arc<Mutex<()>>,
     hub_session: Arc<Mutex<HubSession>>,
-    refresh: Arc<Entry>,
-    device: Arc<Entry>,
+    credentials: CredentialStore<tauri::Wry>,
+    device_id: String,
 }
 
 impl OfficialClient {
-    pub(crate) fn new() -> Result<Self> {
+    pub(crate) fn new(credentials: CredentialStore<tauri::Wry>) -> Result<Self> {
         let http = Client::builder()
             .gzip(true)
             .timeout(Duration::from_secs(30))
             .build()
             .map_err(|e| AppError::Network(e.to_string()))?;
-        let refresh = Entry::new(CREDENTIAL_SERVICE, REFRESH_ACCOUNT)
-            .map_err(|e| AppError::Credentials(e.to_string()))?;
-        let device = Entry::new(CREDENTIAL_SERVICE, DEVICE_ACCOUNT)
-            .map_err(|e| AppError::Credentials(e.to_string()))?;
+        let device_id = credentials
+            .get(DEVICE_ACCOUNT)
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| Uuid::new_v4().to_string());
+        // A device ID is not a credential. Keep using a process-local ID when
+        // the desktop keyring is unavailable so unauthenticated login remains
+        // possible. Refresh tokens are never persisted outside the keyring.
+        let _ = credentials.set(DEVICE_ACCOUNT, &device_id);
         Ok(Self {
             http,
             session: Arc::new(Mutex::new(Session::default())),
             refresh_lock: Arc::new(Mutex::new(())),
             hub_session: Arc::new(Mutex::new(HubSession::default())),
-            refresh: Arc::new(refresh),
-            device: Arc::new(device),
+            credentials,
+            device_id,
         })
     }
 
-    pub(crate) async fn login(&self, email: String, password: String) -> Result<Value> {
-        let password = format!("{:x}", Sha256::digest(password.as_bytes()));
-        let value = self
-            .http_envelope(
-                "/api/user/login",
-                json!({ "email": email, "password": password }),
-            )
-            .await?;
-        self.save_login(&value).await?;
-        self.hub("GetMyInfo", json!({})).await
-    }
-
-    pub(crate) async fn register(
-        &self,
-        user_name: String,
-        email: String,
-        password: String,
-        code: String,
-        invite_code: String,
-    ) -> Result<Value> {
-        let password = format!("{:x}", Sha256::digest(password.as_bytes()));
-        let value = self.http_envelope("/api/user/register", json!({ "userName": user_name, "email": email, "password": password, "code": code, "inviteCode": invite_code })).await?;
-        self.save_login(&value).await?;
-        self.hub("GetMyInfo", json!({})).await
-    }
-
-    pub(crate) async fn send_register_email(&self, email: String) -> Result<()> {
-        let mut url = Url::parse(&format!("{API_BASE}/api/user/send_register_email"))
-            .map_err(|e| AppError::InvalidResponse(e.to_string()))?;
-        url.query_pairs_mut().append_pair("email", &email);
-        let response = self
-            .http
-            .get(url)
-            .header("x-id", self.device_id()?)
-            .header(header::ACCEPT, "application/json")
-            .send()
-            .await
-            .map_err(network)?;
-        decode_envelope(response).await.map(|_| ())
-    }
-
-    pub(crate) async fn restore_user(&self) -> Result<Option<Value>> {
-        if self.token().await?.is_empty() {
-            return Ok(None);
-        }
-        match self.hub("GetMyInfo", json!({})).await {
-            Ok(user) => Ok(Some(user)),
-            Err(AppError::AuthenticationExpired) => Ok(None),
-            Err(error) => Err(error),
-        }
-    }
-
-    pub(crate) async fn logout(&self) -> Result<()> {
-        *self.session.lock().await = Session::default();
-        self.invalidate_hub().await;
-        match self.refresh.delete_credential() {
-            Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
-            Err(e) => Err(AppError::Credentials(e.to_string())),
-        }
-    }
-
-    pub(crate) async fn hub(&self, method: &str, payload: Value) -> Result<Value> {
+    pub(super) async fn hub(&self, method: &str, payload: Value) -> Result<Value> {
         match self.hub_once(method, payload.clone()).await {
             Err(AppError::Network(_)) => {
                 self.invalidate_hub().await;
@@ -187,7 +135,7 @@ impl OfficialClient {
         let mut request = self
             .http
             .post(negotiate_url)
-            .header("x-id", self.device_id()?);
+            .header("x-id", &self.device_id);
         if !token.is_empty() {
             request = request.bearer_auth(token);
         }
@@ -288,13 +236,15 @@ impl OfficialClient {
             .get("RefreshToken")
             .and_then(Value::as_str)
             .ok_or_else(|| AppError::InvalidResponse("登录响应缺少 RefreshToken".into()))?;
-        self.refresh
-            .set_password(refresh)
-            .map_err(|e| AppError::Credentials(e.to_string()))?;
         *self.session.lock().await = Session {
             token: token.into(),
             expires_at: Some(Instant::now() + SESSION_TOKEN_TTL),
+            refresh_token: Some(refresh.into()),
         };
+        // A session can safely continue in memory when the OS credential
+        // facility is unavailable. In that case the user will sign in again
+        // after restarting; no refresh token is written to disk.
+        let _ = self.set_credential(REFRESH_ACCOUNT, refresh);
         self.invalidate_hub().await;
         Ok(())
     }
@@ -307,11 +257,17 @@ impl OfficialClient {
         if let Some(token) = self.cached_token().await {
             return Ok(token);
         }
-        let refresh = match self.refresh.get_password() {
-            Ok(token) => token,
-            Err(keyring::Error::NoEntry) => return Ok(String::new()),
-            Err(e) => return Err(AppError::Credentials(e.to_string())),
+        let refresh = self
+            .session
+            .lock()
+            .await
+            .refresh_token
+            .clone()
+            .or_else(|| self.get_credential(REFRESH_ACCOUNT).ok().flatten());
+        let Some(refresh) = refresh else {
+            return Ok(String::new());
         };
+        let refresh_for_session = refresh.clone();
         let response = self
             .http_envelope("/api/user/refresh_token", json!({ "token": refresh }))
             .await;
@@ -324,6 +280,7 @@ impl OfficialClient {
                 *self.session.lock().await = Session {
                     token: token.clone(),
                     expires_at: Some(Instant::now() + SESSION_TOKEN_TTL),
+                    refresh_token: Some(refresh_for_session),
                 };
                 Ok(token)
             }
@@ -354,19 +311,16 @@ impl OfficialClient {
     async fn clear_credentials(&self) {
         self.invalidate_access_token().await;
         self.invalidate_hub().await;
-        if let Err(error) = self.refresh.delete_credential() {
-            if !matches!(error, keyring::Error::NoEntry) {
-                // A failure to remove a now-invalid credential must not hide the
-                // authentication result from the UI.
-            }
-        }
+        // A failure to remove a now-invalid credential must not hide the
+        // authentication result from the UI.
+        let _ = self.delete_credential(REFRESH_ACCOUNT);
     }
 
     async fn http_envelope(&self, path: &str, payload: Value) -> Result<Value> {
         let response = self
             .http
             .post(format!("{API_BASE}{path}"))
-            .header("x-id", self.device_id()?)
+            .header("x-id", &self.device_id)
             .header(header::ACCEPT, "application/json")
             .json(&payload)
             .send()
@@ -375,18 +329,22 @@ impl OfficialClient {
         decode_envelope(response).await
     }
 
-    fn device_id(&self) -> Result<String> {
-        match self.device.get_password() {
-            Ok(value) => Ok(value),
-            Err(keyring::Error::NoEntry) => {
-                let value = Uuid::new_v4().to_string();
-                self.device
-                    .set_password(&value)
-                    .map_err(|e| AppError::Credentials(e.to_string()))?;
-                Ok(value)
-            }
-            Err(e) => Err(AppError::Credentials(e.to_string())),
-        }
+    fn get_credential(&self, account: &str) -> Result<Option<String>> {
+        self.credentials
+            .get(account)
+            .map_err(|error| AppError::Credentials(error.to_string()))
+    }
+
+    fn set_credential(&self, account: &str, value: &str) -> Result<()> {
+        self.credentials
+            .set(account, value)
+            .map_err(|error| AppError::Credentials(error.to_string()))
+    }
+
+    fn delete_credential(&self, account: &str) -> Result<()> {
+        self.credentials
+            .delete(account)
+            .map_err(|error| AppError::Credentials(error.to_string()))
     }
 }
 

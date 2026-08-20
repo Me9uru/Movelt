@@ -1,0 +1,22 @@
+[package]
+name = "tauri-plugin-movel-credentials"
+version = "0.1.0"
+edition = "2021"
+links = "tauri-plugin-movel-credentials"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+tauri = { version = "2", features = [] }
+thiserror = "2"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3", features = ["linux-native-sync-persistent"] }
+
+[target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
+keyring = { version = "3", features = ["apple-native"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }

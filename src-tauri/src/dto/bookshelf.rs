@@ -1,5 +1,5 @@
-use serde::Serialize;
 use super::novel::NovelSummary;
+use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]

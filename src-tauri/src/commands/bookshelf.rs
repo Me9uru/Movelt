@@ -1,4 +1,3 @@
-use serde_json::json;
 use tauri::State;
 
 use crate::{api::OfficialClient, dto::bookshelf::BookshelfEntry, error::Result};
@@ -10,7 +9,7 @@ pub(crate) async fn list_bookshelf(
     client: State<'_, OfficialClient>,
     query: Option<String>,
 ) -> Result<Vec<BookshelfEntry>> {
-    let shelf = client.hub("GetBookShelf", json!({})).await?;
+    let shelf = client.bookshelf().await?;
     let items: Vec<_> = shelf_items(&shelf)
         .into_iter()
         .filter(|item| is_kind(item, "BOOK"))

@@ -1,0 +1,1 @@
+-keep class com.meguru.movel.credentials.CredentialStorePlugin { *; }

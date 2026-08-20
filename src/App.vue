@@ -19,6 +19,7 @@ import AuthDialog from "./components/auth/AuthDialog.vue";
 import MainNavigation from "./components/layout/MainNavigation.vue";
 import { useLibrary } from "./composables/useLibrary";
 import { useDiscovery } from "./composables/useDiscovery";
+import { useReaderSettings } from "./composables/useReaderSettings";
 import { useAuthStore } from "./stores/auth";
 import type { AppRouteName, LibraryRouteName } from "./router";
 import { showError } from "./utils/error";
@@ -58,6 +59,7 @@ const mangaBookshelfLoaded = ref(false);
 const loginVisible = ref(false);
 const auth = useAuthStore();
 const discovery = useDiscovery();
+const { settings: readerSettings } = useReaderSettings();
 const { books, refreshBooks, searchBooks, addBook, removeBook, isOnBookshelf } =
   useLibrary();
 const visibleBooks = computed(() => bookshelfResults.value ?? books.value);
@@ -244,7 +246,7 @@ async function openChapter(chapterId: string, navigate = true) {
   if (!detail.value) return;
   const isChangingChapter = view.value === "reader";
   const response = await run("chapter", async () => {
-    return getReaderDocument(detail.value!.source, detail.value!.id, chapterId);
+    return getReaderDocument(detail.value!.source, detail.value!.id, chapterId, readerSettings.convert);
   });
   if (response) {
     readerDocument.value = response;
@@ -400,6 +402,15 @@ watch(
   },
 );
 
+watch(
+  () => readerSettings.convert,
+  () => {
+    if (view.value === "reader" && currentChapterId.value) {
+      void openChapter(currentChapterId.value, false);
+    }
+  },
+);
+
 onMounted(() => {
   window.addEventListener("movel:android-back", handleAndroidBack);
   window.addEventListener("movel:authentication-expired", handleAuthenticationExpired);
@@ -412,6 +423,12 @@ onMounted(() => {
       }
       loginVisible.value = true;
       return undefined;
+    })
+    .catch((error: unknown) => {
+      // A missing or unavailable system credential store must not leave the
+      // application without a visible way to authenticate.
+      loginVisible.value = true;
+      showError(error);
     });
 });
 

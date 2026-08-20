@@ -129,11 +129,7 @@ pub(super) async fn books_for_ids(
 ) -> Result<Vec<NovelSummary>> {
     let mut books = Vec::new();
     for ids in ids.chunks(24) {
-        let mut payload = json!({"Ids": ids});
-        if let Some(ty) = ty {
-            payload["Type"] = Value::String(ty.into());
-        }
-        let response = client.hub("GetBookListByIds", payload).await?;
+        let response = client.books_by_ids(ids, ty).await?;
         let items = response
             .as_array()
             .map(Vec::as_slice)
@@ -148,7 +144,7 @@ pub(super) async fn set_shelf(
     kind: &str,
     present: bool,
 ) -> Result<()> {
-    let shelf = client.hub("GetBookShelf", json!({})).await?;
+    let shelf = client.bookshelf().await?;
     let mut items = shelf_items(&shelf);
     let exists = items
         .iter()
@@ -159,7 +155,15 @@ pub(super) async fn set_shelf(
     if !present {
         items.retain(|item| number(item, "id") != id || !is_kind(item, kind));
     }
-    client.hub("SaveBookShelf", json!({"data": items, "ver": shelf.get("ver").and_then(Value::as_str).unwrap_or("20220211")})).await.map(|_| ())
+    client
+        .save_bookshelf(
+            items,
+            shelf
+                .get("ver")
+                .and_then(Value::as_str)
+                .unwrap_or("20220211"),
+        )
+        .await
 }
 pub(super) fn parse_id(value: &str) -> Result<i64> {
     value
@@ -171,7 +175,7 @@ pub(super) fn parse_id(value: &str) -> Result<i64> {
 mod tests {
     use serde_json::json;
 
-    use super::optional_html;
+    use super::{optional_html, position};
 
     #[test]
     fn sanitizes_introduction_html_without_losing_paragraphs() {
@@ -185,5 +189,15 @@ mod tests {
         assert!(introduction.contains("<p>第二段</p>"));
         assert!(!introduction.contains("script"));
         assert!(!introduction.contains("onclick"));
+    }
+
+    #[test]
+    fn maps_comic_read_position() {
+        let value = json!({"ChapterId": 42, "Position": "17"});
+
+        let mapped = position(Some(&value)).expect("read position should map");
+
+        assert_eq!(mapped.chapter_id, "42");
+        assert_eq!(mapped.position, "17");
     }
 }

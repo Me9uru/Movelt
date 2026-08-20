@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ArrowRight, RefreshRight, User } from "@element-plus/icons-vue";
+import { ArrowRight, Delete, RefreshRight, User } from "@element-plus/icons-vue";
+import { ElMessage } from "element-plus";
+import { clearWebviewCache } from "../../services/settings";
 import { useAuthStore } from "../../stores/auth";
 import { showError } from "../../utils/error";
 
@@ -21,6 +23,15 @@ async function logout() {
     await auth.logout();
   } catch (error) {
     showError(error);
+  }
+}
+
+async function clearImageCache() {
+  try {
+    await clearWebviewCache();
+    ElMessage.success("已清除 WebView 浏览数据");
+  } catch (error) {
+    showError(error, "清除图片缓存失败");
   }
 }
 </script>
@@ -47,6 +58,20 @@ async function logout() {
 
         <button v-if="auth.user" type="button" class="settings-row settings-row--danger" @click="logout">
           <span class="settings-row__content"><strong>退出登录</strong></span>
+          <el-icon class="settings-row__arrow"><ArrowRight /></el-icon>
+        </button>
+      </div>
+    </section>
+
+    <section class="settings-group" aria-labelledby="storage-settings-title">
+      <h2 id="storage-settings-title">存储</h2>
+      <div class="settings-list">
+        <button type="button" class="settings-row" @click="clearImageCache">
+          <el-icon class="settings-row__icon"><Delete /></el-icon>
+          <span class="settings-row__content">
+            <strong>清除 WebView 数据</strong>
+            <span class="settings-row__status">会清除图片缓存和阅读设置</span>
+          </span>
           <el-icon class="settings-row__arrow"><ArrowRight /></el-icon>
         </button>
       </div>

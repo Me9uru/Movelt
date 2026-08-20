@@ -1,5 +1,7 @@
 use serde::Serialize;
 
+use super::novel::ReadPosition;
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct MangaSummary {
@@ -31,6 +33,7 @@ pub(crate) struct MangaDetail {
     pub description: Option<String>,
     pub genre: Vec<String>,
     pub status: String,
+    pub read_position: Option<ReadPosition>,
     pub chapters: Vec<MangaChapter>,
 }
 
@@ -40,6 +43,7 @@ pub(crate) struct MangaPageList {
     pub chapter_id: String,
     pub page_count: i64,
     pub first_page_urls: Vec<String>,
+    pub read_position: Option<ReadPosition>,
 }
 
 #[derive(Debug, Clone, Serialize)]

@@ -29,5 +29,5 @@ export function getRank(days: number) { return command<NovelSummary[]>("get_rank
 export function searchByTags(query: string, page = 1) { return command<DiscoveryList>("search_novels", { query, pageNumber: page, tags: true }); }
 export function searchDiscovery(query: string, page = 1) { return command<DiscoveryList>("search_novels", { query, pageNumber: page, tags: false }); }
 export function getReaderOverview(_source: string, bookId: string) { return command<NovelOverview>("get_reader_overview", { bookId }); }
-export function getReaderDocument(_source: string, bookId: string, documentId: string) { return command<ReaderDocument>("get_reader_document", { bookId, documentId }); }
+export function getReaderDocument(_source: string, bookId: string, documentId: string, convert: "original" | "t2s" | "s2t" = "original") { return command<ReaderDocument>("get_reader_document", { bookId, documentId, convert: convert === "original" ? null : convert }); }
 export function saveReadPosition(bookId: string, chapterId: string, xpath: string) { return command<void>("save_read_position", { bookId, chapterId, xpath }); }

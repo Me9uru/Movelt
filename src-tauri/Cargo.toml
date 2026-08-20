@@ -24,7 +24,7 @@ flate2 = "1"
 tauri = { version = "2", features = [] }
 tauri-plugin-dev-invoke = "0.2"
 futures-util = "0.3"
-keyring = "3"
+tauri-plugin-movel-credentials = { path = "credential-store" }
 reqwest = { version = "0.12", default-features = false, features = ["gzip", "json", "rustls-tls"] }
 rmp-serde = "1"
 rmpv = { version = "1", features = ["with-serde"] }

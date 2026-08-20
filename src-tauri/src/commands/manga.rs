@@ -1,15 +1,16 @@
-use serde_json::{json, Value};
+use serde_json::Value;
 use tauri::State;
 
 use crate::{
     api::OfficialClient,
     dto::manga::{MangaChapter, MangaDetail, MangaPageBatch, MangaPageList, MangaSummary},
     error::{AppError, Result},
+    reader_cache::{neighbor_ids, ReaderCache},
 };
 
 use super::common::{
     array, books_for_ids, is_kind, manga, number, optional_html, optional_string, parse_id,
-    set_shelf, shelf_items, string,
+    position, set_shelf, shelf_items, string,
 };
 
 #[tauri::command]
@@ -19,27 +20,19 @@ pub(crate) async fn browse_manga(
     page_number: i64,
     browse_type: String,
 ) -> Result<Vec<MangaSummary>> {
-    let search = browse_type == "SEARCH" || browse_type == "TAGS";
-    let method = if search {
-        "SearchComicSeries"
-    } else {
-        "GetComicList"
-    };
-    let payload = if search {
-        json!({"KeyWords": query.unwrap_or_default(), "Page": page_number, "Size": 30, "Mode": if browse_type == "TAGS" { "tags" } else { "fuzzy" }})
-    } else {
-        json!({"Page": page_number, "Size": 30, "Order": if browse_type == "POPULAR" { "view" } else if browse_type == "NEW" { "new" } else { "latest" }})
-    };
-    Ok(array(&client.hub(method, payload).await?, "Data")
-        .iter()
-        .map(manga)
-        .collect())
+    Ok(array(
+        &client.manga_list(query, page_number, &browse_type).await?,
+        "Data",
+    )
+    .iter()
+    .map(manga)
+    .collect())
 }
 #[tauri::command]
 pub(crate) async fn list_manga_bookshelf(
     client: State<'_, OfficialClient>,
 ) -> Result<Vec<MangaSummary>> {
-    let shelf = client.hub("GetBookShelf", json!({})).await?;
+    let shelf = client.bookshelf().await?;
     let ids = shelf_items(&shelf)
         .into_iter()
         .filter(|item| is_kind(item, "COMIC"))
@@ -63,7 +56,7 @@ pub(crate) async fn is_on_manga_bookshelf(
     client: State<'_, OfficialClient>,
     manga_id: String,
 ) -> Result<bool> {
-    let shelf = client.hub("GetBookShelf", json!({})).await?;
+    let shelf = client.bookshelf().await?;
     let id = parse_id(&manga_id)?;
     Ok(shelf_items(&shelf)
         .iter()
@@ -80,11 +73,11 @@ pub(crate) async fn set_manga_bookshelf(
 #[tauri::command]
 pub(crate) async fn get_manga(
     client: State<'_, OfficialClient>,
+    cache: State<'_, ReaderCache>,
     manga_id: String,
+    current_chapter_id: Option<String>,
 ) -> Result<MangaDetail> {
-    let response = client
-        .hub("GetComicInfo", json!({"Id": parse_id(&manga_id)?}))
-        .await?;
+    let response = client.manga_info(parse_id(&manga_id)?).await?;
     let book = response
         .get("Book")
         .ok_or_else(|| AppError::InvalidResponse("漫画详情缺失".into()))?;
@@ -94,7 +87,7 @@ pub(crate) async fn get_manga(
     } else {
         chapters
     };
-    Ok(MangaDetail {
+    let detail = MangaDetail {
         summary: manga(book),
         artist: None,
         description: optional_html(book, "Introduction"),
@@ -109,6 +102,7 @@ pub(crate) async fn get_manga(
             })
             .unwrap_or_default(),
         status: optional_string(book, "LastUpdatedChapter").unwrap_or_default(),
+        read_position: position(response.get("ReadPosition")),
         chapters: chapters
             .iter()
             .map(|chapter| MangaChapter {
@@ -120,30 +114,108 @@ pub(crate) async fn get_manga(
                 page_count: number(chapter, "PageCount"),
             })
             .collect(),
-    })
+    };
+    let current_chapter_id = current_chapter_id
+        .or_else(|| {
+            detail
+                .read_position
+                .as_ref()
+                .map(|position| position.chapter_id.clone())
+        })
+        .or_else(|| detail.chapters.first().map(|chapter| chapter.id.clone()));
+    if let Some(current_chapter_id) = current_chapter_id {
+        preload_manga_neighbors(
+            client.inner().clone(),
+            cache.inner().clone(),
+            detail
+                .chapters
+                .iter()
+                .map(|chapter| chapter.id.clone())
+                .collect(),
+            current_chapter_id,
+        );
+    }
+    Ok(detail)
+}
+#[tauri::command]
+pub(crate) async fn save_manga_read_position(
+    client: State<'_, OfficialClient>,
+    manga_id: String,
+    chapter_id: String,
+    page: i64,
+) -> Result<()> {
+    if page < 1 {
+        return Err(AppError::InvalidResponse("无效的漫画页码".into()));
+    }
+    client
+        .save_manga_position(parse_id(&manga_id)?, parse_id(&chapter_id)?, page)
+        .await
 }
 #[tauri::command]
 pub(crate) async fn get_manga_chapter_pages(
     client: State<'_, OfficialClient>,
+    cache: State<'_, ReaderCache>,
     chapter_id: String,
 ) -> Result<MangaPageList> {
-    let response = client
-        .hub(
-            "GetComicContent",
-            json!({"Cid": parse_id(&chapter_id)?, "Skip": 0, "Take": 12}),
-        )
-        .await?;
+    if let Some(pages) = cache.manga_pages(&chapter_id) {
+        return Ok(pages);
+    }
+    let response = client.manga_content(parse_id(&chapter_id)?, 0).await?;
     let chapter = response
         .get("Chapter")
         .ok_or_else(|| AppError::InvalidResponse("漫画页面缺失".into()))?;
-    Ok(MangaPageList {
+    let pages = MangaPageList {
         chapter_id,
         page_count: number(chapter, "Total"),
         first_page_urls: array(chapter, "Images")
             .iter()
             .filter_map(|image| optional_string(image, "Url"))
             .collect(),
-    })
+        read_position: position(response.get("ReadPosition")),
+    };
+    cache.store_manga_pages(pages.clone());
+    Ok(pages)
+}
+
+async fn load_manga_chapter_pages(
+    client: &OfficialClient,
+    cache: &ReaderCache,
+    chapter_id: &str,
+) -> Result<MangaPageList> {
+    if let Some(pages) = cache.manga_pages(chapter_id) {
+        return Ok(pages);
+    }
+    let response = client.manga_content(parse_id(chapter_id)?, 0).await?;
+    let chapter = response
+        .get("Chapter")
+        .ok_or_else(|| AppError::InvalidResponse("漫画页面缺失".into()))?;
+    let pages = MangaPageList {
+        chapter_id: chapter_id.into(),
+        page_count: number(chapter, "Total"),
+        first_page_urls: array(chapter, "Images")
+            .iter()
+            .filter_map(|image| optional_string(image, "Url"))
+            .collect(),
+        read_position: position(response.get("ReadPosition")),
+    };
+    cache.store_manga_pages(pages.clone());
+    Ok(pages)
+}
+
+fn preload_manga_neighbors(
+    client: OfficialClient,
+    cache: ReaderCache,
+    chapter_ids: Vec<String>,
+    current_chapter_id: String,
+) {
+    let neighbors = neighbor_ids(&chapter_ids, &current_chapter_id);
+    tauri::async_runtime::spawn(async move {
+        for chapter_id in neighbors {
+            if cache.manga_pages(&chapter_id).is_none() {
+                let _ = load_manga_chapter_pages(&client, &cache, &chapter_id).await;
+            }
+        }
+    });
 }
 #[tauri::command]
 pub(crate) async fn get_manga_page_batch(
@@ -153,10 +225,7 @@ pub(crate) async fn get_manga_page_batch(
 ) -> Result<MangaPageBatch> {
     let start_index = page_index.div_euclid(12) * 12;
     let response = client
-        .hub(
-            "GetComicContent",
-            json!({"Cid": parse_id(&chapter_id)?, "Skip": start_index, "Take": 12}),
-        )
+        .manga_content(parse_id(&chapter_id)?, start_index)
         .await?;
     let chapter = response
         .get("Chapter")

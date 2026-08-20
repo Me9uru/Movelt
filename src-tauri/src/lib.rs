@@ -2,13 +2,24 @@ mod api;
 mod commands;
 mod dto;
 mod error;
+mod reader_cache;
+
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let client = api::OfficialClient::new().expect("failed to initialize official API client");
     tauri::Builder::default()
+        .plugin(tauri_plugin_movel_credentials::init())
         .plugin(tauri_plugin_dev_invoke::init())
-        .manage(client)
+        .setup(|app| {
+            use tauri_plugin_movel_credentials::CredentialStoreExt;
+
+            let client = api::OfficialClient::new(app.credential_store().clone())
+                .expect("failed to initialize official API client");
+            app.manage(client);
+            app.manage(reader_cache::ReaderCache::default());
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::user::login,
             commands::user::register,
@@ -31,6 +42,7 @@ pub fn run() {
             commands::manga::get_manga,
             commands::manga::get_manga_chapter_pages,
             commands::manga::get_manga_page_batch,
+            commands::manga::save_manga_read_position,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Movel");

@@ -8,9 +8,71 @@
 .reader-heading h1 { margin: 0; font-size: clamp(30px, 5vw, 42px); }
 .reader-content { padding: 0; font-family: var(--reader-font-family); }
 .reader-content :is(p, div, span, li, blockquote, h1, h2, h3, h4, h5, h6) { font-family: var(--reader-font-family); }
-.reader--chapter-font .reader-content, .reader--chapter-font .reader-content :is(p, div, span, li, blockquote, h1, h2, h3, h4, h5, h6) { font-family: "movel-chapter", var(--reader-font-family); }
-.reader-content p, .page-viewport p { margin: 0 0 var(--reader-paragraph-spacing); color: var(--reader-text); font-family: var(--reader-font-family); font-size: var(--reader-font-size); line-height: var(--reader-line-height); letter-spacing: var(--reader-letter-spacing); text-align: justify; overflow-wrap: anywhere; }
-.chapter-image, .reader-content img { display: block; width: auto; max-width: 100%; height: auto; max-height: 80vh; margin: var(--space-5) auto; object-fit: contain; break-inside: avoid; }
+.reader-content :is(.pius1, .ph4, .pius2, h4) { margin: .5em 0 1em; font-size: 1.5em; font-weight: 700; text-indent: 1.333em; }
+.reader-content h1 { margin: .1em 0 .4em; font-size: 1.65em; font-weight: 700; line-height: 1.2; text-align: center; }
+.reader-content h2 { margin: .3em 0 .5em; font-size: 1.25em; font-weight: 700; line-height: 1.2; text-align: center; }
+.reader-content h3 { margin: .2em 0; font-size: .95em; font-weight: 700; line-height: 1.2; text-align: center; text-indent: 0; }
+.reader--chapter-font .reader-content, .reader--chapter-font .reader-content :is(p, div, span, li, blockquote, h1, h2, h3, h4, h5, h6) { font-family: "movel-chapter", sans-serif; }
+.reader-content p, .page-viewport p { margin: 0 0 var(--reader-paragraph-spacing); color: var(--reader-text); font-family: var(--reader-font-family); font-size: var(--reader-font-size); line-height: var(--reader-line-height); letter-spacing: var(--reader-letter-spacing); text-align: start; overflow-wrap: anywhere; }
+.reader-content img { display: inline-block; width: auto; max-width: 100%; height: auto; max-height: 80vh; margin: 0 4px; object-fit: contain; vertical-align: middle; }
+.reader-content :is(.illus, .illu, .duokan-image-single) { display: flex; align-items: center; justify-content: center; gap: 2px; flex-wrap: wrap; break-inside: avoid; }
+.reader-content :is(.illus, .illu, .duokan-image-single) img { display: block; margin: var(--space-5) auto; cursor: zoom-in; box-shadow: 0 0 3px color-mix(in srgb, #000 55%, transparent); border: 1px solid var(--reader-border); }
+.reader-content :is(.illus, .illu, .duokan-image-single) img.no-preview { cursor: default; }
+.chapter-image { display: block; width: auto; max-width: 100%; height: auto; max-height: 80vh; margin: var(--space-5) auto; object-fit: contain; break-inside: avoid; }
+.reader-content a.duokan-footnote { color: var(--reader-accent); cursor: help; font-family: inherit; font-weight: 700; text-decoration: none; }
+.reader-content :is(.right, .author) { text-indent: 0; text-align: right; }
+.reader-content .left { text-indent: 0; text-align: left; }
+.reader-content .center { text-indent: 0; text-align: center; }
+.reader-content .zin { text-indent: 0; }
+.reader-content .bold { font-weight: 700; }
+.reader-content .ita { font-style: italic; }
+.reader-content .stress { margin-top: .3em; margin-bottom: .3em; font-size: 1.1em; font-weight: 700; }
+.reader-content .author { margin-right: 1em; font-size: 1.2em; font-style: italic; font-weight: 700; }
+.reader-content :is(.message, .cut-line, .meg) { text-indent: 0; }
+.reader-content :is(.message, .cut-line) { margin-top: .2em; margin-bottom: .2em; line-height: 1.2em; }
+.reader-content .meg { margin-top: .5em; font-size: 1.3em; line-height: 1.3em; }
+.reader-content .lh { line-height: 1em; }
+.reader-content .m0 { margin: 0; }
+.reader-content .p0 { padding: 0; }
+.reader-content .red { color: #f00; }
+.reader-content .green { color: #0a0; }
+.reader-content .blue { color: #00f; }
+.reader-content .black { color: #000; }
+.reader-content .white { color: #fff; }
+.reader-content .fl { float: left; }
+.reader-content .fr { float: right; }
+.reader-content .cl { clear: left; }
+.reader-content .cr { clear: right; }
+.reader-content .cb { clear: both; }
+.reader-content .vt { vertical-align: top; }
+.reader-content .vb { vertical-align: bottom; }
+.reader-content .vm { vertical-align: middle; }
+.reader-content :is(.dot, .em-dot) { text-emphasis: circle; text-emphasis-position: under right; }
+.reader-content .em05 { font-size: .5em; }
+.reader-content .em06 { font-size: .6em; }
+.reader-content .em07 { font-size: .7em; }
+.reader-content .em08 { font-size: .8em; }
+.reader-content .em09 { font-size: .9em; }
+.reader-content .em11 { font-size: 1.1em; }
+.reader-content .em12 { font-size: 1.2em; }
+.reader-content .em13 { font-size: 1.3em; }
+.reader-content .em14 { font-size: 1.4em; }
+.reader-content .em15 { font-size: 1.5em; }
+.reader-content .em16 { font-size: 1.6em; }
+.reader-content .em17 { font-size: 1.7em; }
+.reader-content .em18 { font-size: 1.8em; }
+.reader-content .em19 { font-size: 1.9em; }
+.reader-content .em20 { font-size: 2em; }
+.reader-content .em21 { font-size: 2.1em; }
+.reader-content .em22 { font-size: 2.2em; }
+.reader-content .em23 { font-size: 2.3em; }
+.reader-content .em24 { font-size: 2.4em; }
+.reader-content .em25 { font-size: 2.5em; }
+.reader-content .em26 { font-size: 2.6em; }
+.reader-content .em27 { font-size: 2.7em; }
+.reader-content .em28 { font-size: 2.8em; }
+.reader-content .em29 { font-size: 2.9em; }
+.reader-content .em30 { font-size: 3em; }
 .reader-body > .el-divider { margin: var(--space-8) 0 var(--space-5); border-color: var(--reader-border); }
 .reader-body > .el-divider .el-divider__text { color: var(--reader-muted); background: var(--reader-bg); }
 .reader-chapter-nav { position: fixed; top: 0; left: 50%; z-index: 2001; display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px; align-items: center; gap: 14px; width: min(620px, calc(100% - 40px)); min-height: calc(58px + env(safe-area-inset-top)); padding: calc(8px + env(safe-area-inset-top)) 12px 8px; border: 1px solid var(--color-border-strong); border-top: 0; border-radius: 0 0 var(--radius-card) var(--radius-card); background: var(--color-surface-glass); box-shadow: var(--shadow-floating); backdrop-filter: blur(18px); transform: translateX(-50%); }

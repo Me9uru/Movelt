@@ -3,6 +3,8 @@ import { computed, reactive, watch } from "vue";
 export type ReaderTheme = "paper" | "light" | "night";
 export type ReaderFont = "serif" | "sans";
 export type ReaderMode = "scroll" | "paged";
+export type PageTurnDirection = "left-previous" | "left-next";
+export type ReaderConvert = "original" | "t2s" | "s2t";
 
 export interface ReaderSettings {
   fontSize: number;
@@ -13,6 +15,8 @@ export interface ReaderSettings {
   font: ReaderFont;
   theme: ReaderTheme;
   mode: ReaderMode;
+  pageTurnDirection: PageTurnDirection;
+  convert: ReaderConvert;
 }
 
 const storageKey = "novel.reader.settings.v1";
@@ -25,12 +29,23 @@ const defaults: ReaderSettings = {
   font: "serif",
   theme: "light",
   mode: "scroll",
+  pageTurnDirection: "left-previous",
+  convert: "original",
 };
 
 function loadSettings(): ReaderSettings {
   try {
     const saved = JSON.parse(localStorage.getItem(storageKey) ?? "{}") as Partial<ReaderSettings>;
-    return { ...defaults, ...saved };
+    return {
+      ...defaults,
+      ...saved,
+      pageTurnDirection: saved.pageTurnDirection === "left-next"
+        ? "left-next"
+        : "left-previous",
+      convert: saved.convert === "t2s" || saved.convert === "s2t"
+        ? saved.convert
+        : "original",
+    };
   } catch {
     return { ...defaults };
   }
