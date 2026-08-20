@@ -17,7 +17,7 @@
 
 ## 关于 Movel
 
-Movel 是 [LightNovel 轻书架](https://lightnovel.life/) 的非官方第三方客户端。前端提供轻盈、响应式的阅读界面；Rust 后端作为官方 API 的客户端边界，负责认证、请求、响应校验与领域 DTO 映射；两端通过 Tauri IPC 通信。
+Movel 是 [LightNovel 轻书架](https://www.lightnovel.life/) 的非官方第三方客户端。前端提供轻盈、响应式的阅读界面；Rust 后端作为官方 API 的客户端边界，负责认证、请求、响应校验与领域 DTO 映射；两端通过 Tauri IPC 通信。
 
 > [!WARNING]
 > 项目目前处于快速迭代阶段。功能、界面与数据契约可能随版本调整；欢迎通过 Issue 反馈问题和建议。
@@ -66,19 +66,6 @@ Movel 是 [LightNovel 轻书架](https://lightnovel.life/) 的非官方第三方
 - Tokio Tungstenite：SignalR WebSocket 通信
 - Keyring：系统凭据库中的刷新凭据存储
 - Serde / Thiserror：数据序列化与结构化错误处理
-
-## 架构
-
-```mermaid
-flowchart LR
-    UI[Vue 3 界面] -->|Tauri IPC| CMD[Rust Commands]
-    CMD --> API[官方 API 客户端]
-    API --> AUTH[认证与令牌刷新]
-    API --> DTO[响应校验与 DTO 映射]
-    API --> WEB[LightNovel 轻书架服务]
-```
-
-小说与漫画使用独立的命令和 DTO 流程；前端仅渲染应用领域模型，避免耦合官方上游协议。
 
 ## 快速开始
 
