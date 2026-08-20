@@ -2,15 +2,17 @@
 defineProps<{
   visible: boolean;
   label: string;
+  inline?: boolean;
 }>();
 </script>
 
 <template>
-  <Teleport to="body">
+  <Teleport to="body" :disabled="inline">
     <Transition name="loading-fade">
       <div
         v-if="visible"
         class="loading-overlay"
+        :class="{ 'loading-overlay--inline': inline }"
         role="status"
         aria-live="polite"
         :aria-label="label"
@@ -59,6 +61,16 @@ defineProps<{
   stroke-linejoin: round;
   stroke-dasharray: 90 150;
   animation: loading-dash 1.5s ease-in-out infinite;
+}
+
+.loading-overlay--inline {
+  position: static;
+  z-index: auto;
+  min-height: 280px;
+  background: transparent;
+  cursor: wait;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 .loading-fade-enter-active,

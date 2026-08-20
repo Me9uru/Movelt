@@ -1,0 +1,26 @@
+[[permission]]
+identifier = "allow-official-api"
+description = "Allows the window to invoke Movel's typed official API commands."
+commands.allow = [
+  "login",
+  "register",
+  "send_register_email",
+  "restore_user",
+  "logout",
+  "get_latest",
+  "get_ranking",
+  "get_rank",
+  "search_novels",
+  "get_reader_overview",
+  "get_reader_document",
+  "save_read_position",
+  "list_bookshelf",
+  "set_novel_bookshelf",
+  "browse_manga",
+  "list_manga_bookshelf",
+  "is_on_manga_bookshelf",
+  "set_manga_bookshelf",
+  "get_manga",
+  "get_manga_chapter_pages",
+  "get_manga_page_batch",
+]

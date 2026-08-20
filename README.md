@@ -3,9 +3,9 @@
 
 # Movel
 
-**简洁、舒适、专注于阅读体验的跨平台轻小说阅读器**
+**LightNovel 轻书架的非官方第三方客户端**
 
-基于 Tauri 2、Vue 3 与 Rust 构建，在原生应用的轻量体验中，完成小说搜索、收藏与沉浸式阅读。
+基于 Tauri 2、Vue 3 与 Rust 构建，提供小说与漫画浏览、书架、阅读和官方账号同步能力。
 
 [![Tauri](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white)](https://tauri.app/)
 [![Vue.js](https://img.shields.io/badge/Vue.js-3-42B883?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
@@ -17,21 +17,25 @@
 
 ## 关于 Movel
 
-Movel 是一款桌面轻小说阅读器。前端负责轻盈、响应式的阅读界面，Rust 后端负责书源访问、内容解析、本地数据持久化与缓存；两端通过 Tauri IPC 直接通信，正式版本无需额外启动本地 HTTP 服务。
+Movel 是 [LightNovel 轻书架](https://lightnovel.life/) 的非官方第三方客户端。前端提供轻盈、响应式的阅读界面；Rust 后端作为官方 API 的客户端边界，负责认证、请求、响应校验与领域 DTO 映射；两端通过 Tauri IPC 通信。
 
-目前内置两个书源，并通过统一的书源接口将内容转换为与来源无关的阅读文档，便于继续扩展新的网络书源或本地格式。
+> [!WARNING]
+> 项目目前处于快速迭代阶段。功能、界面与数据契约可能随版本调整；欢迎通过 Issue 反馈问题和建议。
+
+## 界面预览
+
+![小说首页：推荐、排行榜与分类浏览](docs/images/novels-overview.webp)
 
 ## 功能
 
-- **多书源搜索**：按书名或作者检索作品，可在不同书源间快速切换。
-- **作品详情与目录**：展示封面、作者、状态、简介、更新时间以及分卷章节目录。
-- **本地书架**：收藏喜欢的作品，并按最近阅读时间自动排序。
-- **阅读进度同步**：自动保存章节与阅读位置，再次打开即可继续阅读。
+- **小说与漫画浏览**：推荐、排行榜、分类和关键词搜索。
+- **作品详情与目录**：查看封面、作者、状态、简介、标签及章节目录。
+- **官方书架与账号**：登录后同步小说、漫画收藏与阅读进度。
+- **沉浸式阅读**：支持小说章节阅读与漫画章节阅读。
 - **两种阅读模式**：支持连续滚动与分页阅读；横屏宽屏下可自动使用双页布局。
 - **丰富的阅读设置**：自由调整字体、字号、行距、字距、段距与正文宽度。
 - **三套阅读主题**：纸张、明亮与夜间主题，设置会自动保存在本地。
 - **便捷翻页操作**：分页模式支持按钮、键盘方向键、空格键与触摸滑动。
-- **章节智能预取**：阅读时预取后续章节，并使用内存 LRU 缓存减少等待。
 - **响应式界面**：适配桌面与窄屏窗口，并支持 Android 返回行为。
 
 ## 特点
@@ -39,9 +43,9 @@ Movel 是一款桌面轻小说阅读器。前端负责轻盈、响应式的阅�
 | 特点 | 说明 |
 | --- | --- |
 | 轻量原生 | Tauri 使用系统 WebView，相比捆绑完整浏览器内核拥有更小的应用体积。 |
-| Rust 驱动 | 网络请求、HTML 解析、缓存与持久化均在 Rust 侧完成。 |
-| 数据留在本地 | 书架和阅读进度保存在应用数据目录中的 SQLite 数据库。 |
-| 书源解耦 | 各书源实现统一接口，UI 只消费通用领域模型，不依赖具体提供方。 |
+| Rust 驱动 | 官方 API 访问、认证、响应校验和 DTO 映射均在 Rust 侧完成。 |
+| 官方服务同步 | 认证、书架、阅读位置与内容由 LightNovel 轻书架服务维护。 |
+| 清晰边界 | UI 只调用类型化 Tauri commands，不处理上游 URL、令牌或响应解析。 |
 | 阅读优先 | 界面使用克制的暖色视觉、响应式排版与可定制阅读参数。 |
 | 开发友好 | Debug 模式提供仅监听 localhost 的浏览器调用桥，方便使用 Chrome DevTools 调试。 |
 
@@ -59,8 +63,8 @@ Movel 是一款桌面轻小说阅读器。前端负责轻盈、响应式的阅�
 - [Tauri 2](https://tauri.app/)：窗口、IPC 与跨平台应用打包
 - [Rust](https://www.rust-lang.org/) + Tokio：业务逻辑与异步任务
 - [Reqwest](https://docs.rs/reqwest/)：HTTP 请求与压缩传输
-- [Scraper](https://docs.rs/scraper/)：HTML 内容解析
-- [SQLite](https://www.sqlite.org/) + Rusqlite：书架和阅读进度持久化
+- Tokio Tungstenite：SignalR WebSocket 通信
+- Keyring：系统凭据库中的刷新凭据存储
 - Serde / Thiserror：数据序列化与结构化错误处理
 
 ## 架构
@@ -68,15 +72,13 @@ Movel 是一款桌面轻小说阅读器。前端负责轻盈、响应式的阅�
 ```mermaid
 flowchart LR
     UI[Vue 3 界面] -->|Tauri IPC| CMD[Rust Commands]
-    CMD --> LIB[本地书架与进度]
-    LIB --> DB[(SQLite)]
-    CMD --> CORE[统一小说领域层]
-    CORE --> CACHE[章节缓存与预取]
-    CORE --> BILI[小说适配器]
-    BILI --> WEB[远程内容服务]
+    CMD --> API[官方 API 客户端]
+    API --> AUTH[认证与令牌刷新]
+    API --> DTO[响应校验与 DTO 映射]
+    API --> WEB[LightNovel 轻书架服务]
 ```
 
-项目中的内容会先转换为统一的 `ReaderDocument`，阅读器组件无需了解数据来自 EPUB、TXT 还是网络书源。这让 UI、内容解析和传输逻辑可以独立演进。
+小说与漫画使用独立的命令和 DTO 流程；前端仅渲染应用领域模型，避免耦合官方上游协议。
 
 ## 快速开始
 
@@ -139,22 +141,23 @@ pnpm tauri dev
 ```text
 Movel/
 ├── src/
-│   ├── components/       # Vue 组件与阅读器
-│   ├── composables/      # 书架、阅读设置等状态逻辑
-│   ├── domain/           # 与书源无关的前端领域模型
-│   ├── services/         # Tauri IPC 服务封装
-│   └── sources/          # 阅读文档数据源适配
+│   ├── components/       # Vue 组件
+│   ├── pages/            # 小说、漫画、阅读器与设置页面
+│   ├── services/         # 类型化 Tauri command 调用封装
+│   └── stores/           # 前端应用状态
 ├── src-tauri/
 │   ├── capabilities/     # 最小化的 Tauri 权限配置
 │   └── src/
-│       ├── novel/        # 书源、解析器、缓存与领域模型
-│       └── library.rs    # SQLite 书架与阅读进度
+│       ├── api.rs        # 官方 API 客户端、认证与请求处理
+│       ├── commands/     # 小说、漫画、书架与用户命令
+│       └── dto/          # 上游与命令 DTO
+├── docs/images/          # README 展示图片
 └── scripts/              # 开发与平台同步脚本
 ```
 
 ## 声明
 
-Movel 仅作为技术学习与个人阅读工具。作品内容、封面及相关信息均来自对应的第三方书源，其版权归原作者及权利人所有。请遵守当地法律法规与内容提供方的使用条款，支持正版阅读。
+Movel 是独立开发的非官方客户端，与 LightNovel 轻书架及其运营方没有隶属或授权关系。作品内容、封面与相关信息均由服务提供方提供，其版权归原作者及权利人所有。请遵守当地法律法规与服务使用条款，支持正版阅读。
 
 ## 开源协议
 

@@ -49,8 +49,8 @@ const style = computed(() => ({
   "--reader-paragraph-spacing": `${settings.paragraphSpacing}em`,
   "--reader-width": `${settings.contentWidth}px`,
   "--reader-font-family": settings.font === "serif"
-    ? 'Georgia, "Noto Serif SC", "Songti SC", serif'
-    : 'Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif',
+    ? '"Noto Serif CJK SC", "Noto Serif CJK TC", "Source Han Serif SC", "Source Han Serif TC", "Songti SC", "STSong", "SimSun", serif'
+    : '"Noto Sans CJK SC", "Noto Sans CJK TC", "Source Han Sans CN", "Source Han Sans TC", "Microsoft YaHei", "PingFang SC", sans-serif',
 }));
 
 function reset() {

@@ -1,20 +1,21 @@
 <script setup lang="ts">
 import { nextTick, ref, watch } from "vue";
 import { Search } from "@element-plus/icons-vue";
-import { categoryPresets, rankingSorts } from "../../composables/useDiscovery";
+import { categoryPresets, rankingPeriods } from "../../composables/useDiscovery";
 import type {
-  DiscoveryList, NovelSummary, RankingSort, RecommendBlock,
+  DiscoveryList, NovelSummary, RecommendBlock,
 } from "../../services/novel";
 import BookGrid from "../../components/library/BookGrid.vue";
 import BookSearchBar from "../../components/common/BookSearchBar.vue";
+import ErrorState from "../../components/common/ErrorState.vue";
 
 const props = defineProps<{
   unavailableMessage: string;
   recommendations: RecommendBlock[];
-  ranking: DiscoveryList | null;
+  ranking: NovelSummary[] | null;
   category: DiscoveryList | null;
   searchResult: DiscoveryList | null;
-  rankingSort: RankingSort;
+  rankingDays: number;
   categoryTag: string;
   customTag: string;
   searchQuery: string;
@@ -25,12 +26,12 @@ const props = defineProps<{
 const emit = defineEmits<{
   initialize: [];
   retryRecommendations: [];
-  loadRanking: [page: number];
+  loadRanking: [days?: number];
   loadCategory: [page: number];
   search: [page: number];
   selectCategory: [tag: string];
   openNovel: [novel: NovelSummary];
-  "update:rankingSort": [value: RankingSort];
+  "update:rankingDays": [value: number];
   "update:customTag": [value: string];
   "update:searchQuery": [value: string];
 }>();
@@ -78,6 +79,13 @@ function submitSearch() {
   });
 }
 
+function selectRankingPeriod(days: number) {
+  if (days === props.rankingDays) return;
+
+  emit("update:rankingDays", days);
+  emit("loadRanking", days);
+}
+
 function handleTouchStart(event: TouchEvent) {
   if (event.touches.length !== 1) {
     touchStart = null;
@@ -108,12 +116,13 @@ function handleTouchEnd(event: TouchEvent) {
 }
 
 watch(activeTab, (tab) => {
-  if (tab === "ranking" && !props.ranking && !props.loading.ranking && !props.errors.ranking) {
-    emit("loadRanking", 1);
-  } else if (tab === "category" && !props.category && !props.loading.category && !props.errors.category) {
-    emit("loadCategory", 1);
+  if (tab === "recommend" && props.recommendations.length === 0 && !props.loading.recommend && !props.errors.recommend) {
+    emit("retryRecommendations");
   }
-});
+  if (tab === "ranking" && !props.ranking && !props.loading.ranking && !props.errors.ranking) {
+    emit("loadRanking");
+  }
+}, { immediate: true });
 </script>
 
 <template>
@@ -140,11 +149,7 @@ watch(activeTab, (tab) => {
       @touchcancel="touchStart = null"
     >
       <el-tab-pane label="推荐" name="recommend" lazy>
-        <div v-if="errors.recommend" class="region-state">
-          <el-result icon="error" title="推荐加载失败" :sub-title="errors.recommend">
-            <template #extra><el-button @click="emit('retryRecommendations')">重试</el-button></template>
-          </el-result>
-        </div>
+        <ErrorState v-if="errors.recommend" title="推荐加载失败" :message="errors.recommend" :loading="loading.recommend" @retry="emit('retryRecommendations')" />
         <BookGrid v-else-if="loading.recommend" :books="[]" loading />
         <el-empty v-else-if="recommendations.length === 0" description="暂无推荐内容" />
         <section v-for="block in recommendations" v-else :key="block.title" class="discovery-block">
@@ -154,36 +159,35 @@ watch(activeTab, (tab) => {
       </el-tab-pane>
 
       <el-tab-pane label="排行榜" name="ranking" lazy>
-        <div class="discovery-controls">
-          <el-select
-            :model-value="rankingSort"
-            aria-label="榜单排序"
-            @update:model-value="emit('update:rankingSort', $event); emit('loadRanking', 1)"
-          >
-            <el-option v-for="sort in rankingSorts" :key="sort.value" :label="sort.label" :value="sort.value" />
-          </el-select>
-        </div>
-        <el-result v-if="errors.ranking" icon="error" title="榜单加载失败" :sub-title="errors.ranking">
-          <template #extra><el-button @click="emit('loadRanking', ranking?.pagination.page || 1)">重试</el-button></template>
-        </el-result>
-        <BookGrid v-else :books="ranking?.items || []" :loading="loading.ranking" @open-novel="emit('openNovel', $event)" />
-        <el-empty v-if="!loading.ranking && !errors.ranking && ranking?.items.length === 0" description="这个榜单还没有作品" />
-        <el-pagination v-if="ranking && ranking.pagination.last > 1" class="discovery-pagination" background layout="prev, pager, next"
-          :current-page="ranking.pagination.page" :page-count="ranking.pagination.last" @current-change="emit('loadRanking', $event)" />
+        <el-tabs
+          class="ranking-period-tabs"
+          :model-value="String(rankingDays)"
+          aria-label="榜单时间范围"
+          @update:model-value="selectRankingPeriod(Number($event))"
+        >
+          <el-tab-pane
+            v-for="period in rankingPeriods"
+            :key="period.value"
+            :label="period.label"
+            :name="String(period.value)"
+          />
+        </el-tabs>
+        <ErrorState v-if="errors.ranking" title="榜单加载失败" :message="errors.ranking" :loading="loading.ranking" @retry="emit('loadRanking')" />
+        <BookGrid v-else :books="ranking || []" :loading="loading.ranking" @open-novel="emit('openNovel', $event)" />
+        <el-empty v-if="!loading.ranking && !errors.ranking && ranking?.length === 0" description="这个榜单还没有作品" />
       </el-tab-pane>
 
       <el-tab-pane label="分类" name="category" lazy>
         <div class="category-presets">
-          <el-check-tag v-for="tag in categoryPresets" :key="tag" :checked="!customTag && categoryTag === tag" @change="emit('selectCategory', tag)">{{ tag }}</el-check-tag>
+          <el-check-tag v-for="tag in categoryPresets" :key="tag" :checked="categoryTag === tag" @change="emit('selectCategory', tag)">{{ tag }}</el-check-tag>
         </div>
         <div class="discovery-controls">
-          <el-input :model-value="customTag" maxlength="40" clearable placeholder="自定义标签"
+          <el-input :model-value="customTag" maxlength="40" clearable placeholder="输入标签，多个标签用逗号分隔"
             @update:model-value="emit('update:customTag', $event)" @keyup.enter="emit('loadCategory', 1)" />
           <el-button type="primary" @click="emit('loadCategory', 1)">查看分类</el-button>
         </div>
-        <el-result v-if="errors.category" icon="error" title="分类加载失败" :sub-title="errors.category">
-          <template #extra><el-button @click="emit('loadCategory', category?.pagination.page || 1)">重试</el-button></template>
-        </el-result>
+        <ErrorState v-if="errors.category" title="分类加载失败" :message="errors.category" :loading="loading.category" @retry="emit('loadCategory', category?.pagination.page || 1)" />
+        <p v-if="!category && !loading.category" class="empty-tip">选择常用标签，或输入一个或多个标签开始筛选。</p>
         <BookGrid v-else :books="category?.items || []" :loading="loading.category" @open-novel="emit('openNovel', $event)" />
         <el-empty v-if="!loading.category && !errors.category && category?.items.length === 0" description="这个分类还没有作品" />
         <el-pagination v-if="category && category.pagination.last > 1" class="discovery-pagination" background layout="prev, pager, next"
@@ -194,9 +198,7 @@ watch(activeTab, (tab) => {
         <template #label>
           <el-icon class="library-search-trigger discovery-search-trigger" aria-label="搜索作品"><Search /></el-icon>
         </template>
-        <el-result v-if="errors.search" icon="error" title="搜索失败" :sub-title="errors.search">
-          <template #extra><el-button @click="emit('search', searchResult?.pagination.page || 1)">重试</el-button></template>
-        </el-result>
+        <ErrorState v-if="errors.search" title="搜索失败" :message="errors.search" :loading="loading.search" @retry="emit('search', searchResult?.pagination.page || 1)" />
         <BookGrid v-else-if="searchResult || loading.search" :books="searchResult?.items || []" :loading="loading.search" @open-novel="emit('openNovel', $event)" />
         <el-empty v-if="searchResult && !loading.search && !errors.search && searchResult.items.length === 0" description="没有找到匹配的作品" />
         <el-empty v-else-if="!searchResult && !loading.search" description="输入书名开始搜索" />

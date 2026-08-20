@@ -6,5 +6,6 @@ export interface ReaderDocument {
   serverChapterId: string;
   title: string;
   html: string;
+  fontUrl: string | null;
   readPosition: { chapterId: string; position: string } | null;
 }

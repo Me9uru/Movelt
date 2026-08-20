@@ -1,5 +1,5 @@
 :root {
-  font-family: Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  font-family: Inter, "Source Han Sans CN", "Noto Sans SC", "Microsoft YaHei", sans-serif;
   color: #1d3652;
   background: #f3f8fd;
   font-synthesis: none;
@@ -29,9 +29,9 @@
   --shadow-soft: 0 8px 22px rgb(36 98 145 / 8%);
   --shadow-panel: 0 18px 44px rgb(36 98 145 / 10%);
   --shadow-floating: 0 10px 28px rgb(36 98 145 / 16%);
-  --radius-control: 9px;
-  --radius-card: 14px;
-  --radius-panel: 20px;
+  --radius-control: 8px;
+  --radius-card: 16px;
+  --radius-panel: 24px;
   --radius-pill: 999px;
 
   /* Layout rhythm: use these tokens for all spatial relationships. */

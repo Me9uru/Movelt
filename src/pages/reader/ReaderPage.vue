@@ -31,6 +31,7 @@ const pageCount = ref(1);
 const isSpread = ref(false);
 const settingsVisible = ref(false);
 let resizeObserver: ResizeObserver | undefined;
+let contentResizeObserver: ResizeObserver | undefined;
 let spreadQuery: MediaQueryList | undefined;
 let pointerStartX: number | null = null;
 let suppressReaderClickUntil = 0;
@@ -42,6 +43,18 @@ let pageLocation = 0;
 let hasRestoredScroll = false;
 let hasRestoredPage = false;
 let nextChapterRequested = false;
+const chapterFontStyle = document.createElement("style");
+document.head.append(chapterFontStyle);
+
+function loadChapterFont(fontUrl: string | null): void {
+  chapterFontStyle.textContent = fontUrl
+    ? `@font-face { font-family: "movel-chapter"; font-display: block; src: url(${JSON.stringify(fontUrl)}); }`
+    : "";
+  void document.fonts.ready.then(() => {
+    observeChapterContent();
+    updatePagination(true);
+  });
+}
 
 const pageLabel = computed(() => `${currentPage.value + 1} / ${pageCount.value}`);
 
@@ -94,6 +107,18 @@ function updatePagination(resetPage = false) {
       performPagination(shouldReset);
     });
   });
+}
+
+function observeChapterContent() {
+  const content = readerContent.value;
+  if (!content) return;
+  contentResizeObserver?.disconnect();
+  contentResizeObserver?.observe(content);
+  content.querySelectorAll("img").forEach((image) => contentResizeObserver?.observe(image));
+}
+
+function handleChapterImageLoad(event: Event) {
+  if (event.target instanceof HTMLImageElement) updatePagination();
 }
 
 function cancelPaginationUpdate() {
@@ -254,9 +279,14 @@ watch(() => props.document, () => {
   nextChapterRequested = false;
   hasRestoredPage = false;
   pageLocation = clampLocation(props.initialProgress?.location ?? 0);
-  updatePagination(true);
-  void nextTick(restoreServerPosition);
-});
+  void nextTick(() => {
+    observeChapterContent();
+    updatePagination(true);
+    restoreServerPosition();
+  });
+}, { immediate: true });
+
+watch(() => props.document.fontUrl, loadChapterFont, { immediate: true });
 
 watch(() => settings.mode, (mode) => {
   if (mode === "scroll") {
@@ -273,10 +303,12 @@ onMounted(() => {
   updateSpread();
   spreadQuery.addEventListener("change", updateSpread);
   resizeObserver = new ResizeObserver(() => updatePagination());
+  contentResizeObserver = new ResizeObserver(() => updatePagination());
   if (pageViewport.value) resizeObserver.observe(pageViewport.value);
   window.addEventListener("keydown", handleKeydown);
   window.addEventListener("scroll", handleScroll, { passive: true });
   updatePagination(true);
+  void nextTick(observeChapterContent);
   restoreScrollProgress();
   void nextTick(restoreServerPosition);
 });
@@ -285,9 +317,11 @@ onBeforeUnmount(() => {
   cancelPaginationUpdate();
   spreadQuery?.removeEventListener("change", updateSpread);
   resizeObserver?.disconnect();
+  contentResizeObserver?.disconnect();
   window.removeEventListener("keydown", handleKeydown);
   window.removeEventListener("scroll", handleScroll);
   if (scrollTimer !== null) window.clearTimeout(scrollTimer);
+  chapterFontStyle.remove();
   if (settings.mode === "scroll") recordScrollProgress();
 });
 </script>
@@ -296,7 +330,11 @@ onBeforeUnmount(() => {
   <article
     ref="readerRoot"
     class="reader"
-    :class="[`reader--${settings.theme}`, `reader--${settings.mode}`]"
+    :class="[
+      `reader--${settings.theme}`,
+      `reader--${settings.mode}`,
+      { 'reader--chapter-font': Boolean(document.fontUrl) },
+    ]"
     :style="style"
     @click="handleReaderClick"
   >
@@ -329,7 +367,7 @@ onBeforeUnmount(() => {
         <h1>{{ document.title }}</h1>
       </header>
 
-      <div ref="readerContent" class="reader-content" v-html="document.html" />
+      <div ref="readerContent" class="reader-content" v-html="document.html" @load.capture="handleChapterImageLoad" />
 
       <el-divider>本章结束</el-divider>
     </div>
@@ -347,7 +385,7 @@ onBeforeUnmount(() => {
         <header class="paged-heading">
           <h1>{{ document.title }}</h1>
         </header>
-        <div ref="readerContent" class="reader-content" v-html="document.html" />
+        <div ref="readerContent" class="reader-content" v-html="document.html" @load.capture="handleChapterImageLoad" />
         <p class="chapter-end">— 本章结束 —</p>
       </div>
 

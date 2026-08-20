@@ -1,6 +1,7 @@
 package com.meguru.movel
 
 import android.os.Bundle
+import android.view.WindowManager
 import android.webkit.WebView
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.OnBackPressedCallback
@@ -8,6 +9,7 @@ import androidx.activity.OnBackPressedCallback
 class MainActivity : TauriActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
+    window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
     super.onCreate(savedInstanceState)
   }
 

@@ -1,13 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { RouterView, useRoute, useRouter } from "vue-router";
-import {
-  ArrowLeft,
-  Collection,
-  Compass,
-  Picture,
-  User,
-} from "@element-plus/icons-vue";
+import { ArrowLeft } from "@element-plus/icons-vue";
 import {
   getReaderDocument,
   getReaderOverview,
@@ -19,11 +13,15 @@ import {
 } from "./services/novel";
 import type { ReaderDocument } from "./domain/reader";
 import type { BookshelfEntry } from "./services/library";
+import { listMangaBookshelf, type MangaSummary } from "./services/manga";
 import LoadingOverlay from "./components/common/LoadingOverlay.vue";
+import AuthDialog from "./components/auth/AuthDialog.vue";
+import MainNavigation from "./components/layout/MainNavigation.vue";
 import { useLibrary } from "./composables/useLibrary";
 import { useDiscovery } from "./composables/useDiscovery";
-import { login, logout, restoreUser, type LightNovelUser } from "./services/auth";
+import { useAuthStore } from "./stores/auth";
 import type { AppRouteName, LibraryRouteName } from "./router";
+import { showError } from "./utils/error";
 
 type LoadingAction = "novel" | "chapter" | "bookshelf";
 
@@ -31,12 +29,17 @@ const route = useRoute();
 const router = useRouter();
 const view = computed<AppRouteName>(() => {
   const routeName = route.name;
-  return routeName === "bookshelf" || routeName === "detail" || routeName === "reader"
-    || routeName === "manga" || routeName === "manga-detail" || routeName === "manga-reader"
+  return routeName === "bookshelf" ||
+    routeName === "detail" ||
+    routeName === "reader" ||
+    routeName === "manga" ||
+    routeName === "manga-detail" ||
+    routeName === "manga-reader" ||
+    routeName === "settings"
     ? routeName
-    : "discovery";
+    : "novels";
 });
-const lastLibraryView = ref<LibraryRouteName>("discovery");
+const lastLibraryView = ref<LibraryRouteName>("novels");
 const detail = ref<NovelDetail | null>(null);
 const catalogue = ref<Volume[]>([]);
 const readerDocument = ref<ReaderDocument | null>(null);
@@ -44,25 +47,47 @@ const currentChapterId = ref<string | null>(null);
 const resumeChapterId = ref<string | null>(null);
 const loading = ref(false);
 const loadingAction = ref<LoadingAction | null>(null);
-const bookshelfLoading = ref(true);
 const bookshelfQuery = ref("");
 const bookshelfResults = ref<BookshelfEntry[] | null>(null);
-const errorMessage = ref("");
-const user = ref<LightNovelUser | null>(null);
+const mangaBooks = ref<MangaSummary[]>([]);
+const bookshelfKind = ref<"novel" | "manga">("novel");
+const novelBookshelfLoading = ref(false);
+const novelBookshelfLoaded = ref(false);
+const mangaBookshelfLoading = ref(false);
+const mangaBookshelfLoaded = ref(false);
 const loginVisible = ref(false);
-const loginEmail = ref("");
-const loginPassword = ref("");
-const loginLoading = ref(false);
+const auth = useAuthStore();
 const discovery = useDiscovery();
-const {
-  books,
-  refreshBooks,
-  searchBooks,
-  addBook,
-  removeBook,
-  isOnBookshelf,
-} = useLibrary();
+const { books, refreshBooks, searchBooks, addBook, removeBook, isOnBookshelf } =
+  useLibrary();
 const visibleBooks = computed(() => bookshelfResults.value ?? books.value);
+const bookshelfLoading = computed(
+  () => novelBookshelfLoading.value || mangaBookshelfLoading.value,
+);
+
+async function refreshNovelBookshelf() {
+  if (novelBookshelfLoading.value || novelBookshelfLoaded.value) return;
+
+  novelBookshelfLoading.value = true;
+  try {
+    await refreshBooks();
+    novelBookshelfLoaded.value = true;
+  } finally {
+    novelBookshelfLoading.value = false;
+  }
+}
+
+async function refreshMangaBookshelf() {
+  if (mangaBookshelfLoading.value || mangaBookshelfLoaded.value) return;
+
+  mangaBookshelfLoading.value = true;
+  try {
+    mangaBooks.value = await listMangaBookshelf();
+    mangaBookshelfLoaded.value = true;
+  } finally {
+    mangaBookshelfLoading.value = false;
+  }
+}
 
 function collectChapterIds(volumes: Volume[]): string[] {
   return volumes.flatMap((volume) => [
@@ -75,14 +100,18 @@ const chapterIds = computed(() => collectChapterIds(catalogue.value));
 const previousChapterId = computed(() => {
   if (!currentChapterId.value) return null;
   const currentIndex = chapterIds.value.indexOf(currentChapterId.value);
-  return currentIndex > 0 ? chapterIds.value[currentIndex - 1] ?? null : null;
+  return currentIndex > 0 ? (chapterIds.value[currentIndex - 1] ?? null) : null;
 });
 const nextChapterId = computed(() => {
   if (!currentChapterId.value) return null;
   const currentIndex = chapterIds.value.indexOf(currentChapterId.value);
-  return currentIndex >= 0 ? chapterIds.value[currentIndex + 1] ?? null : null;
+  return currentIndex >= 0
+    ? (chapterIds.value[currentIndex + 1] ?? null)
+    : null;
 });
-const onBookshelf = computed(() => detail.value ? isOnBookshelf(detail.value) : false);
+const onBookshelf = computed(() =>
+  detail.value ? isOnBookshelf(detail.value) : false,
+);
 const loadingCopy = computed(() => {
   switch (loadingAction.value) {
     case "novel":
@@ -95,41 +124,31 @@ const loadingCopy = computed(() => {
       return { title: "正在加载", hint: "请稍候" };
   }
 });
-const showLoadingOverlay = computed(() =>
-  loading.value || (view.value === "bookshelf" && bookshelfLoading.value),
+const showLoadingOverlay = computed(
+  () => loading.value,
 );
-const loadingLabel = computed(() =>
-  bookshelfLoading.value && view.value === "bookshelf"
-    ? "正在加载书架"
-    : loadingCopy.value.title,
+const contentLoading = computed(
+  () => loading.value || (view.value === "bookshelf" && bookshelfLoading.value),
 );
-
-
-function describeError(error: unknown): string {
-  if (typeof error === "string") return error;
-  if (error && typeof error === "object") {
-    const value = error as { message?: unknown; code?: unknown };
-    if (typeof value.message === "string") return value.message;
-    if (typeof value.code === "string") return value.code;
-  }
-  return "请求失败，请稍后重试";
-}
+const loadingLabel = computed(() => loadingCopy.value.title);
 
 let activeLoadSeq = 0;
 
-async function run<T>(action: LoadingAction, task: () => Promise<T>): Promise<T | null> {
+async function run<T>(
+  action: LoadingAction,
+  task: () => Promise<T>,
+): Promise<T | null> {
   if (loading.value) return null;
   const seq = ++activeLoadSeq;
   loading.value = true;
   loadingAction.value = action;
-  errorMessage.value = "";
   try {
     const result = await task();
     if (seq !== activeLoadSeq) return null;
     return result;
   } catch (error) {
     if (seq !== activeLoadSeq) return null;
-    errorMessage.value = describeError(error);
+    showError(error);
     return null;
   } finally {
     if (seq === activeLoadSeq) {
@@ -140,6 +159,7 @@ async function run<T>(action: LoadingAction, task: () => Promise<T>): Promise<T 
 }
 
 async function searchShelf() {
+  if (bookshelfKind.value === "manga") return;
   const searchQuery = bookshelfQuery.value.trim();
   if (!searchQuery) {
     bookshelfResults.value = null;
@@ -149,30 +169,32 @@ async function searchShelf() {
   if (response) bookshelfResults.value = response;
 }
 
+function changeBookshelfKind(kind: "novel" | "manga") {
+  bookshelfKind.value = kind;
+  bookshelfQuery.value = "";
+  bookshelfResults.value = null;
+  loadActiveBookshelf();
+}
+
+function loadActiveBookshelf() {
+  if (!auth.user) return;
+
+  const task = bookshelfKind.value === "novel"
+    ? refreshNovelBookshelf()
+    : refreshMangaBookshelf();
+  void task.catch((error: unknown) => {
+    showError(error);
+  });
+}
+
 function openLibraryView(nextView: LibraryRouteName) {
   lastLibraryView.value = nextView;
-  errorMessage.value = "";
+  if (nextView === "bookshelf") loadActiveBookshelf();
   void router.replace({ name: nextView });
 }
 
-async function submitLogin() {
-  if (!loginEmail.value || !loginPassword.value) return;
-  loginLoading.value = true;
-  try {
-    user.value = await login(loginEmail.value, loginPassword.value);
-    loginVisible.value = false;
-    await Promise.all([refreshBooks(), discovery.initialize()]);
-  } catch (error) {
-    errorMessage.value = describeError(error);
-  } finally {
-    loginLoading.value = false;
-  }
-}
-
-async function signOut() {
-  await logout();
-  user.value = null;
-  books.value = [];
+async function handleAuthenticated() {
+  if (view.value === "bookshelf") loadActiveBookshelf();
 }
 
 function handleAndroidBack(event: Event) {
@@ -180,6 +202,11 @@ function handleAndroidBack(event: Event) {
     event.preventDefault();
     back();
   }
+}
+
+function handleAuthenticationExpired() {
+  auth.expire();
+  loginVisible.value = true;
 }
 
 async function loadNovel(source: string, novelId: string): Promise<boolean> {
@@ -197,7 +224,7 @@ async function loadNovel(source: string, novelId: string): Promise<boolean> {
 }
 
 async function openNovel(novel: NovelSummary) {
-  if (view.value === "discovery" || view.value === "bookshelf") {
+  if (view.value === "novels" || view.value === "bookshelf") {
     lastLibraryView.value = view.value;
   }
   if (await loadNovel(novel.source, novel.id)) {
@@ -207,6 +234,10 @@ async function openNovel(novel: NovelSummary) {
       query: { from: lastLibraryView.value },
     });
   }
+}
+
+function openManga(manga: MangaSummary) {
+  void router.push({ name: "manga-detail", params: { mangaId: manga.id } });
 }
 
 async function openChapter(chapterId: string, navigate = true) {
@@ -267,8 +298,12 @@ async function toggleBookshelf() {
 
 function recordProgress(xpath: string) {
   if (!detail.value || !readerDocument.value || !currentChapterId.value) return;
-  void saveReadPosition(detail.value.id, readerDocument.value.serverChapterId, xpath).catch((error) => {
-    errorMessage.value = describeError(error);
+  void saveReadPosition(
+    detail.value.id,
+    readerDocument.value.serverChapterId,
+    xpath,
+  ).catch((error) => {
+    showError(error);
   });
 }
 
@@ -292,24 +327,34 @@ function back() {
 }
 
 watch(
-  () => [route.name, route.params.bookId, route.params.chapterId, route.query.from],
+  () => [
+    route.name,
+    route.params.bookId,
+    route.params.chapterId,
+    route.query.from,
+  ],
   async () => {
     const routeName = view.value;
-    if (routeName === "manga" || routeName === "manga-detail" || routeName === "manga-reader") {
-      errorMessage.value = "";
+    if (
+      routeName === "manga" ||
+      routeName === "manga-detail" ||
+      routeName === "manga-reader" ||
+      routeName === "settings"
+    ) {
       return;
     }
-    if (routeName === "discovery" || routeName === "bookshelf") {
+    if (routeName === "novels" || routeName === "bookshelf") {
       lastLibraryView.value = routeName;
-      errorMessage.value = "";
+      if (routeName === "bookshelf") loadActiveBookshelf();
       return;
     }
 
-    if (route.query.from === "bookshelf" || route.query.from === "discovery") {
+    if (route.query.from === "bookshelf" || route.query.from === "novels") {
       lastLibraryView.value = route.query.from;
     }
     const source = lightNovelSourceId;
-    const bookId = typeof route.params.bookId === "string" ? route.params.bookId : "";
+    const bookId =
+      typeof route.params.bookId === "string" ? route.params.bookId : "";
     if (!source || !bookId) {
       await router.replace({ name: lastLibraryView.value });
       return;
@@ -320,14 +365,20 @@ watch(
       if (!loaded) return;
     }
     if (routeName === "reader") {
-      const chapterId = typeof route.params.chapterId === "string" ? route.params.chapterId : "";
+      const chapterId =
+        typeof route.params.chapterId === "string"
+          ? route.params.chapterId
+          : "";
       if (!chapterId) {
         await router.replace({
           name: "detail",
           params: { bookId },
           query: route.query,
         });
-      } else if (!readerDocument.value || currentChapterId.value !== chapterId) {
+      } else if (
+        !readerDocument.value ||
+        currentChapterId.value !== chapterId
+      ) {
         await openChapter(chapterId, false);
       }
     }
@@ -335,54 +386,57 @@ watch(
   { immediate: true },
 );
 
+watch(
+  () => auth.user,
+  (user, previousUser) => {
+    if (!user && previousUser) {
+      books.value = [];
+      mangaBooks.value = [];
+      novelBookshelfLoaded.value = false;
+      mangaBookshelfLoaded.value = false;
+      bookshelfResults.value = null;
+      loginVisible.value = true;
+    }
+  },
+);
+
 onMounted(() => {
   window.addEventListener("movel:android-back", handleAndroidBack);
-  void restoreUser().then((value) => {
-    user.value = value;
-    if (value) {
-      return refreshBooks().catch((error: unknown) => { errorMessage.value = describeError(error); });
-    }
-    return undefined;
-  }).finally(() => { bookshelfLoading.value = false; });
-  void discovery.initialize();
+  window.addEventListener("movel:authentication-expired", handleAuthenticationExpired);
+  void auth
+    .restore()
+    .then((value) => {
+      if (value) {
+        if (view.value === "bookshelf") loadActiveBookshelf();
+        return undefined;
+      }
+      loginVisible.value = true;
+      return undefined;
+    });
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("movel:android-back", handleAndroidBack);
+  window.removeEventListener("movel:authentication-expired", handleAuthenticationExpired);
 });
 </script>
 
 <template>
   <div class="page-bg">
-    <div class="auth-bar">
-      <span v-if="user">{{ user.UserName }}</span>
-      <el-button v-if="user" text @click="signOut">退出登录</el-button>
-      <el-button v-else :icon="User" text @click="loginVisible = true">登录</el-button>
-    </div>
     <header v-if="view === 'detail'" class="topbar">
       <div class="topbar-inner detail-topbar">
         <el-button class="back-button" :icon="ArrowLeft" @click="back">
-          {{ `返回${lastLibraryView === "bookshelf" ? "书架" : "发现"}` }}
+          {{ `返回${lastLibraryView === "bookshelf" ? "书架" : "小说"}` }}
         </el-button>
       </div>
     </header>
 
-    <main class="app-shell" :aria-busy="showLoadingOverlay">
-      <el-alert
-        v-if="errorMessage"
-        class="error-alert"
-        :title="errorMessage"
-        type="error"
-        show-icon
-        closable
-        @close="errorMessage = ''"
-      />
-
-      <RouterView v-slot="{ Component }">
+    <main class="app-shell" :aria-busy="contentLoading">
+      <RouterView v-if="auth.user" v-slot="{ Component }">
         <component
           :is="Component"
-          v-if="view === 'discovery'"
-          v-model:ranking-sort="discovery.rankingSort.value"
+          v-if="view === 'novels'"
+          v-model:ranking-days="discovery.rankingDays.value"
           v-model:custom-tag="discovery.customTag.value"
           v-model:search-query="discovery.searchQuery.value"
           :unavailable-message="discovery.unavailableMessage.value"
@@ -407,13 +461,18 @@ onBeforeUnmount(() => {
           v-else-if="view === 'bookshelf'"
           v-model:query="bookshelfQuery"
           :books="visibleBooks"
-          :total-books="books.length"
+          :manga="mangaBooks"
+          :active-kind="bookshelfKind"
           :search-active="bookshelfResults !== null"
           :loading="loading"
-          :bookshelf-loading="bookshelfLoading"
+          :bookshelf-loading="bookshelfLoading || mangaBookshelfLoading"
           @search="searchShelf"
-          @browse="openLibraryView('discovery')"
+          @browse="
+            openLibraryView(bookshelfKind === 'novel' ? 'novels' : 'manga')
+          "
           @open-novel="openNovel"
+          @open-manga="openManga"
+          @update:active-kind="changeBookshelfKind"
         />
 
         <component
@@ -441,49 +500,29 @@ onBeforeUnmount(() => {
           @progress="recordProgress"
         />
 
-        <component :is="Component" v-else />
+        <component
+          :is="Component"
+          v-else-if="view === 'settings'"
+          @login="loginVisible = true"
+        />
+
+        <component
+          :is="Component"
+          v-else-if="view !== 'detail' && view !== 'reader'"
+        />
       </RouterView>
     </main>
 
     <LoadingOverlay :visible="showLoadingOverlay" :label="loadingLabel" />
 
-    <el-dialog v-model="loginVisible" title="登录 LightNovelShelf" width="min(420px, calc(100vw - 32px))" append-to-body>
-      <el-form @submit.prevent="submitLogin">
-        <el-form-item label="邮箱"><el-input v-model="loginEmail" autocomplete="email" /></el-form-item>
-        <el-form-item label="密码"><el-input v-model="loginPassword" type="password" autocomplete="current-password" show-password /></el-form-item>
-        <el-button type="primary" :loading="loginLoading" native-type="submit">登录</el-button>
-      </el-form>
-    </el-dialog>
-
-    <nav v-if="view === 'discovery' || view === 'bookshelf' || view === 'manga'" class="view-dock" aria-label="主栏目">
-      <button
-        type="button"
-        :class="{ active: view === 'discovery' }"
-        :aria-current="view === 'discovery' ? 'page' : undefined"
-        @click="openLibraryView('discovery')"
-      >
-        <el-icon><Compass /></el-icon>
-        <span>发现</span>
-      </button>
-      <button
-        type="button"
-        :class="{ active: view === 'bookshelf' }"
-        :aria-current="view === 'bookshelf' ? 'page' : undefined"
-        @click="openLibraryView('bookshelf')"
-      >
-        <el-icon><Collection /></el-icon>
-        <span>书架</span>
-        <small v-if="books.length">{{ books.length }}</small>
-      </button>
-      <button
-        type="button"
-        :class="{ active: view === 'manga' }"
-        :aria-current="view === 'manga' ? 'page' : undefined"
-        @click="openLibraryView('manga')"
-      >
-        <el-icon><Picture /></el-icon>
-        <span>漫画</span>
-      </button>
-    </nav>
+    <AuthDialog
+      v-model:visible="loginVisible"
+      @authenticated="handleAuthenticated"
+    />
+    <MainNavigation
+      :view="view"
+      :book-count="books.length"
+      @navigate="openLibraryView"
+    />
   </div>
 </template>

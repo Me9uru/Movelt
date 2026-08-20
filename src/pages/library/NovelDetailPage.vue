@@ -4,6 +4,7 @@ import { Check, Star, VideoPlay } from "@element-plus/icons-vue";
 import type { NovelDetail, Volume } from "../../services/novel";
 import CatalogueBranch from "../../components/library/CatalogueBranch.vue";
 import NovelCover from "../../components/library/NovelCover.vue";
+import WorkDescription from "../../components/common/WorkDescription.vue";
 
 const props = defineProps<{
   detail: NovelDetail;
@@ -69,7 +70,11 @@ function countChapters(volume: Volume): number {
               <span>更新于 {{ detail.updated_at }}</span>
             </template>
           </div>
-          <p class="description">{{ detail.description || "暂无作品简介。" }}</p>
+          <WorkDescription
+            class="description"
+            :content="detail.description"
+            fallback="暂无作品简介。"
+          />
           <div v-if="detail.tags.length" class="detail-tags">
             <el-tag v-for="tag in detail.tags" :key="tag" effect="plain">{{ tag }}</el-tag>
           </div>
