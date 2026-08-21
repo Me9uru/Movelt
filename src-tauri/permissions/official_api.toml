@@ -21,6 +21,7 @@ commands.allow = [
   "is_on_manga_bookshelf",
   "set_manga_bookshelf",
   "get_manga",
+  "save_manga_read_position",
   "get_manga_chapter_pages",
   "get_manga_page_batch",
 ]

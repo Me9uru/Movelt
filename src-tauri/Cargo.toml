@@ -5,6 +5,10 @@ description = "Movel desktop reader"
 authors = ["you"]
 edition = "2021"
 
+[workspace]
+members = ["credential-store"]
+resolver = "2"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]

@@ -2,7 +2,7 @@ use serde_json::{json, Value};
 
 use crate::error::Result;
 
-use super::OfficialClient;
+use super::super::connection::OfficialClient;
 
 impl OfficialClient {
     pub(crate) async fn manga_list(

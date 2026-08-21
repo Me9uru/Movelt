@@ -26,7 +26,7 @@ const emit = defineEmits<{
   progress: [xpath: string];
 }>();
 
-const { settings, style, reset } = useReaderSettings();
+const { settings, style, reset } = useReaderSettings("novel");
 const readerRoot = ref<HTMLElement | null>(null);
 const pageViewport = ref<HTMLElement | null>(null);
 const readerContent = ref<HTMLElement | null>(null);
@@ -49,6 +49,8 @@ let hasRestoredScroll = false;
 let hasRestoredPage = false;
 let hasRestoredServerPosition = false;
 let nextChapterRequested = false;
+let previousChapterRequested = false;
+let lastScrollLocation = 0;
 const chapterFontStyle = document.createElement("style");
 document.head.append(chapterFontStyle);
 
@@ -214,6 +216,11 @@ function goToPage(page: number) {
     requestNextChapter();
     return;
   }
+  if (page < 0) {
+    emit("progress", visibleXPath());
+    requestPreviousChapter();
+    return;
+  }
   if (page < pageCount.value - 1) nextChapterRequested = false;
   currentPage.value = Math.min(Math.max(page, 0), pageCount.value - 1);
   if (pageCount.value > 1) {
@@ -298,6 +305,12 @@ function requestNextChapter() {
   emit("next");
 }
 
+function requestPreviousChapter() {
+  if (previousChapterRequested || props.loading || !props.hasPreviousChapter) return;
+  previousChapterRequested = true;
+  emit("previous");
+}
+
 function handleScroll() {
   if (settings.mode !== "scroll") return;
   if (scrollTimer !== null) window.clearTimeout(scrollTimer);
@@ -305,8 +318,10 @@ function handleScroll() {
     scrollTimer = null;
     const location = recordScrollProgress();
     if (location === null) return;
-    if (location >= 0.995) requestNextChapter();
+    if (location >= 0.995 && location > lastScrollLocation) requestNextChapter();
+    else if (location <= 0.005 && location < lastScrollLocation) requestPreviousChapter();
     else if (location < 0.98 && !props.loading) nextChapterRequested = false;
+    lastScrollLocation = location;
   }, 120);
 }
 
@@ -317,13 +332,14 @@ function restoreScrollProgress() {
     if (!metrics) return;
     hasRestoredScroll = true;
     window.scrollTo({
-      top: metrics.start + (props.initialProgress?.location ?? 0) * metrics.distance,
+      top: metrics.start + pageLocation * metrics.distance,
       behavior: "auto",
     });
   });
 }
 
 function handleKeydown(event: KeyboardEvent) {
+  if (previewImageUrl.value) return;
   if (settings.mode !== "paged") return;
   const target = event.target;
   if (target instanceof HTMLElement && target.closest("input, button, [contenteditable='true']")) return;
@@ -337,10 +353,15 @@ function handleKeydown(event: KeyboardEvent) {
 }
 
 function handlePointerDown(event: PointerEvent) {
+  if (previewImageUrl.value) return;
   pointerStartX = event.clientX;
 }
 
 function handlePointerUp(event: PointerEvent) {
+  if (previewImageUrl.value) {
+    pointerStartX = null;
+    return;
+  }
   if (pointerStartX === null) return;
   const distance = event.clientX - pointerStartX;
   pointerStartX = null;
@@ -350,6 +371,7 @@ function handlePointerUp(event: PointerEvent) {
 }
 
 function handleReaderClick(event: MouseEvent) {
+  if (previewImageUrl.value) return;
   if (performance.now() < suppressReaderClickUntil) return;
 
   const target = event.target;
@@ -378,10 +400,14 @@ watch(
 );
 
 watch(() => props.document, () => {
+  const restorePreviousChapter = previousChapterRequested;
   nextChapterRequested = false;
+  previousChapterRequested = false;
   hasRestoredPage = false;
-  hasRestoredServerPosition = false;
-  pageLocation = clampLocation(props.initialProgress?.location ?? 0);
+  hasRestoredScroll = false;
+  hasRestoredServerPosition = restorePreviousChapter;
+  pageLocation = restorePreviousChapter ? 1 : clampLocation(props.initialProgress?.location ?? 0);
+  lastScrollLocation = pageLocation;
   void nextTick(() => {
     observeChapterContent();
     updatePagination(true);
@@ -572,6 +598,7 @@ onBeforeUnmount(() => {
     <el-image-viewer
       v-if="previewImageUrl"
       :url-list="[previewImageUrl]"
+      teleported
       @close="previewImageUrl = null"
     />
   </article>

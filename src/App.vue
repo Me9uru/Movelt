@@ -61,7 +61,7 @@ const mangaBookshelfLoaded = ref(false);
 const loginVisible = ref(false);
 const auth = useAuthStore();
 const discovery = useDiscovery();
-const { settings: readerSettings } = useReaderSettings();
+const { settings: readerSettings } = useReaderSettings("novel");
 const { books, refreshBooks, searchBooks, addBook, removeBook, isOnBookshelf } =
   useLibrary();
 const visibleBooks = computed(() => bookshelfResults.value ?? books.value);

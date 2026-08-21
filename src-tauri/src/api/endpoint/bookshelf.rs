@@ -1,6 +1,6 @@
-use serde_json::{json, Value};
+use super::super::connection::OfficialClient;
 use crate::error::Result;
-use super::OfficialClient;
+use serde_json::{json, Value};
 
 impl OfficialClient {
     pub(crate) async fn bookshelf(&self) -> Result<Value> {

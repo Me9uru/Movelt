@@ -13,7 +13,7 @@ export function listMangaBookshelf() { return command<MangaSummary[]>("list_mang
 export function isOnMangaBookshelf(mangaId: string) { return command<boolean>("is_on_manga_bookshelf", { mangaId }); }
 export function addToMangaBookshelf(mangaId: string) { return command<void>("set_manga_bookshelf", { mangaId, present: true }); }
 export function removeFromMangaBookshelf(mangaId: string) { return command<void>("set_manga_bookshelf", { mangaId, present: false }); }
-export function getManga(mangaId: string, currentChapterId?: string) { return command<MangaDetail>("get_manga", { mangaId, currentChapterId }); }
-export function getMangaChapterPages(_mangaId: string, chapterId: string) { return command<MangaPageList>("get_manga_chapter_pages", { chapterId }); }
+export function getManga(mangaId: string) { return command<MangaDetail>("get_manga", { mangaId }); }
+export function getMangaChapterPages(mangaId: string, chapterId: string) { return command<MangaPageList>("get_manga_chapter_pages", { mangaId, chapterId }); }
 export function getMangaPageBatch(chapterId: string, pageIndex: number) { return command<MangaPageBatch>("get_manga_page_batch", { chapterId, pageIndex }); }
 export function saveMangaReadPosition(mangaId: string, chapterId: string, page: number) { return command<void>("save_manga_read_position", { mangaId, chapterId, page }); }

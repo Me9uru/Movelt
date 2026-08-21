@@ -8,12 +8,25 @@ use crate::{
     reader_cache::{neighbor_ids, ReaderCache},
 };
 
-use super::common::{
-    array, books_for_ids, is_kind, manga, number, optional_html, optional_string, parse_id,
-    position, set_shelf, shelf_items, string,
+use super::{
+    adapter::{array, number, optional_html, optional_string, parse_id, position, string},
+    bookshelf::{books_for_ids, is_kind, set_shelf, shelf_items},
 };
 
+/// 将官方漫画数据映射为应用摘要。
+fn manga(value: &Value) -> MangaSummary {
+    MangaSummary {
+        id: number(value, "Id").to_string(),
+        title: string(value, "Title"),
+        thumbnail_url: optional_string(value, "Cover"),
+        author: optional_string(value, "Author"),
+        unread_count: 0,
+        source_name: Some("LightNovelShelf".into()),
+    }
+}
+
 #[tauri::command]
+/// 浏览或搜索漫画列表。
 pub(crate) async fn browse_manga(
     client: State<'_, OfficialClient>,
     query: Option<String>,
@@ -28,7 +41,9 @@ pub(crate) async fn browse_manga(
     .map(manga)
     .collect())
 }
+
 #[tauri::command]
+/// 获取漫画书架中的作品。
 pub(crate) async fn list_manga_bookshelf(
     client: State<'_, OfficialClient>,
 ) -> Result<Vec<MangaSummary>> {
@@ -51,7 +66,9 @@ pub(crate) async fn list_manga_bookshelf(
         })
         .collect())
 }
+
 #[tauri::command]
+/// 判断漫画是否已加入书架。
 pub(crate) async fn is_on_manga_bookshelf(
     client: State<'_, OfficialClient>,
     manga_id: String,
@@ -62,7 +79,9 @@ pub(crate) async fn is_on_manga_bookshelf(
         .iter()
         .any(|item| number(item, "id") == id && is_kind(item, "COMIC")))
 }
+
 #[tauri::command]
+/// 设置漫画是否存在于书架中。
 pub(crate) async fn set_manga_bookshelf(
     client: State<'_, OfficialClient>,
     manga_id: String,
@@ -70,23 +89,31 @@ pub(crate) async fn set_manga_bookshelf(
 ) -> Result<()> {
     set_shelf(&client, parse_id(&manga_id)?, "COMIC", present).await
 }
+
 #[tauri::command]
+/// 获取漫画详情。
 pub(crate) async fn get_manga(
     client: State<'_, OfficialClient>,
     cache: State<'_, ReaderCache>,
     manga_id: String,
-    current_chapter_id: Option<String>,
 ) -> Result<MangaDetail> {
     let response = client.manga_info(parse_id(&manga_id)?).await?;
     let book = response
         .get("Book")
-        .ok_or_else(|| AppError::InvalidResponse("漫画详情缺失".into()))?;
+        .ok_or_else(|| AppError::protocol("漫画详情响应缺少 Book"))?;
     let chapters = array(book, "Chapters");
     let chapters = if chapters.is_empty() {
         array(book, "Chapter")
     } else {
         chapters
     };
+    cache.store_manga_chapters(
+        manga_id,
+        chapters
+            .iter()
+            .map(|chapter| number(chapter, "Id").to_string())
+            .collect(),
+    );
     let detail = MangaDetail {
         summary: manga(book),
         artist: None,
@@ -115,29 +142,11 @@ pub(crate) async fn get_manga(
             })
             .collect(),
     };
-    let current_chapter_id = current_chapter_id
-        .or_else(|| {
-            detail
-                .read_position
-                .as_ref()
-                .map(|position| position.chapter_id.clone())
-        })
-        .or_else(|| detail.chapters.first().map(|chapter| chapter.id.clone()));
-    if let Some(current_chapter_id) = current_chapter_id {
-        preload_manga_neighbors(
-            client.inner().clone(),
-            cache.inner().clone(),
-            detail
-                .chapters
-                .iter()
-                .map(|chapter| chapter.id.clone())
-                .collect(),
-            current_chapter_id,
-        );
-    }
     Ok(detail)
 }
+
 #[tauri::command]
+/// 保存漫画章节的阅读页码。
 pub(crate) async fn save_manga_read_position(
     client: State<'_, OfficialClient>,
     manga_id: String,
@@ -145,38 +154,34 @@ pub(crate) async fn save_manga_read_position(
     page: i64,
 ) -> Result<()> {
     if page < 1 {
-        return Err(AppError::InvalidResponse("无效的漫画页码".into()));
+        return Err(AppError::invalid_input("漫画页码必须大于 0"));
     }
     client
         .save_manga_position(parse_id(&manga_id)?, parse_id(&chapter_id)?, page)
         .await
 }
+
 #[tauri::command]
+/// 获取漫画首批页面，并在后台预加载后续章节。
 pub(crate) async fn get_manga_chapter_pages(
     client: State<'_, OfficialClient>,
     cache: State<'_, ReaderCache>,
+    manga_id: String,
     chapter_id: String,
 ) -> Result<MangaPageList> {
-    if let Some(pages) = cache.manga_pages(&chapter_id) {
-        return Ok(pages);
+    let pages = load_manga_chapter_pages(&client, &cache, &chapter_id).await?;
+    if let Some(chapter_ids) = cache.manga_chapters(&manga_id) {
+        preload_manga_neighbors(
+            client.inner().clone(),
+            cache.inner().clone(),
+            chapter_ids,
+            chapter_id,
+        );
     }
-    let response = client.manga_content(parse_id(&chapter_id)?, 0).await?;
-    let chapter = response
-        .get("Chapter")
-        .ok_or_else(|| AppError::InvalidResponse("漫画页面缺失".into()))?;
-    let pages = MangaPageList {
-        chapter_id,
-        page_count: number(chapter, "Total"),
-        first_page_urls: array(chapter, "Images")
-            .iter()
-            .filter_map(|image| optional_string(image, "Url"))
-            .collect(),
-        read_position: position(response.get("ReadPosition")),
-    };
-    cache.store_manga_pages(pages.clone());
     Ok(pages)
 }
 
+/// 从缓存或官方服务加载漫画章节页面。
 async fn load_manga_chapter_pages(
     client: &OfficialClient,
     cache: &ReaderCache,
@@ -188,7 +193,7 @@ async fn load_manga_chapter_pages(
     let response = client.manga_content(parse_id(chapter_id)?, 0).await?;
     let chapter = response
         .get("Chapter")
-        .ok_or_else(|| AppError::InvalidResponse("漫画页面缺失".into()))?;
+        .ok_or_else(|| AppError::protocol("漫画页面响应缺少 Chapter"))?;
     let pages = MangaPageList {
         chapter_id: chapter_id.into(),
         page_count: number(chapter, "Total"),
@@ -202,6 +207,7 @@ async fn load_manga_chapter_pages(
     Ok(pages)
 }
 
+/// 在后台预加载当前章节之后的漫画页面。
 fn preload_manga_neighbors(
     client: OfficialClient,
     cache: ReaderCache,
@@ -217,7 +223,9 @@ fn preload_manga_neighbors(
         }
     });
 }
+
 #[tauri::command]
+/// 获取指定分页批次的漫画页面。
 pub(crate) async fn get_manga_page_batch(
     client: State<'_, OfficialClient>,
     chapter_id: String,
@@ -229,7 +237,7 @@ pub(crate) async fn get_manga_page_batch(
         .await?;
     let chapter = response
         .get("Chapter")
-        .ok_or_else(|| AppError::InvalidResponse("漫画页面缺失".into()))?;
+        .ok_or_else(|| AppError::protocol("漫画页面响应缺少 Chapter"))?;
     Ok(MangaPageBatch {
         start_index,
         page_urls: array(chapter, "Images")
