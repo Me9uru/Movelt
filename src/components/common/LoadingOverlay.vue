@@ -39,7 +39,7 @@ defineProps<{
   z-index: 3000;
   display: grid;
   place-items: center;
-  background: var(--el-mask-color);
+  background: var(--popup-overlay-background-color);
   cursor: wait;
   -webkit-backdrop-filter: blur(4px) saturate(108%);
   backdrop-filter: blur(4px) saturate(108%);

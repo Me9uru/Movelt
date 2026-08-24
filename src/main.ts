@@ -1,9 +1,12 @@
 import { createApp } from "vue";
 import { createPinia } from "pinia";
+import { StyleProvider, Themes } from "@varlet/ui";
+import "@varlet/ui/es/style.mjs";
+import "@varlet/touch-emulator";
 import App from "./App.vue";
 import { setupDevInvoke } from "./dev-invoke";
 import { router } from "./router";
-import { showError } from "./utils/error";
+import { showError, showErrorDialog } from "./utils/error";
 import "./styles/theme.css";
 import "./styles/app.css";
 import "./styles/components.css";
@@ -15,7 +18,8 @@ import "./styles/reader.css";
 
 if (import.meta.env.DEV) setupDevInvoke();
 
-// Element Plus 组件与样式通过 resolver 在编译期按需引入，无需 app.use 与全量 CSS。
+// Varlet controls are auto-imported on demand. The MD3 palette follows the app theme.
+StyleProvider(Themes.md3Light);
 const app = createApp(App);
 
 app.config.errorHandler = (error, _instance, info) => {
@@ -25,7 +29,11 @@ app.config.errorHandler = (error, _instance, info) => {
 
 window.addEventListener("unhandledrejection", (event) => {
   event.preventDefault();
-  showError(event.reason);
+  showErrorDialog(event.reason);
+});
+
+router.onError((error) => {
+  showErrorDialog(error, "无法打开页面，请刷新后重试");
 });
 
 app.use(createPinia()).use(router).mount("#app");

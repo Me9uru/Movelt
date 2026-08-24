@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ArrowLeft, ArrowRight } from "@element-plus/icons-vue";
 import {
   computed,
   nextTick,
@@ -14,12 +13,13 @@ import {
   getManga,
   getMangaPageBatch,
   saveMangaReadPosition,
-  type MangaDetail,
 } from "../../services/manga";
+import type { MangaDetail } from "../../domain/content";
 import { useReaderSettings } from "../../composables/useReaderSettings";
 import { getErrorMessage, showError } from "../../utils/error";
 import ErrorState from "../../components/common/ErrorState.vue";
 import ReaderSettingsDrawer from "../../components/reader/ReaderSettingsDrawer.vue";
+import LoadingOverlay from "../../components/common/LoadingOverlay.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -235,9 +235,9 @@ watch(
       `manga-reader--${settings.theme}`,
       `manga-reader--${settings.mode}`,
     ]"
-    v-loading="loading"
     @click="handleReaderClick"
   >
+    <LoadingOverlay v-if="loading" inline visible label="正在加载漫画章节" />
     <Teleport to="body">
       <Transition name="manga-reader-nav">
         <nav
@@ -246,9 +246,8 @@ watch(
           :class="`manga-reader-nav--${settings.theme}`"
           aria-label="漫画章节导航"
         >
-          <el-button
-            circle
-            :icon="ArrowLeft"
+          <var-button
+            round
             :disabled="
               !manga ||
               manga.chapters.findIndex((chapter) => chapter.id === chapterId) <=
@@ -257,7 +256,7 @@ watch(
             aria-label="上一话"
             title="上一话"
             @click="chapterOffset(-1)"
-          />
+          ><var-icon name="arrow-left" /></var-button>
           <button
             class="manga-reader-title"
             type="button"
@@ -266,9 +265,8 @@ watch(
           >
             {{ manga?.title || "漫画阅读" }}
           </button>
-          <el-button
-            circle
-            :icon="ArrowRight"
+          <var-button
+            round
             :disabled="
               !manga ||
               manga.chapters.findIndex((chapter) => chapter.id === chapterId) >=
@@ -277,7 +275,7 @@ watch(
             aria-label="下一话"
             title="下一话"
             @click="chapterOffset(1)"
-          />
+          ><var-icon name="arrow-right" /></var-button>
         </nav>
       </Transition>
     </Teleport>

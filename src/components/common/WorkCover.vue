@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Collection } from "@element-plus/icons-vue";
 
 withDefaults(defineProps<{
   coverUrl: string | null;
@@ -11,10 +10,10 @@ withDefaults(defineProps<{
 </script>
 
 <template>
-  <el-image v-if="coverUrl" :src="coverUrl" :alt="title" :fit="fit">
+  <var-image v-if="coverUrl" :src="coverUrl" :alt="title" :fit="fit">
     <template #error>
-      <span class="cover-placeholder"><el-icon><Collection /></el-icon></span>
+      <span class="cover-placeholder"><var-icon name="bookmark" /></span>
     </template>
-  </el-image>
-  <span v-else class="cover-placeholder"><el-icon><Collection /></el-icon></span>
+  </var-image>
+  <span v-else class="cover-placeholder"><var-icon name="bookmark" /></span>
 </template>

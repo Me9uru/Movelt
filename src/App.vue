@@ -1,20 +1,21 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { RouterView, useRoute, useRouter } from "vue-router";
-import { ArrowLeft } from "@element-plus/icons-vue";
 import {
   getReaderDocument,
   getReaderOverview,
   lightNovelSourceId,
   saveReadPosition,
-  type NovelDetail,
-  type ServerReadPosition,
-  type NovelSummary,
-  type Volume,
 } from "./services/novel";
-import type { ReaderDocument } from "./domain/reader";
+import type {
+  MangaSummary,
+  NovelSummary,
+  ReaderDocument,
+  ReadPosition,
+  Volume,
+} from "./domain/content";
 import type { BookshelfEntry } from "./services/bookshelf";
-import { listMangaBookshelf, type MangaSummary } from "./services/manga";
+import { listMangaBookshelf } from "./services/manga";
 import LoadingOverlay from "./components/common/LoadingOverlay.vue";
 import MainNavigation from "./components/layout/MainNavigation.vue";
 import { useLibrary } from "./composables/useLibrary";
@@ -42,12 +43,12 @@ const view = computed<AppRouteName>(() => {
     : "novels";
 });
 const lastLibraryView = ref<LibraryRouteName>("novels");
-const detail = ref<NovelDetail | null>(null);
+const detail = ref<NovelSummary | null>(null);
 const catalogue = ref<Volume[]>([]);
 const readerDocument = ref<ReaderDocument | null>(null);
 const currentChapterId = ref<string | null>(null);
 const resumeChapterId = ref<string | null>(null);
-const resumeReadPosition = ref<ServerReadPosition | null>(null);
+const resumeReadPosition = ref<ReadPosition | null>(null);
 const readerRenderKey = ref(0);
 const loading = ref(false);
 const loadingAction = ref<LoadingAction | null>(null);
@@ -293,24 +294,28 @@ async function openChapter(chapterId: string, navigate = true) {
     readerDocument.value = response;
     currentChapterId.value = chapterId;
     if (!navigate) return;
-    if (isChangingChapter) {
-      await router.replace({
-        name: "reader",
-        params: {
-          bookId: detail.value.id,
-          chapterId,
-        },
-        query: route.query,
-      });
-    } else {
-      await router.push({
-        name: "reader",
-        params: {
-          bookId: detail.value.id,
-          chapterId,
-        },
-        query: route.query,
-      });
+    try {
+      if (isChangingChapter) {
+        await router.replace({
+          name: "reader",
+          params: {
+            bookId: detail.value.id,
+            chapterId,
+          },
+          query: route.query,
+        });
+      } else {
+        await router.push({
+          name: "reader",
+          params: {
+            bookId: detail.value.id,
+            chapterId,
+          },
+          query: route.query,
+        });
+      }
+    } catch {
+      // router.onError has already presented the route-loading failure in a dialog.
     }
   }
 }
@@ -499,9 +504,10 @@ onBeforeUnmount(() => {
   <div class="page-bg">
     <header v-if="auth.user && view === 'detail'" class="topbar">
       <div class="topbar-inner detail-topbar">
-        <el-button text :icon="ArrowLeft" @click="back">
+        <var-button text @click="back">
+          <var-icon name="arrow-left" />
           {{ `返回${lastLibraryView === "bookshelf" ? "书架" : "小说"}` }}
-        </el-button>
+        </var-button>
       </div>
     </header>
 
@@ -513,22 +519,18 @@ onBeforeUnmount(() => {
           :is="Component"
           v-if="view === 'novels'"
           v-model:ranking-days="discovery.rankingDays.value"
-          v-model:custom-tag="discovery.customTag.value"
           v-model:search-query="discovery.searchQuery.value"
+          v-model:search-mode="discovery.searchMode.value"
           :unavailable-message="discovery.unavailableMessage.value"
           :recommendations="discovery.recommendations.value"
           :ranking="discovery.ranking.value"
-          :category="discovery.category.value"
-          :category-tag="discovery.categoryTag.value"
           :search-result="discovery.search.value"
           :loading="discovery.loading.value"
           :errors="discovery.errors.value"
           @initialize="discovery.initialize"
           @retry-recommendations="discovery.loadRecommendations"
           @load-ranking="discovery.loadRanking"
-          @load-category="discovery.loadCategory"
           @search="discovery.runSearch"
-          @select-category="discovery.selectCategory"
           @open-novel="openNovel"
         />
 

@@ -83,28 +83,29 @@ onMounted(() => {
         <strong id="auth-page-title">Movel</strong>
         <span>登录 LightNovelShelf，继续阅读</span>
       </div>
-      <el-tabs v-model="authMode" stretch class="auth-tabs">
-        <el-tab-pane label="登录" name="login" />
-        <el-tab-pane label="注册" name="register" />
-      </el-tabs>
-      <el-form v-if="authMode === 'login'" @submit.prevent="submitLogin">
-        <el-form-item label="邮箱"><el-input v-model="email" autocomplete="email" /></el-form-item>
-        <el-form-item label="密码"><el-input v-model="password" type="password" autocomplete="current-password" show-password /></el-form-item>
-        <el-button type="primary" :loading="submitting" native-type="submit">登录</el-button>
-      </el-form>
-      <el-form v-else @submit.prevent="submitRegistration">
-        <el-form-item label="昵称"><el-input v-model="registerName" autocomplete="username" /></el-form-item>
-        <el-form-item label="邮箱"><el-input v-model="email" autocomplete="email" /></el-form-item>
-        <el-form-item label="验证码">
-          <el-input v-model="registerCode" autocomplete="one-time-code">
-            <template #append><el-button :loading="registerEmailSending" @click="sendRegistrationCode">发送验证码</el-button></template>
-          </el-input>
-        </el-form-item>
-        <el-form-item label="密码"><el-input v-model="password" type="password" autocomplete="new-password" show-password /></el-form-item>
-        <el-form-item label="确认密码"><el-input v-model="registerPasswordConfirmation" type="password" autocomplete="new-password" show-password /></el-form-item>
-        <el-form-item label="邀请码（可选）"><el-input v-model="registerInviteCode" /></el-form-item>
-        <el-button type="primary" :loading="submitting" native-type="submit">注册并登录</el-button>
-      </el-form>
+      <var-tabs :active="authMode" class="auth-tabs" @update:active="authMode = $event as 'login' | 'register'">
+        <var-tab name="login">登录</var-tab>
+        <var-tab name="register">注册</var-tab>
+      </var-tabs>
+      <form v-if="authMode === 'login'" @submit.prevent="submitLogin">
+        <label>邮箱<var-input v-model="email" autocomplete="email" /></label>
+        <label>密码<var-input v-model="password" type="password" autocomplete="current-password" /></label>
+        <var-button type="primary" :loading="submitting" native-type="submit">登录</var-button>
+      </form>
+      <form v-else @submit.prevent="submitRegistration">
+        <label>昵称<var-input v-model="registerName" autocomplete="username" /></label>
+        <label>邮箱<var-input v-model="email" autocomplete="email" /></label>
+        <label>验证码
+          <span class="auth-code-row">
+            <var-input v-model="registerCode" autocomplete="one-time-code" />
+            <var-button :loading="registerEmailSending" @click="sendRegistrationCode">发送验证码</var-button>
+          </span>
+        </label>
+        <label>密码<var-input v-model="password" type="password" autocomplete="new-password" /></label>
+        <label>确认密码<var-input v-model="registerPasswordConfirmation" type="password" autocomplete="new-password" /></label>
+        <label>邀请码（可选）<var-input v-model="registerInviteCode" /></label>
+        <var-button type="primary" :loading="submitting" native-type="submit">注册并登录</var-button>
+      </form>
     </div>
   </section>
 </template>

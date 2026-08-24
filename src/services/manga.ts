@@ -1,14 +1,27 @@
 import { command } from "./bridge";
+import type {
+  MangaDetail,
+  MangaPageBatch,
+  MangaPageList,
+  MangaSummary,
+} from "../domain/content";
+import type { BookSearchMode } from "../domain/search";
 
-export interface MangaSummary { id: string; title: string; thumbnailUrl: string | null; author: string | null; unreadCount: number; sourceName: string | null }
-export interface MangaChapter { id: string; name: string; chapterNumber: number; isRead: boolean; lastPageRead: number; pageCount: number }
-export interface MangaReadPosition { chapterId: string; position: string }
-export interface MangaDetail extends Omit<MangaSummary, "unreadCount"> { artist: string | null; description: string | null; genre: string[]; status: string; readPosition: MangaReadPosition | null; chapters: MangaChapter[] }
-export interface MangaPageList { chapterId: string; pageCount: number; firstPageUrls: string[]; readPosition: MangaReadPosition | null }
-export interface MangaPageBatch { startIndex: number; pageUrls: string[] }
 export type MangaBrowseType = "SEARCH" | "TAGS" | "POPULAR" | "LATEST" | "NEW";
 
-export function browseManga(query: string | null, page: number, browseType: MangaBrowseType) { return command<MangaSummary[]>("browse_manga", { query, pageNumber: page, browseType }); }
+export function browseManga(
+  query: string | null,
+  page: number,
+  browseType: MangaBrowseType,
+  searchMode?: BookSearchMode,
+) {
+  return command<MangaSummary[]>("browse_manga", {
+    query,
+    pageNumber: page,
+    browseType,
+    searchMode,
+  });
+}
 export function listMangaBookshelf() { return command<MangaSummary[]>("list_manga_bookshelf"); }
 export function isOnMangaBookshelf(mangaId: string) { return command<boolean>("is_on_manga_bookshelf", { mangaId }); }
 export function addToMangaBookshelf(mangaId: string) { return command<void>("set_manga_bookshelf", { mangaId, present: true }); }

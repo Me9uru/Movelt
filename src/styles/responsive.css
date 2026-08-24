@@ -1,42 +1,124 @@
 @media (max-width: 720px) {
-  .topbar-inner, .app-shell { width: min(100% - (var(--layout-gutter-compact) * 2), 1160px); }
-  .view-dock { display: flex; }
-  .topbar-inner { height: 56px; }
-  .view-dock { padding: 4px; }
-  .view-dock button { min-width: 0; flex: 1; height: 36px; padding: 0 10px; }
-  .view-dock { width: min(calc(100% - 16px), 400px); }
-  .view-dock small { display: none; }
-  .hero { padding: var(--space-7) 0 var(--space-6); }
-  .discovery-view { padding-top: var(--space-4); }
-  .discovery-controls { flex-wrap: wrap; }
-  .discovery-controls .el-select, .discovery-controls .el-input { width: 100%; }
-  .discovery-controls .el-button { width: 100%; }
-  .hero h1 { font-size: 36px; }
-  .hero > p { padding: 0 18px; line-height: 1.7; }
-  .search-box { gap: var(--space-2); }
-  .search-box .el-button { min-width: 92px; padding: 8px 14px; }
-  .book-search .el-button { min-width: 44px; width: 44px; padding: 0; }
-  .result-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
-  .discovery-block .result-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .manga-view { padding-top: var(--space-4); }.manga-profile { grid-template-areas: "cover" "copy" "rail"; grid-template-columns: 1fr; gap: var(--space-3); padding-bottom: var(--space-4); }.manga-detail-cover { width: 140px; margin: auto; }.manga-detail-copy { text-align: center; }.manga-profile h1 { font-size: 25px; }.manga-byline { text-align: center; }.manga-detail-rail { width: min(360px, 100%); margin: 0 auto; }.manga-reader { width: calc(100% + (var(--layout-gutter-compact) * 2)); margin-left: calc(var(--layout-gutter-compact) * -1); }
-  .section-heading, .catalogue-heading { gap: var(--space-2); padding: var(--space-3) 0; }
-  .book-heading { grid-template-areas: "cover" "copy" "rail"; grid-template-columns: 1fr; grid-template-rows: auto; gap: var(--space-3); }
-  .detail-cover { width: 140px; margin: 0 auto; }
-  .detail-copy { text-align: center; }
-  .author, .stats { justify-content: center; }
-  .detail-rail { width: min(360px, 100%); margin: 0 auto; }
-  .book-profile { padding-bottom: var(--space-4); }
-  .catalogue-section .catalogue-heading { padding: var(--space-3) 0 var(--space-2); }
-  .detail-copy h1 { font-size: 25px; }
-  .stats { margin: var(--space-3) 0; }
-  .description { font-size: 14px; text-align: left; }
-  .description:not(.description--expanded) .work-description { -webkit-line-clamp: 7; }
-  .manga-description { font-size: 14px; text-align: left; }
-  .manga-description:not(.manga-description--expanded) .work-description { -webkit-line-clamp: 7; }
-  .manga-chapter-section > header { padding: var(--space-3) 0 var(--space-2); }
-  .chapter-list { grid-template-columns: 1fr; padding: var(--space-2) var(--space-2) var(--space-3); }
-  .chapter-pagination { flex-direction: column; padding: 0 var(--space-2) var(--space-3); }
-  .catalogue .el-collapse-item__header { padding: 0 var(--space-2); }
-  .catalogue-nested { margin: var(--space-1) var(--space-2) var(--space-2) var(--space-3); }
-  .catalogue-nested .el-collapse-item__header { padding: 0 var(--space-2); }
+  .topbar-inner,
+  .app-shell {
+    width: min(100% - (var(--layout-gutter-compact) * 2), 1160px);
+  }
+  .topbar-inner {
+    height: 56px;
+  }
+  .view-dock {
+    padding: 4px;
+  }
+  .view-dock button {
+    min-width: 0;
+    flex: 1;
+    height: 36px;
+    padding: 0 10px;
+  }
+  .view-dock {
+    width: min(calc(100% - 16px), 400px);
+  }
+  .view-dock small {
+    display: none;
+  }
+  .discovery-view,
+  .manga-view {
+    padding-top: var(--space-4);
+  }
+  .search-box .var-button {
+    min-width: 92px;
+    padding: 8px 14px;
+  }
+  .book-search .var-button {
+    min-width: 44px;
+    width: 44px;
+    padding: 0;
+  }
+  .result-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+  .work-grid.result-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    row-gap: var(--space-3);
+    column-gap: var(--space-3);
+  }
+  .book-heading,
+  .manga-profile {
+    grid-template-areas: "cover" "copy" "rail";
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+    padding-bottom: var(--space-4);
+  }
+  .detail-cover,
+  .manga-detail-cover {
+    width: 140px;
+    margin: auto;
+  }
+  .detail-copy,
+  .manga-detail-copy {
+    text-align: center;
+  }
+  .detail-copy h1,
+  .manga-profile h1 {
+    font-size: 25px;
+  }
+  .manga-byline {
+    text-align: center;
+  }
+  .manga-reader {
+    width: calc(100% + (var(--layout-gutter-compact) * 2));
+    margin-left: calc(var(--layout-gutter-compact) * -1);
+  }
+  .section-heading,
+  .catalogue-heading {
+    gap: var(--space-2);
+    padding: var(--space-3) 0;
+  }
+  .author,
+  .stats {
+    justify-content: center;
+  }
+  .detail-rail,
+  .manga-detail-rail {
+    width: min(360px, 100%);
+    margin: 0 auto;
+  }
+  .book-profile {
+    padding-bottom: var(--space-4);
+  }
+  .catalogue-section .catalogue-heading {
+    padding: var(--space-3) 0 var(--space-2);
+  }
+  .stats {
+    margin: var(--space-3) 0;
+  }
+  :is(.description, .manga-description) {
+    font-size: 14px;
+    text-align: left;
+  }
+  .description:not(.description--expanded) .work-description,
+  .manga-description:not(.manga-description--expanded) .work-description {
+    -webkit-line-clamp: 7;
+  }
+  .manga-chapter-section > header {
+    padding: var(--space-3) 0 var(--space-2);
+  }
+  .chapter-list {
+    grid-template-columns: 1fr;
+    padding: var(--space-2) var(--space-2) var(--space-3);
+  }
+  .chapter-pagination {
+    flex-direction: column;
+    padding: 0 var(--space-2) var(--space-3);
+  }
+  .catalogue .var-collapse-item__header {
+    padding: 0 var(--space-2);
+  }
+  .catalogue-nested {
+    margin: var(--space-1) var(--space-2) var(--space-2) var(--space-3);
+  }
+  .catalogue-nested .var-collapse-item__header {
+    padding: 0 var(--space-2);
+  }
 }

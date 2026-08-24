@@ -1,6 +1,6 @@
 use serde_json::{json, Value};
 
-use crate::error::Result;
+use crate::{dto::search::BookSearchMode, error::Result};
 
 use super::super::connection::OfficialClient;
 
@@ -10,15 +10,22 @@ impl OfficialClient {
         query: Option<String>,
         page: i64,
         browse_type: &str,
+        search_mode: Option<BookSearchMode>,
     ) -> Result<Value> {
-        let search = matches!(browse_type, "SEARCH" | "TAGS");
-        if search {
+        let search_mode = search_mode
+            .map(BookSearchMode::manga_hub_mode)
+            .or(match browse_type {
+                "SEARCH" => Some("fuzzy"),
+                "TAGS" => Some("tags"),
+                _ => None,
+            });
+        if let Some(search_mode) = search_mode {
             return self
                 .hub(
                     "SearchComicSeries",
                     json!({
                         "KeyWords": query.unwrap_or_default(), "Page": page, "Size": 30,
-                        "Mode": if browse_type == "TAGS" { "tags" } else { "fuzzy" },
+                        "Mode": search_mode,
                     }),
                 )
                 .await;

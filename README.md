@@ -55,7 +55,7 @@ Movel 是 [LightNovel 轻书架](https://www.lightnovel.life/) 的非官方第�
 
 - [Vue 3](https://vuejs.org/) + Composition API
 - [TypeScript](https://www.typescriptlang.org/)
-- [Element Plus](https://element-plus.org/)
+- [Varlet UI](https://www.varletjs.com/)
 - [Vite](https://vite.dev/)
 
 ### 原生后端

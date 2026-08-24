@@ -1,5 +1,5 @@
 import { command } from "./bridge";
-import type { NovelDetail, NovelSummary } from "./novel";
+import type { NovelSummary } from "../domain/content";
 
 export interface BookshelfEntry {
   book: NovelSummary;
@@ -15,7 +15,7 @@ export function searchBookshelf(query: string) {
   return command<BookshelfEntry[]>("list_bookshelf", { query });
 }
 
-export function addToBookshelf(book: NovelDetail) {
+export function addToBookshelf(book: NovelSummary) {
   return command<void>("set_novel_bookshelf", {
     bookId: book.id,
     present: true,

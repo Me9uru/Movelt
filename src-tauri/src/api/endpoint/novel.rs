@@ -1,6 +1,6 @@
 use serde_json::{json, Value};
 
-use crate::error::Result;
+use crate::{dto::search::BookSearchMode, error::Result};
 
 use super::super::connection::OfficialClient;
 
@@ -26,13 +26,9 @@ impl OfficialClient {
         &self,
         query: String,
         page: i64,
-        tags: bool,
+        mode: BookSearchMode,
     ) -> Result<Value> {
-        let method = if tags {
-            "GetBookListByTags"
-        } else {
-            "GetBookList"
-        };
+        let method = mode.novel_hub_method();
         self.hub(
             method,
             json!({ "Page": page, "Size": 24, "KeyWords": query }),

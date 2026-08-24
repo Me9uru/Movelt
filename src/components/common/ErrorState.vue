@@ -10,11 +10,11 @@ const emit = defineEmits<{ retry: [] }>();
 
 <template>
   <div class="content-error-state">
-    <el-result icon="error" :title="title" :sub-title="message">
-      <template #extra>
-        <el-button type="primary" :loading="loading" @click="emit('retry')">重试</el-button>
+    <var-result type="error" :title="title" :description="message">
+      <template #footer>
+        <var-button type="primary" :loading="loading" @click="emit('retry')">重试</var-button>
       </template>
-    </el-result>
+    </var-result>
   </div>
 </template>
 

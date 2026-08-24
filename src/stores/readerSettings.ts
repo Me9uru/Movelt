@@ -1,5 +1,7 @@
 import { computed, reactive, ref, watch } from "vue";
+import { StyleProvider, Themes } from "@varlet/ui";
 import { defineStore } from "pinia";
+import { paperTheme } from "../themes/paper";
 
 export type ReaderTheme = "paper" | "light" | "night";
 export type ReaderFont = "serif" | "sans";
@@ -104,6 +106,11 @@ function createReaderStyle(settings: ReaderSettings) {
   }));
 }
 
+function resolveVarletTheme(value: ReaderTheme) {
+  if (value === "paper") return paperTheme;
+  return value === "night" ? Themes.md3Dark : Themes.md3Light;
+}
+
 export const useReaderSettingsStore = defineStore("reader-settings", () => {
   const theme = ref<ReaderTheme>(loadTheme());
   const novelSettings = createSettings("novel", theme);
@@ -114,6 +121,7 @@ export const useReaderSettingsStore = defineStore("reader-settings", () => {
   watch(theme, (value) => {
     localStorage.setItem(themeStorageKey, value);
     document.documentElement.dataset.readerTheme = value;
+    StyleProvider(resolveVarletTheme(value));
   }, { immediate: true });
 
   function reset(kind: ReaderKind) {

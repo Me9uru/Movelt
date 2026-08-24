@@ -11,7 +11,6 @@ import {
 export const useAuthStore = defineStore("auth", () => {
   const user = ref<LightNovelUser | null>(null);
   const restoring = ref(false);
-  const refreshing = ref(false);
   const isAuthenticated = computed(() => user.value !== null);
 
   async function restore() {
@@ -34,15 +33,6 @@ export const useAuthStore = defineStore("auth", () => {
     return user.value;
   }
 
-  async function refreshProfile() {
-    refreshing.value = true;
-    try {
-      user.value = await restoreUser();
-    } finally {
-      refreshing.value = false;
-    }
-  }
-
   async function logout() {
     await logoutRequest();
     user.value = null;
@@ -55,12 +45,10 @@ export const useAuthStore = defineStore("auth", () => {
   return {
     user,
     restoring,
-    refreshing,
     isAuthenticated,
     restore,
     login,
     register,
-    refreshProfile,
     logout,
     expire,
   };

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ArrowLeft, Check, Star, VideoPlay } from "@element-plus/icons-vue";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
@@ -7,13 +6,14 @@ import {
   getManga,
   isOnMangaBookshelf,
   removeFromMangaBookshelf,
-  type MangaDetail,
 } from "../../services/manga";
+import type { MangaDetail } from "../../domain/content";
 import { getErrorMessage, showError } from "../../utils/error";
 import ErrorState from "../../components/common/ErrorState.vue";
 import WorkDescription from "../../components/common/WorkDescription.vue";
 import MangaChapterList from "../../components/manga/MangaChapterList.vue";
 import WorkCover from "../../components/common/WorkCover.vue";
+import LoadingOverlay from "../../components/common/LoadingOverlay.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -86,11 +86,10 @@ async function toggleBookshelf(): Promise<void> {
 }
 </script>
 <template>
-  <section class="manga-detail-view" v-loading="loading">
+  <section class="manga-detail-view">
+    <LoadingOverlay v-if="loading" inline visible label="正在加载漫画详情" />
     <header class="manga-detail-back">
-      <el-button :icon="ArrowLeft" text @click="router.push({ name: 'manga' })"
-        >返回漫画</el-button
-      >
+      <var-button text @click="router.push({ name: 'manga' })"><var-icon name="arrow-left" />返回漫画</var-button>
     </header>
     <ErrorState
       v-if="error"
@@ -129,40 +128,40 @@ async function toggleBookshelf(): Promise<void> {
             </button>
           </div>
           <div class="manga-tags">
-            <el-tag v-for="tag in manga.genre" :key="tag" effect="plain">{{
+            <var-chip v-for="tag in manga.genre" :key="tag" plain>{{
               tag
-            }}</el-tag>
+            }}</var-chip>
           </div>
         </div>
         <div class="manga-detail-rail">
           <div class="manga-detail-actions">
-            <el-button
+            <var-button
               :type="onBookshelf ? 'default' : 'primary'"
-              :icon="onBookshelf ? Check : Star"
               size="large"
               :disabled="loading"
               @click="toggleBookshelf"
             >
+              <var-icon :name="onBookshelf ? 'check' : 'star'" />
               {{ onBookshelf ? "已加入书架" : "加入书架" }}
-            </el-button>
-            <el-button
+            </var-button>
+            <var-button
               v-if="resumeChapterId"
-              :icon="VideoPlay"
               size="large"
               :disabled="loading"
               @click="read(resumeChapterId)"
             >
+              <var-icon name="play" />
               继续阅读
-            </el-button>
-            <el-button
+            </var-button>
+            <var-button
               v-else-if="manga.chapters[0]"
-              :icon="VideoPlay"
               size="large"
               :disabled="loading"
               @click="read(manga.chapters[0].id)"
             >
+              <var-icon name="play" />
               开始阅读
-            </el-button>
+            </var-button>
           </div>
         </div>
       </article>

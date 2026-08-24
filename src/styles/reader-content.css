@@ -160,19 +160,17 @@
 .reader-footnote-dialog {
   width: min(440px, calc(100vw - var(--space-6)));
 }
-.reader-footnote-dialog .el-message-box__content {
+.reader-footnote-dialog .var-dialog__message {
   max-height: min(50dvh, 360px);
   overflow-y: auto;
-}
-.reader-footnote-dialog .el-message-box__message {
   color: var(--color-text-strong);
   font-family: var(--reader-font-family);
   line-height: var(--reader-line-height);
   overflow-wrap: anywhere;
 }
-.reader-footnote-dialog--chapter-font .el-message-box__message,
+.reader-footnote-dialog--chapter-font .var-dialog__message,
 .reader-footnote-dialog--chapter-font
-  .el-message-box__message
+  .var-dialog__message
   :is(p, div, span, li, ol, ul) {
   font-family: "movel-chapter", sans-serif;
 }
@@ -357,11 +355,11 @@
 .reader-content .em30 {
   font-size: 3em;
 }
-.reader-body > .el-divider {
+.reader-body > .var-divider {
   margin: var(--space-8) 0 var(--space-5);
   border-color: var(--reader-border);
 }
-.reader-body > .el-divider .el-divider__text {
+.reader-body > .var-divider .var-divider__text {
   color: var(--reader-muted);
   background: var(--reader-bg);
 }

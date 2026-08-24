@@ -1,5 +1,6 @@
 :root {
-  font-family: Inter, "Source Han Sans CN", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  font-family:
+    Inter, "Source Han Sans CN", "Noto Sans SC", "Microsoft YaHei", sans-serif;
   color: #1d3652;
   background: #f3f8fd;
   font-synthesis: none;
@@ -46,22 +47,6 @@
   --layout-gutter: 24px;
   --layout-gutter-compact: 16px;
 
-  /* Element Plus inherits the same palette. */
-  --el-color-primary: var(--color-primary);
-  --el-color-primary-light-3: #83bdec;
-  --el-color-primary-light-5: #acd4f3;
-  --el-color-primary-light-7: #d3eafb;
-  --el-color-primary-light-8: #e3f2fd;
-  --el-color-primary-light-9: var(--color-primary-softer);
-  --el-color-primary-dark-2: var(--color-primary-deep);
-  --el-text-color-primary: var(--color-text-strong);
-  --el-text-color-regular: var(--color-text);
-  --el-text-color-secondary: var(--color-text-muted);
-  --el-border-radius-base: var(--radius-control);
-  --el-border-color: var(--color-border);
-  --el-border-color-light: #e5f1f9;
-  --el-fill-color-light: var(--color-primary-softer);
-  --el-mask-color: rgb(238 248 255 / 58%);
 }
 
 :root[data-reader-theme="paper"] {
@@ -91,15 +76,6 @@
   --shadow-soft: 0 10px 28px rgb(70 61 48 / 7%);
   --shadow-panel: 0 16px 40px rgb(65 58 47 / 7%);
   --shadow-floating: 0 10px 30px rgb(50 45 38 / 13%);
-  --el-color-primary-light-3: #b09d86;
-  --el-color-primary-light-5: #c6b8a7;
-  --el-color-primary-light-7: #ded5c9;
-  --el-color-primary-light-8: #eae4dc;
-  --el-border-color-light: #e9e2d8;
-  --el-bg-color: #fffdf7;
-  --el-bg-color-overlay: #fffdf7;
-  --el-fill-color-blank: #fffdf7;
-  --el-mask-color: rgb(244 240 231 / 58%);
 }
 
 :root[data-reader-theme="light"] {
@@ -133,17 +109,4 @@
   --shadow-soft: 0 10px 28px rgb(0 0 0 / 14%);
   --shadow-panel: 0 16px 40px rgb(0 0 0 / 18%);
   --shadow-floating: 0 10px 30px rgb(0 0 0 / 22%);
-  --el-color-primary-light-3: #609ac6;
-  --el-color-primary-light-5: #4d7c9f;
-  --el-color-primary-light-7: #395d78;
-  --el-color-primary-light-8: #304e64;
-  --el-border-color-light: #303d47;
-  --el-bg-color: #222b33;
-  --el-bg-color-overlay: #26313a;
-  --el-fill-color-blank: #222b33;
-  --el-fill-color: #29353e;
-  --el-fill-color-light: var(--color-primary-softer);
-  --el-fill-color-lighter: #25313a;
-  --el-fill-color-extra-light: #222c34;
-  --el-mask-color: rgb(25 31 37 / 64%);
 }

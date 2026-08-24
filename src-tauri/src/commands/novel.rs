@@ -3,8 +3,11 @@ use url::Url;
 
 use crate::{
     api::OfficialClient,
-    dto::novel::{
-        ChapterSummary, DiscoveryList, NovelOverview, NovelSummary, ReaderDocument, Volume,
+    dto::{
+        novel::{
+            ChapterSummary, DiscoveryList, NovelOverview, NovelSummary, ReaderDocument, Volume,
+        },
+        search::BookSearchMode,
     },
     error::{AppError, Result},
     reader_cache::{neighbor_ids, ReaderCache},
@@ -102,16 +105,16 @@ pub(crate) async fn get_rank(
 }
 
 #[tauri::command]
-/// 按关键词或标签搜索小说。
+/// 按作品名、作者或标签搜索小说。
 pub(crate) async fn search_novels(
     client: State<'_, OfficialClient>,
     query: String,
     page_number: Option<i64>,
-    tags: bool,
+    mode: BookSearchMode,
 ) -> Result<DiscoveryList> {
     page(
         client
-            .search_novels(query, page_number.unwrap_or(1), tags)
+            .search_novels(query, page_number.unwrap_or(1), mode)
             .await?,
     )
 }

@@ -1,36 +1,27 @@
 <script setup lang="ts">
-import type { MangaSummary } from "../../services/manga";
-import WorkCover from "../common/WorkCover.vue";
+import { computed } from "vue";
+import type { MangaSummary } from "../../domain/content";
+import WorkGrid, { type WorkGridItem } from "../common/WorkGrid.vue";
 
-withDefaults(defineProps<{
-  manga: MangaSummary[];
-  showUnreadCount?: boolean;
-}>(), {
-  showUnreadCount: false,
-});
+const props = defineProps<{ manga: MangaSummary[] }>();
 
 const emit = defineEmits<{
   openManga: [manga: MangaSummary];
 }>();
+
+const items = computed<(WorkGridItem & { manga: MangaSummary })[]>(() => props.manga.map((manga) => ({
+  id: manga.id,
+  title: manga.title,
+  coverUrl: manga.thumbnailUrl,
+  manga,
+})));
+
+function open(item: WorkGridItem): void {
+  const match = items.value.find((entry) => entry.id === item.id);
+  if (match) emit("openManga", match.manga);
+}
 </script>
 
 <template>
-  <div class="result-grid manga-grid">
-    <el-card
-      v-for="item in manga"
-      :key="item.id"
-      class="book-card manga-card"
-      shadow="hover"
-      tabindex="0"
-      @click="emit('openManga', item)"
-      @keydown.enter="emit('openManga', item)"
-    >
-      <WorkCover class="book-cover" :cover-url="item.thumbnailUrl" :title="item.title" />
-      <div class="book-meta manga-card-copy">
-        <strong>{{ item.title }}</strong>
-        <span v-if="item.author">{{ item.author }}</span>
-        <em v-if="showUnreadCount && item.unreadCount">{{ item.unreadCount }} 话未读</em>
-      </div>
-    </el-card>
-  </div>
+  <WorkGrid class="manga-grid" :items="items" @open="open" />
 </template>

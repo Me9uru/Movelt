@@ -1,6 +1,7 @@
-import { ElMessage } from "element-plus";
+import { Dialog, Snackbar } from "@varlet/ui";
 
 const fallbackMessage = "操作失败，请稍后重试";
+let activeDialogMessage: string | null = null;
 
 export function getErrorMessage(error: unknown, fallback = fallbackMessage): string {
   if (typeof error === "string" && error.trim()) return error;
@@ -16,5 +17,23 @@ export function getErrorMessage(error: unknown, fallback = fallbackMessage): str
 export function showError(error: unknown, fallback?: string): void {
   const message = getErrorMessage(error, fallback);
   console.error(message);
-  ElMessage.error({ message, grouping: true });
+  Snackbar.error({ content: message, lockScroll: false });
+}
+
+/** Shows fatal navigation and rendering errors in a centered, dismissible dialog. */
+export function showErrorDialog(error: unknown, fallback?: string): void {
+  const message = getErrorMessage(error, fallback);
+  console.error(message);
+  if (activeDialogMessage === message) return;
+
+  activeDialogMessage = message;
+  void Dialog({
+    title: "操作失败",
+    message,
+    dialogClass: "error-dialog",
+    confirmButtonText: "知道了",
+    closeOnClickOverlay: false,
+  }).finally(() => {
+    activeDialogMessage = null;
+  });
 }

@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { ArrowRight, Delete, RefreshRight, User } from "@element-plus/icons-vue";
-import { ElMessage } from "element-plus";
+import { Snackbar } from "@varlet/ui";
 import { useRouter } from "vue-router";
 import { clearWebviewCache } from "../../services/settings";
 import { useAuthStore } from "../../stores/auth";
@@ -8,14 +7,6 @@ import { showError } from "../../utils/error";
 
 const auth = useAuthStore();
 const router = useRouter();
-
-async function refreshProfile() {
-  try {
-    await auth.refreshProfile();
-  } catch (error) {
-    showError(error);
-  }
-}
 
 async function logout() {
   try {
@@ -28,7 +19,7 @@ async function logout() {
 async function clearImageCache() {
   try {
     await clearWebviewCache();
-    ElMessage.success("已清除 WebView 浏览数据");
+    Snackbar.success("已清除 WebView 浏览数据");
   } catch (error) {
     showError(error, "清除图片缓存失败");
   }
@@ -41,23 +32,15 @@ async function clearImageCache() {
       <h2 id="account-settings-title">账户</h2>
       <div class="settings-list">
         <button type="button" class="settings-row settings-row--account" @click="!auth.user && router.push({ name: 'login' })">
-          <el-avatar :size="48" :src="auth.user?.Avatar" :icon="User" />
+          <var-avatar :size="48" :src="auth.user?.Avatar" />
           <span class="settings-row__content">
             <strong>{{ auth.user?.UserName ?? "登录 LightNovelShelf" }}</strong>
           </span>
-          <el-icon v-if="!auth.user" class="settings-row__arrow"><ArrowRight /></el-icon>
+          <var-icon v-if="!auth.user" class="settings-row__arrow" name="chevron-right" />
         </button>
-
-        <button v-if="auth.user" type="button" class="settings-row" :disabled="auth.refreshing" @click="refreshProfile">
-          <el-icon class="settings-row__icon"><RefreshRight /></el-icon>
-          <span class="settings-row__content"><strong>刷新账户资料</strong></span>
-          <span v-if="auth.refreshing" class="settings-row__status">刷新中</span>
-          <el-icon v-else class="settings-row__arrow"><ArrowRight /></el-icon>
-        </button>
-
         <button v-if="auth.user" type="button" class="settings-row settings-row--danger" @click="logout">
           <span class="settings-row__content"><strong>退出登录</strong></span>
-          <el-icon class="settings-row__arrow"><ArrowRight /></el-icon>
+          <var-icon class="settings-row__arrow" name="chevron-right" />
         </button>
       </div>
     </section>
@@ -66,12 +49,12 @@ async function clearImageCache() {
       <h2 id="storage-settings-title">存储</h2>
       <div class="settings-list">
         <button type="button" class="settings-row" @click="clearImageCache">
-          <el-icon class="settings-row__icon"><Delete /></el-icon>
+          <var-icon class="settings-row__icon" name="delete" />
           <span class="settings-row__content">
             <strong>清除 WebView 数据</strong>
             <span class="settings-row__status">会清除图片缓存和阅读设置</span>
           </span>
-          <el-icon class="settings-row__arrow"><ArrowRight /></el-icon>
+          <var-icon class="settings-row__arrow" name="chevron-right" />
         </button>
       </div>
     </section>
@@ -89,7 +72,7 @@ async function clearImageCache() {
             <strong>开源地址</strong>
             <span class="settings-row__status">github.com/Me9uru/Movelt</span>
           </span>
-          <el-icon class="settings-row__arrow"><ArrowRight /></el-icon>
+          <var-icon class="settings-row__arrow" name="chevron-right" />
         </a>
       </div>
     </section>

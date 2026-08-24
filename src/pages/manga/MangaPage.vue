@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { Search } from "@element-plus/icons-vue";
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import BookSearchBar from "../../components/common/BookSearchBar.vue";
 import LoadingOverlay from "../../components/common/LoadingOverlay.vue";
-import { categoryPresets } from "../../composables/useDiscovery";
-import { browseManga, type MangaBrowseType, type MangaSummary } from "../../services/manga";
+import ContentTabs from "../../components/common/ContentTabs.vue";
+import { browseManga, type MangaBrowseType } from "../../services/manga";
+import type { MangaSummary } from "../../domain/content";
+import type { BookSearchMode } from "../../domain/search";
 import { getErrorMessage, showError } from "../../utils/error";
 import ErrorState from "../../components/common/ErrorState.vue";
 import MangaGrid from "../../components/manga/MangaGrid.vue";
@@ -14,22 +14,26 @@ const router = useRouter();
 const manga = ref<MangaSummary[]>([]);
 const featured = ref<{ title: string; items: MangaSummary[] }[]>([]);
 const query = ref("");
-const categoryQuery = ref("");
-const categoryTag = ref("");
-const categorySearched = ref(false);
+const searchMode = ref<BookSearchMode>("title");
 const loading = ref(false);
 const error = ref("");
 const visibleManga = computed(() => manga.value);
-type MangaTab = "featured" | "ranking" | "category" | "search";
+type MangaTab = "featured" | "ranking" | "search";
+const mangaTabs: { name: Exclude<MangaTab, "search">; label: string }[] = [
+  { name: "featured", label: "精选" },
+  { name: "ranking", label: "排行榜" },
+];
 const activeTab = ref<MangaTab>("featured");
-const searchDialogVisible = ref(false);
-let allowSearchTab = false;
 
-async function refresh(browseType: MangaBrowseType, term: string | null = null): Promise<void> {
+async function refresh(
+  browseType: MangaBrowseType,
+  term: string | null = null,
+  mode?: BookSearchMode,
+): Promise<void> {
   loading.value = true;
   error.value = "";
   try {
-    manga.value = await browseManga(term, 1, browseType);
+    manga.value = await browseManga(term, 1, browseType, mode);
   }
   catch (errorValue) { error.value = getErrorMessage(errorValue, "无法连接漫画服务器"); showError(errorValue, "无法连接漫画服务器"); }
   finally { loading.value = false; }
@@ -58,56 +62,17 @@ async function refreshFeatured(): Promise<void> {
   } catch (errorValue) { error.value = getErrorMessage(errorValue, "无法连接漫画服务器"); showError(errorValue, "无法连接漫画服务器"); }
   finally { loading.value = false; }
 }
-function selectCategory(tag: string): void {
-  categoryTag.value = tag;
-  categoryQuery.value = tag;
-  categorySearched.value = true;
-  void refresh("TAGS", tag);
-}
-function submitCategory(): void {
-  const tags = categoryQuery.value.trim();
-  if (!tags) return;
-  categoryTag.value = "";
-  categorySearched.value = true;
-  void refresh("TAGS", tags);
-}
 function retry(): void {
   if (activeTab.value === "featured") { void refreshFeatured(); return; }
   if (activeTab.value === "ranking") { void refresh("POPULAR"); return; }
-  if (activeTab.value === "category" && categorySearched.value) { void refresh("TAGS", categoryQuery.value.trim()); return; }
-  if (activeTab.value === "search" && query.value.trim()) void refresh("SEARCH", query.value.trim());
-}
-function openSearchDialog(): void {
-  searchDialogVisible.value = true;
+  if (activeTab.value === "search" && query.value.trim()) void refresh("SEARCH", query.value.trim(), searchMode.value);
 }
 function openManga(item: MangaSummary): void {
   void router.push({ name: "manga-detail", params: { mangaId: item.id } });
 }
-function focusSearchInput(): void {
-  const input = document.querySelector<HTMLInputElement>(".manga-search-dialog input");
-  input?.focus();
-}
-function beforeTabLeave(nextName: string | number): boolean {
-  if (nextName !== "search" || allowSearchTab) return true;
-  openSearchDialog();
-  return false;
-}
-function handleTabClick(pane: { paneName?: string | number }): void {
-  if (pane.paneName === "search" && activeTab.value === "search") openSearchDialog();
-}
-async function submitSearch(): Promise<void> {
-  if (!query.value.trim()) {
-    void nextTick(focusSearchInput);
-    return;
-  }
-
-  await refresh("SEARCH", query.value.trim());
-  searchDialogVisible.value = false;
-  allowSearchTab = true;
+function handleSearch(): void {
   activeTab.value = "search";
-  void nextTick(() => {
-    allowSearchTab = false;
-  });
+  void refresh("SEARCH", query.value.trim(), searchMode.value);
 }
 watch(activeTab, (tab) => {
   if (tab === "featured" && featured.value.length === 0) void refreshFeatured();
@@ -120,62 +85,32 @@ onMounted(async () => {
 
 <template>
   <section class="manga-view">
-    <el-tabs v-model="activeTab" class="discovery-tabs manga-tabs" :before-leave="beforeTabLeave" @tab-click="handleTabClick">
-      <el-tab-pane label="精选" name="featured" />
-      <el-tab-pane label="排行榜" name="ranking" />
-      <el-tab-pane label="分类" name="category" />
-      <el-tab-pane name="search">
-        <template #label><el-icon class="library-search-trigger discovery-search-trigger" aria-label="搜索漫画"><Search /></el-icon></template>
-      </el-tab-pane>
-    </el-tabs>
+    <ContentTabs
+      v-model="activeTab"
+      :tabs="mangaTabs"
+      search-label="搜索漫画"
+      :query="query"
+      :search-mode="searchMode"
+      :search-loading="loading"
+      two-primary
+      @search="handleSearch"
+      @update:query="query = $event"
+      @update:search-mode="searchMode = $event"
+    />
 
     <ErrorState v-if="error" title="漫画加载失败" :message="error" :loading="loading" @retry="retry" />
 
     <template v-else-if="activeTab === 'featured'">
       <LoadingOverlay v-if="loading" inline visible label="正在加载漫画" />
       <section v-for="block in featured" v-else :key="block.title" class="discovery-block">
-        <div class="section-heading"><h2>{{ block.title }}</h2><el-tag class="count-tag" effect="plain">{{ block.items.length }} 本</el-tag></div>
+        <div class="section-heading"><h2>{{ block.title }}</h2><var-chip class="count-tag" plain>{{ block.items.length }} 本</var-chip></div>
         <MangaGrid :manga="block.items" @open-manga="openManga" />
       </section>
     </template>
 
-    <div v-else-if="activeTab === 'category'" class="manga-category">
-      <div class="category-presets">
-        <el-check-tag v-for="tag in categoryPresets" :key="tag" :checked="categoryTag === tag" @change="selectCategory(tag)">{{ tag }}</el-check-tag>
-      </div>
-      <div class="discovery-controls">
-        <el-input v-model="categoryQuery" maxlength="40" clearable placeholder="输入标签，多个标签用逗号分隔" @keyup.enter="submitCategory" />
-        <el-button type="primary" @click="submitCategory">查看分类</el-button>
-      </div>
-      <p v-if="!categorySearched" class="empty-tip">选择常用标签，或输入一个或多个标签开始筛选。</p>
-      <LoadingOverlay v-else-if="loading" inline visible label="正在加载漫画" />
-      <MangaGrid v-else :manga="visibleManga" @open-manga="openManga" />
-    </div>
-
     <LoadingOverlay v-else-if="loading" inline visible label="正在加载漫画" />
-    <MangaGrid v-else :manga="visibleManga" show-unread-count @open-manga="openManga" />
-    <el-empty v-if="activeTab === 'category' && categorySearched && !loading && !error && visibleManga.length === 0" :image-size="108" description="这个分类还没有漫画" />
-    <el-empty v-if="activeTab !== 'featured' && activeTab !== 'category' && !loading && !error && visibleManga.length === 0" :image-size="108" description="书库中暂无漫画" />
+    <MangaGrid v-else :manga="visibleManga" @open-manga="openManga" />
+    <var-result v-if="activeTab !== 'featured' && !loading && !error && visibleManga.length === 0" :image-size="108" description="书库中暂无漫画" />
 
-    <el-dialog
-      v-model="searchDialogVisible"
-      class="library-search-dialog manga-search-dialog"
-      modal-class="library-search-mask"
-      width="min(560px, calc(100vw - 32px))"
-      align-center
-      destroy-on-close
-      :with-header="false"
-      :show-close="false"
-      @opened="focusSearchInput"
-    >
-      <BookSearchBar
-        :model-value="query"
-        :loading="loading"
-        placeholder="输入漫画名称"
-        aria-label="按漫画名称搜索"
-        @update:model-value="query = $event"
-        @submit="submitSearch"
-      />
-    </el-dialog>
   </section>
 </template>

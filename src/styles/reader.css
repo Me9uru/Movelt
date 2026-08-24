@@ -28,7 +28,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.reader-chapter-nav .el-button {
+.reader-chapter-nav .var-button {
   width: 36px;
   height: 36px;
   margin: 0;
@@ -116,14 +116,13 @@
   transform: translateX(-50%);
 }
 
-.reader-settings-drawer.el-drawer {
-  border-radius: var(--radius-panel) var(--radius-panel) 0 0;
-  background: var(--color-surface-panel);
-}
-.reader-settings-drawer .el-drawer__body {
+.reader-settings-drawer {
+  max-height: min(80dvh, 720px);
   padding: var(--space-2) var(--space-4)
     max(var(--space-4), env(safe-area-inset-bottom));
   overflow-y: auto;
+  border-radius: var(--radius-panel) var(--radius-panel) 0 0;
+  background: var(--color-surface-panel);
 }
 .reader-settings-drawer .settings-panel {
   display: grid;
@@ -163,16 +162,18 @@
   font-size: 12px;
   font-weight: 500;
 }
-.reader-settings-drawer .el-radio-group {
+.reader-settings-drawer .var-radio-group {
+  flex-direction: row;
+  flex-wrap: wrap;
+  column-gap: var(--space-4);
+  row-gap: var(--space-1);
   width: 100%;
 }
-.reader-settings-drawer .el-radio-button {
+.reader-settings-drawer .var-radio__wrap {
   flex: 1;
+  min-width: max-content;
 }
-.reader-settings-drawer .el-radio-button__inner {
-  width: 100%;
-}
-.reader-settings-drawer .el-slider {
+.reader-settings-drawer .var-slider {
   padding: 0 6px;
 }
 
@@ -191,7 +192,7 @@
   .reader-chapter-nav strong {
     font-size: 14px;
   }
-  .reader-chapter-nav .el-button {
+  .reader-chapter-nav .var-button {
     width: 32px;
     height: 32px;
   }
@@ -217,7 +218,7 @@
   .page-controls {
     height: 50px;
   }
-  .reader-settings-drawer .el-drawer__body {
+  .reader-settings-drawer {
     padding-inline: 18px;
   }
 }

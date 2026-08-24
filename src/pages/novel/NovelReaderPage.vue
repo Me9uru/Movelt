@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import { ArrowLeft, ArrowRight } from "@element-plus/icons-vue";
-import { ElMessageBox } from "element-plus";
-import "element-plus/es/components/message-box/style/css";
+import { Dialog } from "@varlet/ui";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import type { ReaderDocument } from "../../domain/reader";
+import type { ReaderDocument } from "../../domain/content";
 import { useReaderSettings } from "../../composables/useReaderSettings";
 import ReaderSettingsDrawer from "../../components/reader/ReaderSettingsDrawer.vue";
 
@@ -61,6 +59,10 @@ function loadChapterFont(fontUrl: string | null): void {
 }
 
 const pageLabel = computed(() => `${currentPage.value + 1} / ${pageCount.value}`);
+const hasLeadingDocumentHeading = computed(() => {
+  const content = new DOMParser().parseFromString(props.document.html, "text/html").body;
+  return /^H[1-6]$/.test(content.firstElementChild?.tagName ?? "");
+});
 
 function updateSpread() {
   isSpread.value = Boolean(spreadQuery?.matches);
@@ -143,10 +145,12 @@ function prepareFootnotes(content: HTMLElement): void {
     footnote.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      void ElMessageBox.alert(note.innerHTML, "注释", {
-        customClass: props.document.fontUrl ? "reader-footnote-dialog reader-footnote-dialog--chapter-font" : "reader-footnote-dialog",
-        dangerouslyUseHTMLString: true,
+      void Dialog({
+        message: note.textContent?.trim() || "暂无注释内容",
+        title: "注释",
+        messageAlign: "left",
         confirmButtonText: "关闭",
+        dialogClass: "reader-footnote-dialog",
       });
     });
   });
@@ -363,7 +367,7 @@ function handleReaderClick(event: MouseEvent) {
 
   const target = event.target;
   if (target instanceof HTMLElement && target.closest(
-    "button, a, input, label, [role='button'], [contenteditable='true'], .el-slider, .el-radio-group",
+    "button, a, input, label, [role='button'], [contenteditable='true'], .var-slider, .var-radio-group",
   )) return;
   if (window.getSelection()?.isCollapsed === false) return;
 
@@ -459,35 +463,33 @@ onBeforeUnmount(() => {
     <Teleport to="body">
       <Transition name="reader-chapter-nav">
         <nav v-if="settingsVisible" class="reader-chapter-nav" aria-label="章节导航">
-          <el-button
-            circle
-            :icon="ArrowLeft"
+          <var-button
+            round
             :disabled="!hasPreviousChapter || loading"
             :title="hasPreviousChapter ? '上一话' : '已是第一话'"
             aria-label="上一话"
             @click="emit('previous')"
-          />
+          ><var-icon name="arrow-left" /></var-button>
           <strong :title="document.title">{{ document.title }}</strong>
-          <el-button
-            circle
-            :icon="ArrowRight"
+          <var-button
+            round
             :disabled="!hasNextChapter || loading"
             :title="hasNextChapter ? '下一话' : '已是最后一话'"
             aria-label="下一话"
             @click="emit('next')"
-          />
+          ><var-icon name="arrow-right" /></var-button>
         </nav>
       </Transition>
     </Teleport>
 
     <div v-if="settings.mode === 'scroll'" class="reader-body">
-      <header class="reader-heading">
+      <header v-if="!hasLeadingDocumentHeading" class="reader-heading">
         <h1>{{ document.title }}</h1>
       </header>
 
       <div ref="readerContent" class="reader-content" v-html="document.html" @click="handleChapterLinkClick" @click.capture="handleChapterImageClick" @load.capture="handleChapterImageLoad" />
 
-      <el-divider>本章结束</el-divider>
+      <var-divider>本章结束</var-divider>
     </div>
 
     <div v-else class="paged-reader" :class="{ 'paged-reader--spread': isSpread }">
@@ -500,7 +502,7 @@ onBeforeUnmount(() => {
         @pointerup="handlePointerUp"
         @pointercancel="pointerStartX = null"
       >
-        <header class="paged-heading">
+        <header v-if="!hasLeadingDocumentHeading" class="paged-heading">
           <h1>{{ document.title }}</h1>
         </header>
         <div ref="readerContent" class="reader-content" v-html="document.html" @click="handleChapterLinkClick" @click.capture="handleChapterImageClick" @load.capture="handleChapterImageLoad" />
@@ -514,11 +516,10 @@ onBeforeUnmount(() => {
 
     <ReaderSettingsDrawer v-model="settingsVisible" kind="novel" />
 
-    <el-image-viewer
-      v-if="previewImageUrl"
-      :url-list="[previewImageUrl]"
-      teleported
-      @close="previewImageUrl = null"
+    <var-image-preview
+      :show="Boolean(previewImageUrl)"
+      :images="previewImageUrl ? [previewImageUrl] : []"
+      @update:show="previewImageUrl = null"
     />
   </article>
 </template>

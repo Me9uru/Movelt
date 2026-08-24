@@ -1,45 +1,24 @@
 <script setup lang="ts">
-import type { NovelSummary } from "../../services/novel";
-import WorkCover from "../common/WorkCover.vue";
+import { computed } from "vue";
+import type { NovelSummary } from "../../domain/content";
+import WorkGrid, { type WorkGridItem } from "../common/WorkGrid.vue";
 
-defineProps<{ books: NovelSummary[]; loading?: boolean }>();
+const props = defineProps<{ books: NovelSummary[]; loading?: boolean }>();
 const emit = defineEmits<{ openNovel: [novel: NovelSummary] }>();
+
+const items = computed<(WorkGridItem & { novel: NovelSummary })[]>(() => props.books.map((novel) => ({
+  id: `${novel.source}:${novel.id}`,
+  title: novel.title,
+  coverUrl: novel.cover_url,
+  novel,
+})));
+
+function open(item: WorkGridItem): void {
+  const match = items.value.find((entry) => entry.id === item.id);
+  if (match) emit("openNovel", match.novel);
+}
 </script>
 
 <template>
-  <div v-if="loading" class="result-grid" aria-label="正在加载">
-    <el-card v-for="item in 6" :key="item" shadow="never" class="book-card skeleton-card">
-      <el-skeleton animated>
-        <template #template>
-          <el-skeleton-item variant="image" class="skeleton-cover" />
-          <el-skeleton-item variant="h3" style="width: 82%" />
-          <el-skeleton-item variant="text" style="width: 55%" />
-        </template>
-      </el-skeleton>
-    </el-card>
-  </div>
-  <div v-else class="result-grid">
-    <el-card
-      v-for="novel in books"
-      :key="`${novel.source}:${novel.id}`"
-      class="book-card"
-      shadow="hover"
-      tabindex="0"
-      @click="emit('openNovel', novel)"
-      @keydown.enter="emit('openNovel', novel)"
-    >
-      <WorkCover
-        class="book-cover"
-        :title="novel.title"
-        :cover-url="novel.cover_url"
-      />
-      <div class="book-meta">
-        <strong>{{ novel.title }}</strong>
-        <span v-if="novel.author || novel.status">{{ novel.author || novel.status }}</span>
-        <div v-if="novel.tags.length" class="book-tags">
-          <el-tag v-for="tag in novel.tags.slice(0, 2)" :key="tag" size="small" effect="plain">{{ tag }}</el-tag>
-        </div>
-      </div>
-    </el-card>
-  </div>
+  <WorkGrid :items="items" :loading="loading" @open="open" />
 </template>

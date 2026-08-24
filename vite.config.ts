@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import Components from "unplugin-vue-components/vite";
-import { ElementPlusResolver } from "unplugin-vue-components/resolvers";
+import { VarletImportResolver } from "@varlet/import-resolver";
 // @ts-expect-error type error without @types/node package
 import process from "node:process";
 const host = process.env.TAURI_DEV_HOST;
@@ -10,7 +10,7 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig(() => ({
   plugins: [
     vue(),
-    Components({ resolvers: [ElementPlusResolver()], dts: "src/components.d.ts" }),
+    Components({ resolvers: VarletImportResolver(), dts: "src/components.d.ts" }),
   ],
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`

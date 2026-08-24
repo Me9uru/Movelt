@@ -3,7 +3,10 @@ use tauri::State;
 
 use crate::{
     api::OfficialClient,
-    dto::manga::{MangaChapter, MangaDetail, MangaPageBatch, MangaPageList, MangaSummary},
+    dto::{
+        manga::{MangaChapter, MangaDetail, MangaPageBatch, MangaPageList, MangaSummary},
+        search::BookSearchMode,
+    },
     error::{AppError, Result},
     reader_cache::{neighbor_ids, ReaderCache},
 };
@@ -49,9 +52,12 @@ pub(crate) async fn browse_manga(
     query: Option<String>,
     page_number: i64,
     browse_type: String,
+    search_mode: Option<BookSearchMode>,
 ) -> Result<Vec<MangaSummary>> {
     Ok(array(
-        &client.manga_list(query, page_number, &browse_type).await?,
+        &client
+            .manga_list(query, page_number, &browse_type, search_mode)
+            .await?,
         "Data",
     )
     .iter()

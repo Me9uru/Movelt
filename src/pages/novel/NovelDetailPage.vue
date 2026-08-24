@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { Check, Star, VideoPlay } from "@element-plus/icons-vue";
-import type { NovelDetail, Volume } from "../../services/novel";
+import type { NovelSummary, Volume } from "../../domain/content";
 import CatalogueBranch from "../../components/novel/CatalogueBranch.vue";
 import WorkCover from "../../components/common/WorkCover.vue";
 import WorkDescription from "../../components/common/WorkDescription.vue";
 
 const props = defineProps<{
-  detail: NovelDetail;
+  detail: NovelSummary;
   catalogue: Volume[];
   loading: boolean;
   onBookshelf: boolean;
@@ -88,10 +87,10 @@ function countChapters(volume: Volume): number {
           </p>
           <div class="stats">
             <span><strong>{{ catalogue.length }}</strong> 篇</span>
-            <el-divider direction="vertical" />
+            <var-divider vertical />
             <span><strong>{{ chapterCount }}</strong> 话</span>
             <template v-if="detail.updated_at">
-              <el-divider direction="vertical" />
+              <var-divider vertical />
               <span>更新于 {{ detail.updated_at }}</span>
             </template>
           </div>
@@ -108,17 +107,18 @@ function countChapters(volume: Volume): number {
             </button>
           </div>
           <div v-if="detail.tags.length" class="detail-tags">
-            <el-tag v-for="tag in detail.tags" :key="tag" effect="plain">{{ tag }}</el-tag>
+            <var-chip v-for="tag in detail.tags" :key="tag" plain>{{ tag }}</var-chip>
           </div>
         </div>
 
         <div class="detail-rail">
           <div class="detail-actions">
-            <el-button :type="onBookshelf ? 'default' : 'primary'" :icon="onBookshelf ? Check : Star" size="large"
+            <var-button :type="onBookshelf ? 'default' : 'primary'" size="large"
               :disabled="loading" @click="emit('toggleBookshelf')">
+              <var-icon :name="onBookshelf ? 'check' : 'star'" />
               {{ onBookshelf ? "已加入书架" : "加入书架" }}
-            </el-button>
-            <el-button v-if="resumeChapterId" :icon="VideoPlay" size="large" :disabled="loading" @click="emit('continueReading')">继续阅读</el-button>
+            </var-button>
+            <var-button v-if="resumeChapterId" size="large" :disabled="loading" @click="emit('continueReading')"><var-icon name="play" />继续阅读</var-button>
           </div>
         </div>
       </div>
@@ -132,20 +132,20 @@ function countChapters(volume: Volume): number {
         <p>共 {{ catalogue.length }} 篇 · {{ chapterCount }} 话</p>
       </div>
 
-      <el-collapse v-model="activeVolume" accordion class="catalogue">
-        <el-collapse-item v-for="(volume, volumeIndex) in catalogue" :key="`${volume.title}-${volumeIndex}`"
+      <var-collapse v-model="activeVolume" accordion class="catalogue">
+        <var-collapse-item v-for="(volume, volumeIndex) in catalogue" :key="`${volume.title}-${volumeIndex}`"
           class="catalogue-volume" :name="volumeIndex">
           <template #title>
             <div class="volume-title volume-title--part">
               <span class="volume-index">{{ String(volumeIndex + 1).padStart(2, "0") }}</span>
               <strong>{{ volume.title }}</strong>
-              <el-tag class="count-tag" size="small" effect="plain">{{ countChapters(volume) }} 话</el-tag>
+              <var-chip class="count-tag" size="small" plain>{{ countChapters(volume) }} 话</var-chip>
             </div>
           </template>
           <CatalogueBranch v-if="activeVolume === volumeIndex" :volume="volume" :loading="loading"
             @open-chapter="emit('openChapter', $event)" />
-        </el-collapse-item>
-      </el-collapse>
+        </var-collapse-item>
+      </var-collapse>
     </section>
   </section>
 </template>

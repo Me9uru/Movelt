@@ -1,35 +1,270 @@
-.library-section { min-height: 320px; }
-.section-heading, .catalogue-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-4); padding: 0 0 var(--space-3); border: 0; border-bottom: 1px solid var(--color-border); border-radius: 0; background: transparent; box-shadow: none; }
-.section-heading > span, .catalogue-heading > div > span { color: var(--color-primary-deep); font-size: 11px; font-weight: 700; letter-spacing: .18em; }
-.section-heading h2, .catalogue-heading h2 { margin: 5px 0 0; font-family: Georgia, "Noto Serif SC", serif; font-size: 28px; font-weight: 500; }
-.count-tag.el-tag { display: inline-flex; align-items: center; height: var(--space-5); padding: 0 var(--space-2); border: 0; background: transparent; font-size: 14px; font-weight: 600; line-height: normal; }
-.result-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: var(--space-4) var(--space-3); }
-.book-card { overflow: hidden; border: 1px solid transparent; border-radius: var(--radius-card); background: var(--color-surface-card); cursor: pointer; box-shadow: 0 4px 14px rgb(36 98 145 / 6%); transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease; }
-.book-card:hover { border-color: #b9d9f3; box-shadow: 0 12px 24px rgb(36 98 145 / 14%); transform: translateY(-4px); }
-.book-card--disabled { pointer-events: none; cursor: wait; }
-.book-card .el-card__body { padding: 0 0 var(--space-2); }
-.book-cover, .cover-placeholder { display: block; width: 100%; aspect-ratio: 3 / 4; border-radius: 0; overflow: hidden; background: linear-gradient(145deg, var(--color-cover-start), var(--color-cover-end)); box-shadow: none; }
-.cover-placeholder { display: grid; place-items: center; color: var(--color-text-subtle); }
-.cover-placeholder .el-icon { font-size: 36px; }
-.import-epub-card { border: 0; }
-.import-epub-card .import-epub-cover { border: 1px dashed var(--color-border-strong); box-shadow: none; }
-.import-epub-cover { position: relative; background: linear-gradient(145deg, color-mix(in srgb, var(--color-cover-start) 72%, white), color-mix(in srgb, var(--color-cover-end) 72%, white)); }
-.import-epub-cover > .el-icon { font-size: 62px; }
-.import-epub-cover .import-epub-plus { position: absolute; right: calc(50% - 42px); bottom: calc(50% - 42px); display: grid; width: 32px; height: 32px; place-items: center; border: 2px solid var(--color-surface-card); border-radius: 50%; background: var(--color-primary); color: white; }
-.import-epub-cover .import-epub-plus svg { width: 19px; height: 19px; }
-.import-epub-meta { text-align: center; }
-.book-meta { padding: var(--space-2) var(--space-1) 0; }
-.book-meta strong { display: -webkit-box; overflow: hidden; min-height: 44px; color: var(--color-text-strong); font-size: 14px; line-height: 1.55; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.book-meta > span { display: block; margin-top: var(--space-2); color: var(--color-primary-deep); font-size: 12px; }
-.shelf-card .book-meta strong { min-height: auto; }
-.reading-progress { min-width: 0; margin-top: var(--space-2); }
-.reading-progress-meta { display: flex; align-items: center; gap: var(--space-2); color: var(--color-primary-deep); font-size: 12px; }
-.reading-progress-meta span { overflow: hidden; min-width: 0; flex: 1; text-overflow: ellipsis; white-space: nowrap; }
-.reading-progress-meta strong { flex: 0 0 auto; font-size: 11px; font-weight: 600; }
-.reading-progress .el-progress { margin-top: 7px; }
-.skeleton-card { cursor: default; }
-.skeleton-card:hover { transform: none; }
-.skeleton-cover { width: 100%; height: auto; aspect-ratio: 3 / 4; margin-bottom: 16px; border-radius: var(--radius-control); }
-.empty-tip { margin: -8px 0 0; color: var(--color-text-subtle); font-size: 12px; }
-.book-tags, .detail-tags { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
-.book-tags .el-tag, .detail-tags .el-tag { height: auto; padding: 2px 7px; border: 0; border-radius: var(--radius-control); background: var(--color-primary-soft); }
+.section-heading,
+.catalogue-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding: 0 0 var(--space-3);
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.section-heading > span,
+.catalogue-heading > div > span {
+  color: var(--color-primary-deep);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+.section-heading h2,
+.catalogue-heading h2 {
+  margin: 5px 0 0;
+  font-family: Georgia, "Noto Serif SC", serif;
+  font-size: 28px;
+  font-weight: 500;
+}
+.count-tag.var-chip {
+  display: inline-flex;
+  align-items: center;
+  height: var(--space-5);
+  padding: 0 var(--space-2);
+  border: 0;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: normal;
+}
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: var(--space-4) var(--space-3);
+}
+.work-grid.result-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  row-gap: var(--space-5);
+  column-gap: var(--space-4);
+}
+.work-grid .book-card {
+  width: 100%;
+  padding: 0;
+  border-color: transparent;
+  border-radius: 0;
+  color: inherit;
+  background: transparent;
+  box-shadow: none;
+  font: inherit;
+  text-align: left;
+}
+.work-grid .book-card:hover {
+  border-color: transparent;
+  box-shadow: none;
+}
+.book-card {
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: var(--radius-card);
+  background: var(--color-surface-card);
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgb(36 98 145 / 6%);
+  transition:
+    transform 0.22s ease,
+    border-color 0.22s ease,
+    box-shadow 0.22s ease;
+}
+.book-card:hover {
+  border-color: #b9d9f3;
+  box-shadow: 0 12px 24px rgb(36 98 145 / 14%);
+  transform: translateY(-4px);
+}
+.book-card--disabled {
+  pointer-events: none;
+  cursor: wait;
+}
+.book-card .var-card__container {
+  padding: 0 0 var(--space-2);
+}
+.book-cover,
+.cover-placeholder {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: 0;
+  overflow: hidden;
+  background: linear-gradient(
+    145deg,
+    var(--color-cover-start),
+    var(--color-cover-end)
+  );
+  box-shadow: none;
+}
+.work-grid .book-cover,
+.work-grid .cover-placeholder,
+.work-grid .skeleton-cover {
+  aspect-ratio: 3 / 5;
+  border-radius: var(--radius-card);
+}
+.work-grid .book-cover .var-image__image {
+  border-radius: inherit;
+}
+.work-grid .book-meta {
+  padding: var(--space-2) var(--space-1) var(--space-2);
+}
+.cover-placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--color-text-subtle);
+}
+.cover-placeholder .var-icon {
+  font-size: 36px;
+}
+.book-meta strong {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--color-text-strong);
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.work-grid .book-meta strong {
+  min-height: auto;
+  -webkit-line-clamp: 1;
+}
+.book-meta > span {
+  display: block;
+  margin-top: var(--space-2);
+  color: var(--color-primary-deep);
+  font-size: 12px;
+}
+.shelf-card .book-meta strong {
+  min-height: auto;
+}
+.skeleton-card {
+  cursor: default;
+}
+.skeleton-card:hover {
+  transform: none;
+}
+.skeleton-cover {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 4;
+  margin-bottom: 16px;
+  border-radius: var(--radius-control);
+}
+.empty-tip {
+  margin: -8px 0 0;
+  color: var(--color-text-subtle);
+  font-size: 12px;
+}
+.book-tags,
+.detail-tags,
+.manga-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.book-tags .var-chip,
+.detail-tags .var-chip {
+  height: auto;
+  padding: 2px 7px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--color-primary-soft);
+}
+
+:is(.description, .manga-description) {
+  color: var(--color-text);
+  line-height: 1.9;
+  white-space: pre-line;
+}
+:is(.description, .manga-description) .work-description {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 10;
+}
+:is(.description, .manga-description) p {
+  margin: 0;
+}
+:is(.description, .manga-description) p + p {
+  margin-top: var(--space-2);
+}
+:is(.description--expanded, .manga-description--expanded) .work-description {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+}
+.description-toggle {
+  min-height: 44px;
+  margin-top: var(--space-1);
+  padding: 0;
+  border: 0;
+  color: var(--color-primary-deep);
+  background: transparent;
+  font-size: 14px;
+  font-weight: 600;
+}
+.description-toggle:hover,
+.description-toggle:focus-visible {
+  color: var(--color-primary);
+  text-decoration: underline;
+  outline: none;
+}
+
+:is(.detail-actions, .manga-detail-actions) {
+  display: grid;
+  gap: var(--space-2);
+}
+:is(.detail-actions, .manga-detail-actions) .var-button {
+  width: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+:is(.detail-actions, .manga-detail-actions) .var-button > span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+:is(.detail-actions, .manga-detail-actions) .var-button + .var-button {
+  margin-left: 0;
+}
+:is(.detail-actions, .manga-detail-actions) .var-button--primary {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+}
+
+.book-heading,
+.manga-profile {
+  display: grid;
+  grid-template-areas: "cover copy" "cover rail";
+  grid-template-columns: 208px minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+  padding-bottom: var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+.detail-cover,
+.manga-detail-cover {
+  grid-area: cover;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+}
+.detail-copy,
+.manga-detail-copy {
+  grid-area: copy;
+  min-width: 0;
+}
+.detail-rail,
+.manga-detail-rail {
+  grid-area: rail;
+  min-width: 0;
+}

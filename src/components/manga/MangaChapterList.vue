@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { Reading } from "@element-plus/icons-vue";
-import type { MangaChapter } from "../../services/manga";
+import type { MangaChapter } from "../../domain/content";
 
 defineProps<{
   chapters: MangaChapter[];
@@ -19,11 +18,11 @@ const emit = defineEmits<{
     type="button"
     @click="emit('openChapter', chapter.id)"
   >
-    <el-icon><Reading /></el-icon>
+    <var-icon name="book-open-variant" />
     <span>
       <strong>{{ chapter.name || `第 ${chapter.chapterNumber} 话` }}</strong>
       <small v-if="chapter.pageCount">{{ chapter.pageCount }} 页</small>
     </span>
-    <el-tag v-if="!chapter.isRead" size="small">未读</el-tag>
+    <var-chip v-if="!chapter.isRead" size="small">未读</var-chip>
   </button>
 </template>
