@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { Collection, Picture, Search } from "@element-plus/icons-vue";
+import { Search } from "@element-plus/icons-vue";
 import { nextTick, ref } from "vue";
-import type { BookshelfEntry } from "../../services/library";
+import type { BookshelfEntry } from "../../services/bookshelf";
 import type { MangaSummary } from "../../services/manga";
 import type { NovelSummary } from "../../services/novel";
 import BookSearchBar from "../../components/common/BookSearchBar.vue";
 import LoadingOverlay from "../../components/common/LoadingOverlay.vue";
+import WorkCover from "../../components/common/WorkCover.vue";
 
 const props = defineProps<{
   books: BookshelfEntry[];
@@ -88,22 +89,11 @@ function submitSearch() {
           @click="emit('openNovel', entry.book)"
           @keydown.enter="emit('openNovel', entry.book)"
         >
-          <el-image
-            v-if="entry.book.cover_url"
+          <WorkCover
             class="book-cover"
-            :src="entry.book.cover_url"
-            :alt="entry.book.title"
-            fit="cover"
-          >
-            <template #error>
-              <div class="cover-placeholder">
-                <el-icon><Collection /></el-icon>
-              </div>
-            </template>
-          </el-image>
-          <div v-else class="cover-placeholder">
-            <el-icon><Collection /></el-icon>
-          </div>
+            :title="entry.book.title"
+            :cover-url="entry.book.cover_url"
+          />
           <div class="book-meta">
             <strong>{{ entry.book.title }}</strong>
           </div>
@@ -120,10 +110,7 @@ function submitSearch() {
           @click="emit('openManga', item)"
           @keydown.enter="emit('openManga', item)"
         >
-          <el-image v-if="item.thumbnailUrl" class="book-cover" :src="item.thumbnailUrl" :alt="item.title" fit="cover">
-            <template #error><div class="cover-placeholder"><el-icon><Picture /></el-icon></div></template>
-          </el-image>
-          <div v-else class="cover-placeholder"><el-icon><Picture /></el-icon></div>
+          <WorkCover class="book-cover" :cover-url="item.thumbnailUrl" :title="item.title" />
           <div class="book-meta"><strong>{{ item.title }}</strong><span v-if="item.author">{{ item.author }}</span></div>
         </el-card>
       </div>

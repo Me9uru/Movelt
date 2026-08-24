@@ -13,10 +13,9 @@ import {
   type Volume,
 } from "./services/novel";
 import type { ReaderDocument } from "./domain/reader";
-import type { BookshelfEntry } from "./services/library";
+import type { BookshelfEntry } from "./services/bookshelf";
 import { listMangaBookshelf, type MangaSummary } from "./services/manga";
 import LoadingOverlay from "./components/common/LoadingOverlay.vue";
-import AuthDialog from "./components/auth/AuthDialog.vue";
 import MainNavigation from "./components/layout/MainNavigation.vue";
 import { useLibrary } from "./composables/useLibrary";
 import { useDiscovery } from "./composables/useDiscovery";
@@ -37,7 +36,8 @@ const view = computed<AppRouteName>(() => {
     routeName === "manga" ||
     routeName === "manga-detail" ||
     routeName === "manga-reader" ||
-    routeName === "settings"
+    routeName === "settings" ||
+    routeName === "login"
     ? routeName
     : "novels";
 });
@@ -48,6 +48,7 @@ const readerDocument = ref<ReaderDocument | null>(null);
 const currentChapterId = ref<string | null>(null);
 const resumeChapterId = ref<string | null>(null);
 const resumeReadPosition = ref<ServerReadPosition | null>(null);
+const readerRenderKey = ref(0);
 const loading = ref(false);
 const loadingAction = ref<LoadingAction | null>(null);
 const bookshelfQuery = ref("");
@@ -58,7 +59,6 @@ const novelBookshelfLoading = ref(false);
 const novelBookshelfLoaded = ref(false);
 const mangaBookshelfLoading = ref(false);
 const mangaBookshelfLoaded = ref(false);
-const loginVisible = ref(false);
 const auth = useAuthStore();
 const discovery = useDiscovery();
 const { settings: readerSettings } = useReaderSettings("novel");
@@ -128,15 +128,14 @@ const loadingCopy = computed(() => {
       return { title: "正在加载", hint: "请稍候" };
   }
 });
-const showLoadingOverlay = computed(
-  () => loading.value,
-);
+const showLoadingOverlay = computed(() => loading.value);
 const contentLoading = computed(
   () => loading.value || (view.value === "bookshelf" && bookshelfLoading.value),
 );
 const loadingLabel = computed(() => loadingCopy.value.title);
 
 let activeLoadSeq = 0;
+let readerRestoreInFlight = false;
 
 async function run<T>(
   action: LoadingAction,
@@ -183,9 +182,10 @@ function changeBookshelfKind(kind: "novel" | "manga") {
 function loadActiveBookshelf() {
   if (!auth.user) return;
 
-  const task = bookshelfKind.value === "novel"
-    ? refreshNovelBookshelf()
-    : refreshMangaBookshelf();
+  const task =
+    bookshelfKind.value === "novel"
+      ? refreshNovelBookshelf()
+      : refreshMangaBookshelf();
   void task.catch((error: unknown) => {
     showError(error);
   });
@@ -197,10 +197,6 @@ function openLibraryView(nextView: LibraryRouteName) {
   void router.replace({ name: nextView });
 }
 
-async function handleAuthenticated() {
-  if (view.value === "bookshelf") loadActiveBookshelf();
-}
-
 function handleAndroidBack(event: Event) {
   if (view.value === "detail" || view.value === "reader") {
     event.preventDefault();
@@ -210,7 +206,44 @@ function handleAndroidBack(event: Event) {
 
 function handleAuthenticationExpired() {
   auth.expire();
-  loginVisible.value = true;
+  redirectToLogin();
+}
+
+async function restoreReaderAfterForeground() {
+  if (
+    document.visibilityState !== "visible" ||
+    readerRestoreInFlight ||
+    view.value !== "reader" ||
+    !detail.value ||
+    !readerDocument.value ||
+    !currentChapterId.value
+  ) {
+    return;
+  }
+
+  readerRestoreInFlight = true;
+  try {
+    // Android may discard WebView-rendered nodes while keeping the Vue state.
+    // Re-fetch the active document and remount the reader so v-html is inserted again.
+    await openChapter(currentChapterId.value, false);
+    readerRenderKey.value++;
+  } finally {
+    readerRestoreInFlight = false;
+  }
+}
+
+function handleDocumentVisibilityChange() {
+  if (document.visibilityState === "visible") {
+    void restoreReaderAfterForeground();
+  }
+}
+
+function redirectToLogin() {
+  if (route.name === "login") return;
+  void router.replace({
+    name: "login",
+    query: { redirect: route.fullPath },
+  });
 }
 
 async function loadNovel(source: string, novelId: string): Promise<boolean> {
@@ -249,7 +282,12 @@ async function openChapter(chapterId: string, navigate = true) {
   if (!detail.value) return;
   const isChangingChapter = view.value === "reader";
   const response = await run("chapter", async () => {
-    return getReaderDocument(detail.value!.source, detail.value!.id, chapterId, readerSettings.convert);
+    return getReaderDocument(
+      detail.value!.source,
+      detail.value!.id,
+      chapterId,
+      readerSettings.convert,
+    );
   });
   if (response) {
     readerDocument.value = response;
@@ -342,14 +380,17 @@ watch(
     route.params.bookId,
     route.params.chapterId,
     route.query.from,
+    auth.user,
   ],
   async () => {
+    if (!auth.user) return;
     const routeName = view.value;
     if (
       routeName === "manga" ||
       routeName === "manga-detail" ||
       routeName === "manga-reader" ||
-      routeName === "settings"
+      routeName === "settings" ||
+      routeName === "login"
     ) {
       return;
     }
@@ -405,7 +446,7 @@ watch(
       novelBookshelfLoaded.value = false;
       mangaBookshelfLoaded.value = false;
       bookshelfResults.value = null;
-      loginVisible.value = true;
+      redirectToLogin();
     }
   },
 );
@@ -421,7 +462,11 @@ watch(
 
 onMounted(() => {
   window.addEventListener("movel:android-back", handleAndroidBack);
-  window.addEventListener("movel:authentication-expired", handleAuthenticationExpired);
+  document.addEventListener("visibilitychange", handleDocumentVisibilityChange);
+  window.addEventListener(
+    "movel:authentication-expired",
+    handleAuthenticationExpired,
+  );
   void auth
     .restore()
     .then((value) => {
@@ -429,35 +474,41 @@ onMounted(() => {
         if (view.value === "bookshelf") loadActiveBookshelf();
         return undefined;
       }
-      loginVisible.value = true;
+      redirectToLogin();
       return undefined;
     })
     .catch((error: unknown) => {
       // A missing or unavailable system credential store must not leave the
       // application without a visible way to authenticate.
-      loginVisible.value = true;
+      redirectToLogin();
       showError(error);
     });
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("movel:android-back", handleAndroidBack);
-  window.removeEventListener("movel:authentication-expired", handleAuthenticationExpired);
+  document.removeEventListener("visibilitychange", handleDocumentVisibilityChange);
+  window.removeEventListener(
+    "movel:authentication-expired",
+    handleAuthenticationExpired,
+  );
 });
 </script>
 
 <template>
   <div class="page-bg">
-    <header v-if="view === 'detail'" class="topbar">
+    <header v-if="auth.user && view === 'detail'" class="topbar">
       <div class="topbar-inner detail-topbar">
-        <el-button class="back-button" :icon="ArrowLeft" @click="back">
+        <el-button text :icon="ArrowLeft" @click="back">
           {{ `返回${lastLibraryView === "bookshelf" ? "书架" : "小说"}` }}
         </el-button>
       </div>
     </header>
 
-    <main class="app-shell" :aria-busy="contentLoading">
-      <RouterView v-if="auth.user" v-slot="{ Component }">
+    <RouterView v-slot="{ Component }">
+      <component :is="Component" v-if="view === 'login'" />
+
+      <main v-else-if="auth.user" class="app-shell" :aria-busy="contentLoading">
         <component
           :is="Component"
           v-if="view === 'novels'"
@@ -516,6 +567,7 @@ onBeforeUnmount(() => {
         <component
           :is="Component"
           v-else-if="view === 'reader' && readerDocument"
+          :key="`${readerDocument.id}:${readerRenderKey}`"
           :document="readerDocument"
           :resume-position="resumeReadPosition"
           :loading="loading"
@@ -526,26 +578,19 @@ onBeforeUnmount(() => {
           @progress="recordProgress"
         />
 
-        <component
-          :is="Component"
-          v-else-if="view === 'settings'"
-          @login="loginVisible = true"
-        />
+        <component :is="Component" v-else-if="view === 'settings'" />
 
         <component
           :is="Component"
           v-else-if="view !== 'detail' && view !== 'reader'"
         />
-      </RouterView>
-    </main>
+      </main>
+    </RouterView>
 
     <LoadingOverlay :visible="showLoadingOverlay" :label="loadingLabel" />
 
-    <AuthDialog
-      v-model:visible="loginVisible"
-      @authenticated="handleAuthenticated"
-    />
     <MainNavigation
+      v-if="auth.user"
       :view="view"
       :book-count="books.length"
       @navigate="openLibraryView"

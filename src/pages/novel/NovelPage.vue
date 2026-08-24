@@ -5,7 +5,7 @@ import { categoryPresets, rankingPeriods } from "../../composables/useDiscovery"
 import type {
   DiscoveryList, NovelSummary, RecommendBlock,
 } from "../../services/novel";
-import BookGrid from "../../components/library/BookGrid.vue";
+import BookGrid from "../../components/novel/BookGrid.vue";
 import BookSearchBar from "../../components/common/BookSearchBar.vue";
 import ErrorState from "../../components/common/ErrorState.vue";
 

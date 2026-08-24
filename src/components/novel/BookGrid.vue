@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { NovelSummary } from "../../services/novel";
-import NovelCover from "./NovelCover.vue";
+import WorkCover from "../common/WorkCover.vue";
 
 defineProps<{ books: NovelSummary[]; loading?: boolean }>();
 const emit = defineEmits<{ openNovel: [novel: NovelSummary] }>();
@@ -28,10 +28,8 @@ const emit = defineEmits<{ openNovel: [novel: NovelSummary] }>();
       @click="emit('openNovel', novel)"
       @keydown.enter="emit('openNovel', novel)"
     >
-      <NovelCover
+      <WorkCover
         class="book-cover"
-        :source="novel.source"
-        :novel-id="novel.id"
         :title="novel.title"
         :cover-url="novel.cover_url"
       />

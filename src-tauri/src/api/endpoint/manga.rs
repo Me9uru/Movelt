@@ -39,6 +39,15 @@ impl OfficialClient {
         self.hub("GetComicInfo", json!({ "Id": id })).await
     }
 
+    /// 获取漫画系列及其分卷；系列标题不是数字书籍 ID。
+    pub(crate) async fn manga_series_info(&self, series_title: &str) -> Result<Value> {
+        self.hub(
+            "GetComicSeriesInfo",
+            json!({ "SeriesTitle": series_title, "Order": "latest" }),
+        )
+        .await
+    }
+
     pub(crate) async fn manga_content(&self, chapter_id: i64, skip: i64) -> Result<Value> {
         self.hub(
             "GetComicContent",

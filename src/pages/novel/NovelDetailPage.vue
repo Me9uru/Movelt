@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { Check, Star, VideoPlay } from "@element-plus/icons-vue";
 import type { NovelDetail, Volume } from "../../services/novel";
-import CatalogueBranch from "../../components/library/CatalogueBranch.vue";
-import NovelCover from "../../components/library/NovelCover.vue";
+import CatalogueBranch from "../../components/novel/CatalogueBranch.vue";
+import WorkCover from "../../components/common/WorkCover.vue";
 import WorkDescription from "../../components/common/WorkDescription.vue";
 
 const props = defineProps<{
@@ -21,6 +21,10 @@ const emit = defineEmits<{
 }>();
 
 const activeVolume = ref<number | string>("");
+const descriptionElement = ref<HTMLElement | null>(null);
+const descriptionExpanded = ref(false);
+const descriptionCanExpand = ref(false);
+let descriptionResizeObserver: ResizeObserver | undefined;
 const chapterCount = computed(() =>
   props.catalogue.reduce((total, volume) => total + countChapters(volume), 0),
 );
@@ -34,6 +38,29 @@ watch(
   { immediate: true },
 );
 
+function updateDescriptionExpansion(): void {
+  const element = descriptionElement.value?.querySelector<HTMLElement>(".work-description");
+  if (!element || descriptionExpanded.value) return;
+  descriptionCanExpand.value = element.scrollHeight > element.clientHeight + 1;
+}
+
+watch(
+  () => props.detail.description,
+  () => {
+    descriptionExpanded.value = false;
+    void nextTick(updateDescriptionExpansion);
+  },
+  { immediate: true },
+);
+
+onMounted(() => {
+  descriptionResizeObserver = new ResizeObserver(updateDescriptionExpansion);
+  if (descriptionElement.value) descriptionResizeObserver.observe(descriptionElement.value);
+  void nextTick(updateDescriptionExpansion);
+});
+
+onBeforeUnmount(() => descriptionResizeObserver?.disconnect());
+
 function countChapters(volume: Volume): number {
   return volume.chapters.length + volume.sections.reduce((total, section) => total + countChapters(section), 0);
 }
@@ -42,12 +69,10 @@ function countChapters(volume: Volume): number {
 
 <template>
   <section class="detail-view">
-    <el-card class="book-profile" shadow="never">
+    <section class="book-profile">
       <div class="book-heading">
-        <NovelCover
+        <WorkCover
           class="detail-cover"
-          :source="detail.source"
-          :novel-id="detail.id"
           :title="detail.title"
           :cover-url="detail.cover_url"
         />
@@ -70,11 +95,18 @@ function countChapters(volume: Volume): number {
               <span>更新于 {{ detail.updated_at }}</span>
             </template>
           </div>
-          <WorkDescription
-            class="description"
-            :content="detail.description"
-            fallback="暂无作品简介。"
-          />
+          <div ref="descriptionElement" class="description" :class="{ 'description--expanded': descriptionExpanded }">
+            <WorkDescription :content="detail.description" fallback="暂无作品简介。" />
+            <button
+              v-if="descriptionCanExpand"
+              type="button"
+              class="description-toggle"
+              :aria-expanded="descriptionExpanded"
+              @click="descriptionExpanded = !descriptionExpanded"
+            >
+              {{ descriptionExpanded ? "收起简介" : "展开全部" }}
+            </button>
+          </div>
           <div v-if="detail.tags.length" class="detail-tags">
             <el-tag v-for="tag in detail.tags" :key="tag" effect="plain">{{ tag }}</el-tag>
           </div>
@@ -90,7 +122,7 @@ function countChapters(volume: Volume): number {
           </div>
         </div>
       </div>
-    </el-card>
+    </section>
 
     <section class="catalogue-section">
       <div class="catalogue-heading">

@@ -1,0 +1,35 @@
+.library-section { min-height: 320px; }
+.section-heading, .catalogue-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-4); padding: 0 0 var(--space-3); border: 0; border-bottom: 1px solid var(--color-border); border-radius: 0; background: transparent; box-shadow: none; }
+.section-heading > span, .catalogue-heading > div > span { color: var(--color-primary-deep); font-size: 11px; font-weight: 700; letter-spacing: .18em; }
+.section-heading h2, .catalogue-heading h2 { margin: 5px 0 0; font-family: Georgia, "Noto Serif SC", serif; font-size: 28px; font-weight: 500; }
+.count-tag.el-tag { display: inline-flex; align-items: center; height: var(--space-5); padding: 0 var(--space-2); border: 0; background: transparent; font-size: 14px; font-weight: 600; line-height: normal; }
+.result-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: var(--space-4) var(--space-3); }
+.book-card { overflow: hidden; border: 1px solid transparent; border-radius: var(--radius-card); background: var(--color-surface-card); cursor: pointer; box-shadow: 0 4px 14px rgb(36 98 145 / 6%); transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease; }
+.book-card:hover { border-color: #b9d9f3; box-shadow: 0 12px 24px rgb(36 98 145 / 14%); transform: translateY(-4px); }
+.book-card--disabled { pointer-events: none; cursor: wait; }
+.book-card .el-card__body { padding: 0 0 var(--space-2); }
+.book-cover, .cover-placeholder { display: block; width: 100%; aspect-ratio: 3 / 4; border-radius: 0; overflow: hidden; background: linear-gradient(145deg, var(--color-cover-start), var(--color-cover-end)); box-shadow: none; }
+.cover-placeholder { display: grid; place-items: center; color: var(--color-text-subtle); }
+.cover-placeholder .el-icon { font-size: 36px; }
+.import-epub-card { border: 0; }
+.import-epub-card .import-epub-cover { border: 1px dashed var(--color-border-strong); box-shadow: none; }
+.import-epub-cover { position: relative; background: linear-gradient(145deg, color-mix(in srgb, var(--color-cover-start) 72%, white), color-mix(in srgb, var(--color-cover-end) 72%, white)); }
+.import-epub-cover > .el-icon { font-size: 62px; }
+.import-epub-cover .import-epub-plus { position: absolute; right: calc(50% - 42px); bottom: calc(50% - 42px); display: grid; width: 32px; height: 32px; place-items: center; border: 2px solid var(--color-surface-card); border-radius: 50%; background: var(--color-primary); color: white; }
+.import-epub-cover .import-epub-plus svg { width: 19px; height: 19px; }
+.import-epub-meta { text-align: center; }
+.book-meta { padding: var(--space-2) var(--space-1) 0; }
+.book-meta strong { display: -webkit-box; overflow: hidden; min-height: 44px; color: var(--color-text-strong); font-size: 14px; line-height: 1.55; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.book-meta > span { display: block; margin-top: var(--space-2); color: var(--color-primary-deep); font-size: 12px; }
+.shelf-card .book-meta strong { min-height: auto; }
+.reading-progress { min-width: 0; margin-top: var(--space-2); }
+.reading-progress-meta { display: flex; align-items: center; gap: var(--space-2); color: var(--color-primary-deep); font-size: 12px; }
+.reading-progress-meta span { overflow: hidden; min-width: 0; flex: 1; text-overflow: ellipsis; white-space: nowrap; }
+.reading-progress-meta strong { flex: 0 0 auto; font-size: 11px; font-weight: 600; }
+.reading-progress .el-progress { margin-top: 7px; }
+.skeleton-card { cursor: default; }
+.skeleton-card:hover { transform: none; }
+.skeleton-cover { width: 100%; height: auto; aspect-ratio: 3 / 4; margin-bottom: 16px; border-radius: var(--radius-control); }
+.empty-tip { margin: -8px 0 0; color: var(--color-text-subtle); font-size: 12px; }
+.book-tags, .detail-tags { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+.book-tags .el-tag, .detail-tags .el-tag { height: auto; padding: 2px 7px; border: 0; border-radius: var(--radius-control); background: var(--color-primary-soft); }

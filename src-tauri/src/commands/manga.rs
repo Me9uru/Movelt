@@ -16,13 +16,30 @@ use super::{
 /// 将官方漫画数据映射为应用摘要。
 fn manga(value: &Value) -> MangaSummary {
     MangaSummary {
-        id: number(value, "Id").to_string(),
+        // 漫画列表按系列聚合。详情接口需要的是系列标题而不是分卷数字 ID。
+        id: string(value, "Title"),
         title: string(value, "Title"),
         thumbnail_url: optional_string(value, "Cover"),
         author: optional_string(value, "Author"),
         unread_count: 0,
         source_name: Some("LightNovelShelf".into()),
     }
+}
+
+/// 从官方漫画图片数组中提取 URL。
+///
+/// 当前官方接口返回 `string[]`，旧响应则可能为 `{ Url: string }[]`；
+/// 保留两种形式的兼容性，避免将有效页面静默过滤掉。
+fn manga_page_urls(chapter: &Value) -> Vec<String> {
+    array(chapter, "Images")
+        .iter()
+        .filter_map(|image| {
+            image
+                .as_str()
+                .map(str::to_owned)
+                .or_else(|| optional_string(image, "Url"))
+        })
+        .collect()
 }
 
 #[tauri::command]
@@ -97,10 +114,21 @@ pub(crate) async fn get_manga(
     cache: State<'_, ReaderCache>,
     manga_id: String,
 ) -> Result<MangaDetail> {
-    let response = client.manga_info(parse_id(&manga_id)?).await?;
-    let book = response
-        .get("Book")
-        .ok_or_else(|| AppError::protocol("漫画详情响应缺少 Book"))?;
+    let response = match manga_id.parse::<i64>() {
+        Ok(id) => client.manga_info(id).await?,
+        Err(_) => client.manga_series_info(&manga_id).await?,
+    };
+    let (book, metadata) = if let Some(book) = response.get("Book") {
+        (book, book)
+    } else {
+        let series = response
+            .get("Series")
+            .ok_or_else(|| AppError::protocol("漫画系列响应缺少 Series"))?;
+        let book = array(&response, "Books")
+            .first()
+            .ok_or_else(|| AppError::protocol("漫画系列不含可阅读分卷"))?;
+        (book, series)
+    };
     let chapters = array(book, "Chapters");
     let chapters = if chapters.is_empty() {
         array(book, "Chapter")
@@ -115,10 +143,17 @@ pub(crate) async fn get_manga(
             .collect(),
     );
     let detail = MangaDetail {
-        summary: manga(book),
+        summary: MangaSummary {
+            id: number(book, "Id").to_string(),
+            title: string(metadata, "Title"),
+            thumbnail_url: optional_string(metadata, "Cover"),
+            author: optional_string(metadata, "Author"),
+            unread_count: 0,
+            source_name: Some("LightNovelShelf".into()),
+        },
         artist: None,
-        description: optional_html(book, "Introduction"),
-        genre: book
+        description: optional_html(metadata, "Introduction"),
+        genre: metadata
             .pointer("/Extra/classification/tags")
             .and_then(Value::as_array)
             .map(|tags| {
@@ -128,7 +163,7 @@ pub(crate) async fn get_manga(
                     .collect()
             })
             .unwrap_or_default(),
-        status: optional_string(book, "LastUpdatedChapter").unwrap_or_default(),
+        status: optional_string(metadata, "LastUpdatedChapter").unwrap_or_default(),
         read_position: position(response.get("ReadPosition")),
         chapters: chapters
             .iter()
@@ -197,10 +232,7 @@ async fn load_manga_chapter_pages(
     let pages = MangaPageList {
         chapter_id: chapter_id.into(),
         page_count: number(chapter, "Total"),
-        first_page_urls: array(chapter, "Images")
-            .iter()
-            .filter_map(|image| optional_string(image, "Url"))
-            .collect(),
+        first_page_urls: manga_page_urls(chapter),
         read_position: position(response.get("ReadPosition")),
     };
     cache.store_manga_pages(pages.clone());
@@ -240,9 +272,27 @@ pub(crate) async fn get_manga_page_batch(
         .ok_or_else(|| AppError::protocol("漫画页面响应缺少 Chapter"))?;
     Ok(MangaPageBatch {
         start_index,
-        page_urls: array(chapter, "Images")
-            .iter()
-            .filter_map(|image| optional_string(image, "Url"))
-            .collect(),
+        page_urls: manga_page_urls(chapter),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::manga_page_urls;
+
+    #[test]
+    fn maps_current_string_image_urls() {
+        let chapter = json!({"Images": ["https://images.example/1.webp"]});
+
+        assert_eq!(manga_page_urls(&chapter), ["https://images.example/1.webp"]);
+    }
+
+    #[test]
+    fn keeps_legacy_object_image_urls_compatible() {
+        let chapter = json!({"Images": [{"Url": "https://images.example/1.webp"}]});
+
+        assert_eq!(manga_page_urls(&chapter), ["https://images.example/1.webp"]);
+    }
 }

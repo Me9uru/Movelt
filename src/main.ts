@@ -6,6 +6,11 @@ import { router } from "./router";
 import { showError } from "./utils/error";
 import "./styles/theme.css";
 import "./styles/app.css";
+import "./styles/components.css";
+import "./styles/novel.css";
+import "./styles/manga.css";
+import "./styles/responsive.css";
+import "./styles/reader-content.css";
 import "./styles/reader.css";
 
 if (import.meta.env.DEV) setupDevInvoke();

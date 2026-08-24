@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import { ArrowRight, Delete, RefreshRight, User } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
+import { useRouter } from "vue-router";
 import { clearWebviewCache } from "../../services/settings";
 import { useAuthStore } from "../../stores/auth";
 import { showError } from "../../utils/error";
 
-const emit = defineEmits<{
-  login: [];
-}>();
 const auth = useAuthStore();
+const router = useRouter();
 
 async function refreshProfile() {
   try {
@@ -41,7 +40,7 @@ async function clearImageCache() {
     <section class="settings-group" aria-labelledby="account-settings-title">
       <h2 id="account-settings-title">账户</h2>
       <div class="settings-list">
-        <button type="button" class="settings-row settings-row--account" @click="!auth.user && emit('login')">
+        <button type="button" class="settings-row settings-row--account" @click="!auth.user && router.push({ name: 'login' })">
           <el-avatar :size="48" :src="auth.user?.Avatar" :icon="User" />
           <span class="settings-row__content">
             <strong>{{ auth.user?.UserName ?? "登录 LightNovelShelf" }}</strong>

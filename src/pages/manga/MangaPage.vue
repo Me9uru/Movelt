@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Collection, Search } from "@element-plus/icons-vue";
+import { Search } from "@element-plus/icons-vue";
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import BookSearchBar from "../../components/common/BookSearchBar.vue";
@@ -8,6 +8,7 @@ import { categoryPresets } from "../../composables/useDiscovery";
 import { browseManga, type MangaBrowseType, type MangaSummary } from "../../services/manga";
 import { getErrorMessage, showError } from "../../utils/error";
 import ErrorState from "../../components/common/ErrorState.vue";
+import MangaGrid from "../../components/manga/MangaGrid.vue";
 
 const router = useRouter();
 const manga = ref<MangaSummary[]>([]);
@@ -79,6 +80,9 @@ function retry(): void {
 function openSearchDialog(): void {
   searchDialogVisible.value = true;
 }
+function openManga(item: MangaSummary): void {
+  void router.push({ name: "manga-detail", params: { mangaId: item.id } });
+}
 function focusSearchInput(): void {
   const input = document.querySelector<HTMLInputElement>(".manga-search-dialog input");
   input?.focus();
@@ -131,13 +135,7 @@ onMounted(async () => {
       <LoadingOverlay v-if="loading" inline visible label="正在加载漫画" />
       <section v-for="block in featured" v-else :key="block.title" class="discovery-block">
         <div class="section-heading"><h2>{{ block.title }}</h2><el-tag class="count-tag" effect="plain">{{ block.items.length }} 本</el-tag></div>
-        <div class="result-grid manga-grid">
-          <el-card v-for="item in block.items" :key="item.id" class="book-card manga-card" shadow="hover" tabindex="0" @click="router.push({ name: 'manga-detail', params: { mangaId: item.id } })" @keydown.enter="router.push({ name: 'manga-detail', params: { mangaId: item.id } })">
-            <el-image v-if="item.thumbnailUrl" class="book-cover" :src="item.thumbnailUrl" fit="cover" :alt="item.title"><template #error><span class="cover-placeholder"><el-icon><Collection /></el-icon></span></template></el-image>
-            <span v-else class="cover-placeholder"><el-icon><Collection /></el-icon></span>
-            <div class="book-meta manga-card-copy"><strong>{{ item.title }}</strong><span v-if="item.author">{{ item.author }}</span></div>
-          </el-card>
-        </div>
+        <MangaGrid :manga="block.items" @open-manga="openManga" />
       </section>
     </template>
 
@@ -151,23 +149,11 @@ onMounted(async () => {
       </div>
       <p v-if="!categorySearched" class="empty-tip">选择常用标签，或输入一个或多个标签开始筛选。</p>
       <LoadingOverlay v-else-if="loading" inline visible label="正在加载漫画" />
-      <div v-else class="result-grid manga-grid">
-        <el-card v-for="item in visibleManga" :key="item.id" class="book-card manga-card" shadow="hover" tabindex="0" @click="router.push({ name: 'manga-detail', params: { mangaId: item.id } })" @keydown.enter="router.push({ name: 'manga-detail', params: { mangaId: item.id } })">
-          <el-image v-if="item.thumbnailUrl" class="book-cover" :src="item.thumbnailUrl" fit="cover" :alt="item.title"><template #error><span class="cover-placeholder"><el-icon><Collection /></el-icon></span></template></el-image>
-          <span v-else class="cover-placeholder"><el-icon><Collection /></el-icon></span>
-          <div class="book-meta manga-card-copy"><strong>{{ item.title }}</strong><span v-if="item.author">{{ item.author }}</span></div>
-        </el-card>
-      </div>
+      <MangaGrid v-else :manga="visibleManga" @open-manga="openManga" />
     </div>
 
     <LoadingOverlay v-else-if="loading" inline visible label="正在加载漫画" />
-    <div v-else class="result-grid manga-grid">
-      <el-card v-for="item in visibleManga" :key="item.id" class="book-card manga-card" shadow="hover" tabindex="0" @click="router.push({ name: 'manga-detail', params: { mangaId: item.id } })" @keydown.enter="router.push({ name: 'manga-detail', params: { mangaId: item.id } })">
-        <el-image v-if="item.thumbnailUrl" class="book-cover" :src="item.thumbnailUrl" fit="cover" :alt="item.title"><template #error><span class="cover-placeholder"><el-icon><Collection /></el-icon></span></template></el-image>
-        <span v-else class="cover-placeholder"><el-icon><Collection /></el-icon></span>
-        <div class="book-meta manga-card-copy"><strong>{{ item.title }}</strong><span v-if="item.author">{{ item.author }}</span><em v-if="item.unreadCount">{{ item.unreadCount }} 话未读</em></div>
-      </el-card>
-    </div>
+    <MangaGrid v-else :manga="visibleManga" show-unread-count @open-manga="openManga" />
     <el-empty v-if="activeTab === 'category' && categorySearched && !loading && !error && visibleManga.length === 0" :image-size="108" description="这个分类还没有漫画" />
     <el-empty v-if="activeTab !== 'featured' && activeTab !== 'category' && !loading && !error && visibleManga.length === 0" :image-size="108" description="书库中暂无漫画" />
 
