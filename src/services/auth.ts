@@ -1,11 +1,7 @@
 import { command } from "./bridge";
+import type { LightNovelUser } from "../domain/auth";
 
-export interface LightNovelUser {
-  Id: number;
-  UserName: string;
-  Avatar?: string;
-  Email?: string;
-}
+export type { LightNovelUser } from "../domain/auth";
 
 export function login(email: string, password: string) {
   return command<LightNovelUser>("login", { email, password });

@@ -1,6 +1,7 @@
 import { ref } from "vue";
-import type { NovelSummary } from "../domain/content";
-import { addToBookshelf, listBookshelf, removeFromBookshelf, searchBookshelf, type BookshelfEntry } from "../services/bookshelf";
+import type { NovelSummary } from "../domain/novel";
+import { addToBookshelf, listBookshelf, removeFromBookshelf, searchBookshelf } from "../services/bookshelf";
+import type { BookshelfEntry } from "../domain/bookshelf";
 
 const books = ref<BookshelfEntry[]>([]);
 export function useLibrary() {

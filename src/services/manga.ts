@@ -4,7 +4,7 @@ import type {
   MangaPageBatch,
   MangaPageList,
   MangaSummary,
-} from "../domain/content";
+} from "../domain/manga";
 import type { BookSearchMode } from "../domain/search";
 
 export type MangaBrowseType = "SEARCH" | "TAGS" | "POPULAR" | "LATEST" | "NEW";

@@ -1,22 +1,25 @@
 <script setup lang="ts" generic="T extends string">
 import { nextTick, ref } from "vue";
 import type { BookSearchMode } from "../../domain/search";
-import BookSearchBar from "./BookSearchBar.vue";
+import BookSearchBar from "../book/BookSearchBar.vue";
 
-const props = withDefaults(defineProps<{
-  tabs: { name: T; label: string }[];
-  modelValue: T;
-  searchLabel: string;
-  query: string;
-  searchLoading: boolean;
-  searchMode?: BookSearchMode;
-  twoPrimary?: boolean;
-  swipe?: boolean;
-}>(), {
-  searchMode: undefined,
-  twoPrimary: false,
-  swipe: false,
-});
+const props = withDefaults(
+  defineProps<{
+    tabs: { name: T; label: string }[];
+    modelValue: T;
+    searchLabel: string;
+    query: string;
+    searchLoading: boolean;
+    searchMode?: BookSearchMode;
+    twoPrimary?: boolean;
+    swipe?: boolean;
+  }>(),
+  {
+    searchMode: undefined,
+    twoPrimary: false,
+    swipe: false,
+  },
+);
 
 const emit = defineEmits<{
   "update:modelValue": [value: T];
@@ -31,16 +34,13 @@ const searchBar = ref<InstanceType<typeof BookSearchBar> | null>(null);
 let touchStart: { x: number; y: number } | null = null;
 
 function focusSearchInput(): void {
-  const input = (searchBar.value?.$el as HTMLElement | undefined)?.querySelector<HTMLInputElement>("input");
+  const input = (
+    searchBar.value?.$el as HTMLElement | undefined
+  )?.querySelector<HTMLInputElement>("input");
   input?.focus();
 }
 
 function selectTab(name: string): void {
-  if (name === "search") {
-    searchDialogVisible.value = true;
-    return;
-  }
-
   emit("update:modelValue", name as T);
 }
 
@@ -75,9 +75,10 @@ function handleTouchEnd(event: TouchEvent): void {
   const deltaY = touch.clientY - touchStart.y;
   touchStart = null;
 
-  if (Math.abs(deltaX) < 50 || Math.abs(deltaX) <= Math.abs(deltaY) * 1.25) return;
+  if (Math.abs(deltaX) < 50 || Math.abs(deltaX) <= Math.abs(deltaY) * 1.25)
+    return;
 
-  const allTabs: (T | "search")[] = [...props.tabs.map((tab) => tab.name), "search"];
+  const allTabs = props.tabs.map((tab) => tab.name);
   const currentIndex = allTabs.indexOf(props.modelValue);
   const nextIndex = deltaX < 0 ? currentIndex + 1 : currentIndex - 1;
   const nextTab = allTabs[nextIndex];
@@ -86,20 +87,31 @@ function handleTouchEnd(event: TouchEvent): void {
 </script>
 
 <template>
-  <var-tabs
-    :active="modelValue"
-    class="discovery-tabs"
+  <div
+    class="discovery-tabs-shell"
     :class="{ 'discovery-tabs--two-primary': twoPrimary }"
-    @update:active="selectTab(String($event))"
     @touchstart.passive="handleTouchStart"
     @touchend.passive="handleTouchEnd"
     @touchcancel="touchStart = null"
   >
-    <var-tab v-for="tab in tabs" :key="tab.name" :name="tab.name">{{ tab.label }}</var-tab>
-    <var-tab name="search">
-      <var-icon class="library-search-trigger discovery-search-trigger" name="magnify" :aria-label="searchLabel" />
-    </var-tab>
-  </var-tabs>
+    <var-tabs
+      :active="modelValue"
+      class="discovery-tabs"
+      @update:active="selectTab(String($event))"
+    >
+      <var-tab v-for="tab in tabs" :key="tab.name" :name="tab.name">{{
+        tab.label
+      }}</var-tab>
+    </var-tabs>
+    <button
+      class="library-search-trigger discovery-search-trigger"
+      type="button"
+      :aria-label="searchLabel"
+      @click="searchDialogVisible = true"
+    >
+      <var-icon name="magnify" />
+    </button>
+  </div>
 
   <var-popup
     v-model:show="searchDialogVisible"

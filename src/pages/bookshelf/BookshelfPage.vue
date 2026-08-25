@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import type { BookshelfEntry } from "../../services/bookshelf";
-import type { MangaSummary, NovelSummary } from "../../domain/content";
+import type { BookshelfEntry } from "../../domain/bookshelf";
+import type { NovelSummary } from "../../domain/novel";
+import type { MangaSummary } from "../../domain/manga";
 import ContentTabs from "../../components/common/ContentTabs.vue";
 import LoadingOverlay from "../../components/common/LoadingOverlay.vue";
-import WorkCover from "../../components/common/WorkCover.vue";
+import BookCover from "../../components/book/BookCover.vue";
 
 const props = defineProps<{
   books: BookshelfEntry[];
@@ -63,7 +64,7 @@ const shelfTabs: { name: "novel" | "manga"; label: string }[] = [
         @click="emit('openNovel', entry.book)"
         @keydown.enter="emit('openNovel', entry.book)"
       >
-        <WorkCover
+        <BookCover
           class="book-cover"
           :title="entry.book.title"
           :cover-url="entry.book.cover_url"
@@ -84,7 +85,7 @@ const shelfTabs: { name: "novel" | "manga"; label: string }[] = [
         @click="emit('openManga', item)"
         @keydown.enter="emit('openManga', item)"
       >
-        <WorkCover class="book-cover" :cover-url="item.thumbnailUrl" :title="item.title" />
+        <BookCover class="book-cover" :cover-url="item.thumbnailUrl" :title="item.title" />
         <div class="book-meta"><strong>{{ item.title }}</strong><span v-if="item.author">{{ item.author }}</span></div>
       </var-card>
     </div>

@@ -5,8 +5,8 @@ import {
   logout as logoutRequest,
   register as registerRequest,
   restoreUser,
-  type LightNovelUser,
 } from "../services/auth";
+import type { LightNovelUser } from "../domain/auth";
 
 export const useAuthStore = defineStore("auth", () => {
   const user = ref<LightNovelUser | null>(null);

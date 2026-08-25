@@ -2,26 +2,7 @@ import { computed, reactive, ref, watch } from "vue";
 import { StyleProvider, Themes } from "@varlet/ui";
 import { defineStore } from "pinia";
 import { paperTheme } from "../themes/paper";
-
-export type ReaderTheme = "paper" | "light" | "night";
-export type ReaderFont = "serif" | "sans";
-export type ReaderMode = "scroll" | "paged";
-export type PageTurnDirection = "left-previous" | "left-next";
-export type ReaderConvert = "original" | "t2s" | "s2t";
-export type ReaderKind = "novel" | "manga";
-
-export interface ReaderSettings {
-  fontSize: number;
-  lineHeight: number;
-  letterSpacing: number;
-  paragraphSpacing: number;
-  contentWidth: number;
-  font: ReaderFont;
-  theme: ReaderTheme;
-  mode: ReaderMode;
-  pageTurnDirection: PageTurnDirection;
-  convert: ReaderConvert;
-}
+import type { ReaderKind, ReaderSettings, ReaderTheme } from "../types/reader";
 
 const themeStorageKey = "reader.theme.v1";
 const storageKeys: Record<ReaderKind, string> = {

@@ -1,3 +1,5 @@
+/* Book pages shared by novel + manga: discovery, detail, catalogue,
+   chapter list. */
 .discovery-view {
   padding: var(--space-5) 0 var(--space-8);
 }
@@ -11,18 +13,24 @@
 .service-alert .var-alert__message {
   margin-top: var(--space-2);
 }
-.discovery-tabs {
+.discovery-tabs-shell {
   --tabs-background: transparent;
 
   position: sticky;
   top: 0;
   z-index: 10;
+  display: flex;
+  align-items: stretch;
   padding: 0 max(12px, env(safe-area-inset-right)) 0
     max(12px, env(safe-area-inset-left));
   border: 0;
   border-bottom: 1px solid var(--color-border);
   background: color-mix(in srgb, var(--color-background-soft) 88%, transparent);
   backdrop-filter: blur(12px);
+}
+.discovery-tabs {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .discovery-tabs .var-tabs__tab-wrap {
   display: flex;
@@ -36,18 +44,14 @@
 .discovery-tabs .var-tabs__indicator-inner {
   border-radius: var(--radius-pill);
 }
-.discovery-tabs .var-tab:last-of-type {
-  flex: 0 0 44px;
-  padding: 0;
+.discovery-tabs--two-primary .var-tab {
+  flex: 0 0 50%;
 }
-.discovery-tabs .discovery-search-trigger {
-  pointer-events: none;
-}
-.discovery-tabs--two-primary .var-tab:not(:last-of-type) {
-  flex: 0 0 40%;
-}
-.discovery-tabs--two-primary .var-tab:last-of-type {
+.discovery-tabs--two-primary .discovery-search-trigger {
   flex: 0 0 20%;
+  width: 20%;
+  height: 44px;
+  border-radius: 0;
 }
 .discovery-block {
   margin: var(--space-3) 0 var(--space-7);
@@ -103,10 +107,6 @@
   background: rgb(25 49 68 / 24%);
   backdrop-filter: blur(10px);
 }
-.discovery-pagination {
-  justify-content: center;
-  margin: var(--space-5) 0 var(--space-2);
-}
 @media (min-width: 900px) {
   .discovery-block .result-grid {
     grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -119,55 +119,8 @@
 .detail-view {
   padding: var(--space-5) 0 var(--space-8);
 }
-.book-profile {
-  padding-bottom: var(--space-5);
-}
-.detail-copy h1 {
-  margin: 0 0 var(--space-2);
-  font-family: Georgia, "Noto Serif SC", serif;
-  font-size: clamp(30px, 4vw, 42px);
-  font-weight: 500;
-  line-height: 1.25;
-}
-.author {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: 15px;
-}
-.author i {
-  width: 3px;
-  height: 3px;
-  border-radius: var(--radius-pill);
-  background: var(--color-text-subtle);
-}
-.stats {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-  margin: var(--space-4) 0;
-  color: var(--color-text-subtle);
-  font-size: 13px;
-}
-.stats strong {
-  color: var(--color-text);
-  font-size: 16px;
-}
-.description {
-  margin: 0;
-}
-.detail-actions {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-.detail-actions .var-button:only-child {
-  grid-column: 1 / -1;
-}
 .catalogue-section {
-  margin-top: var(--space-6);
+  margin-top: calc(var(--space-6) + var(--space-5));
 }
 .catalogue-section .catalogue-heading {
   margin: 0;
@@ -214,11 +167,22 @@
   font-family: Georgia, serif;
 }
 .catalogue-volume > .var-collapse-item__header {
-  background: linear-gradient(
-    90deg,
-    var(--color-primary-softer),
-    transparent 55%
-  );
+  border-radius: var(--radius-control);
+  color: var(--color-primary-deep);
+  background: var(--color-primary-soft);
+}
+.catalogue-volume {
+  overflow: hidden;
+  border-radius: var(--radius-control);
+  background: transparent;
+}
+.catalogue-volume > .var-collapse-item__content,
+.catalogue-volume > .var-collapse-item__content-wrap {
+  border-color: transparent;
+  background: transparent;
+}
+.catalogue-volume > .var-collapse-item__header .volume-index {
+  color: inherit;
 }
 .volume-title--part strong {
   color: var(--color-text-strong);
@@ -267,41 +231,6 @@
   padding: var(--space-2) var(--space-3) var(--space-3);
   gap: var(--space-1) var(--space-3);
 }
-.chapter-list button {
-  display: grid;
-  grid-template-columns: 24px minmax(0, 1fr) 24px;
-  align-items: center;
-  gap: var(--space-2);
-  width: 100%;
-  padding: var(--space-2);
-  border: 0;
-  border-left: 2px solid transparent;
-  border-radius: var(--radius-control);
-  color: var(--color-text);
-  background: transparent;
-  text-align: left;
-  transition:
-    color 0.2s,
-    border-color 0.2s,
-    background 0.2s;
-}
-.chapter-list button:hover,
-.chapter-list button.chapter-current {
-  color: var(--color-primary-deep);
-  border-left-color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary-soft) 65%, transparent);
-}
-.chapter-list button > span:nth-child(2) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.chapter-list button > span:nth-child(2) small {
-  display: block;
-  margin-top: var(--space-1);
-  color: var(--color-primary-deep);
-  font-size: 11px;
-}
 .chapter-number {
   color: var(--color-text-subtle);
   font-family: Georgia, serif;
@@ -311,11 +240,42 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-3);
   padding: 0 28px 18px;
 }
 .chapter-pagination > span {
   flex: 0 0 auto;
   color: var(--color-text-subtle);
   font-size: 12px;
+}
+
+/* Mobile overrides (folded in from responsive.css; rule order inside the
+   block matters — .catalogue rules must precede .catalogue-nested rules). */
+@media (max-width: 720px) {
+  .discovery-view {
+    padding-top: var(--space-4);
+  }
+  .catalogue-section .catalogue-heading {
+    padding: var(--space-3) 0 var(--space-2);
+  }
+  .catalogue-section {
+    margin-top: calc(var(--space-6) + var(--space-4));
+  }
+  .chapter-list {
+    grid-template-columns: 1fr;
+    padding: var(--space-2) var(--space-2) var(--space-3);
+  }
+  .chapter-pagination {
+    flex-direction: column;
+    padding: 0 var(--space-2) var(--space-3);
+  }
+  .catalogue .var-collapse-item__header {
+    padding: 0 var(--space-2);
+  }
+  .catalogue-nested {
+    margin: var(--space-1) var(--space-2) var(--space-2) var(--space-3);
+  }
+  .catalogue-nested .var-collapse-item__header {
+    padding: 0 var(--space-2);
+  }
 }

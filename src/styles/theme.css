@@ -1,3 +1,4 @@
+/* Design tokens and reader theme palettes — single source for all themes. */
 :root {
   font-family:
     Inter, "Source Han Sans CN", "Noto Sans SC", "Microsoft YaHei", sans-serif;
@@ -34,6 +35,15 @@
   --radius-card: 16px;
   --radius-panel: 24px;
   --radius-pill: 999px;
+  --color-danger: #b3261e;
+
+  /* Reader palette: single source for the novel + manga readers. */
+  --reader-bg: #f7fbff;
+  --reader-surface: #fff;
+  --reader-text: #19364f;
+  --reader-muted: #698399;
+  --reader-border: #d7e9f6;
+  --reader-accent: #2778ba;
 
   /* Layout rhythm: use these tokens for all spatial relationships. */
   --space-1: 4px; /* optical adjustment only */
@@ -76,6 +86,13 @@
   --shadow-soft: 0 10px 28px rgb(70 61 48 / 7%);
   --shadow-panel: 0 16px 40px rgb(65 58 47 / 7%);
   --shadow-floating: 0 10px 30px rgb(50 45 38 / 13%);
+  --color-danger: hsla(6, 48%, 42%, 1);
+  --reader-bg: #f4f0e7;
+  --reader-surface: #fffdf7;
+  --reader-text: #34312c;
+  --reader-muted: #7d756a;
+  --reader-border: #ded6c8;
+  --reader-accent: #836c50;
 }
 
 :root[data-reader-theme="light"] {
@@ -109,4 +126,11 @@
   --shadow-soft: 0 10px 28px rgb(0 0 0 / 14%);
   --shadow-panel: 0 16px 40px rgb(0 0 0 / 18%);
   --shadow-floating: 0 10px 30px rgb(0 0 0 / 22%);
+  --color-danger: hsla(3, 70%, 83%, 1);
+  --reader-bg: #191f25;
+  --reader-surface: #222b33;
+  --reader-text: #e2ebf1;
+  --reader-muted: #91a2af;
+  --reader-border: #35434e;
+  --reader-accent: #74b8ec;
 }

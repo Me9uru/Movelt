@@ -8,24 +8,24 @@ import {
   saveReadPosition,
 } from "./services/novel";
 import type {
-  MangaSummary,
   NovelSummary,
   ReaderDocument,
-  ReadPosition,
   Volume,
-} from "./domain/content";
-import type { BookshelfEntry } from "./services/bookshelf";
+} from "./domain/novel";
+import type { ReadPosition } from "./domain/readPosition";
+import type { MangaSummary } from "./domain/manga";
+import type { BookshelfEntry } from "./domain/bookshelf";
 import { listMangaBookshelf } from "./services/manga";
 import LoadingOverlay from "./components/common/LoadingOverlay.vue";
 import MainNavigation from "./components/layout/MainNavigation.vue";
 import { useLibrary } from "./composables/useLibrary";
+import { novelDiscoveryAdapter } from "./composables/discoveryAdapters";
 import { useDiscovery } from "./composables/useDiscovery";
 import { useReaderSettings } from "./composables/useReaderSettings";
 import { useAuthStore } from "./stores/auth";
-import type { AppRouteName, LibraryRouteName } from "./router";
+import type { AppRouteName, LibraryRouteName, ReturnRouteName } from "./types/router";
+import type { LoadingAction } from "./types/loading";
 import { showError } from "./utils/error";
-
-type LoadingAction = "novel" | "chapter" | "bookshelf";
 
 const route = useRoute();
 const router = useRouter();
@@ -42,13 +42,20 @@ const view = computed<AppRouteName>(() => {
     ? routeName
     : "novels";
 });
-const lastLibraryView = ref<LibraryRouteName>("novels");
+const backLabel = computed(() =>
+  view.value === "manga-detail"
+    ? "返回漫画"
+    : `返回${lastLibraryView.value === "bookshelf" ? "书架" : "小说"}`,
+);
+
+const lastLibraryView = ref<ReturnRouteName>("novels");
 const detail = ref<NovelSummary | null>(null);
 const catalogue = ref<Volume[]>([]);
 const readerDocument = ref<ReaderDocument | null>(null);
 const currentChapterId = ref<string | null>(null);
 const resumeChapterId = ref<string | null>(null);
 const resumeReadPosition = ref<ReadPosition | null>(null);
+const readerChapterEntry = ref<"default" | "next" | "previous">("default");
 const readerRenderKey = ref(0);
 const loading = ref(false);
 const loadingAction = ref<LoadingAction | null>(null);
@@ -61,7 +68,7 @@ const novelBookshelfLoaded = ref(false);
 const mangaBookshelfLoading = ref(false);
 const mangaBookshelfLoaded = ref(false);
 const auth = useAuthStore();
-const discovery = useDiscovery();
+const discovery = useDiscovery(novelDiscoveryAdapter);
 const { settings: readerSettings } = useReaderSettings("novel");
 const { books, refreshBooks, searchBooks, addBook, removeBook, isOnBookshelf } =
   useLibrary();
@@ -198,10 +205,21 @@ function openLibraryView(nextView: LibraryRouteName) {
   void router.replace({ name: nextView });
 }
 
+function backFromManga() {
+  if (window.history.state?.back) {
+    router.back();
+  } else {
+    void router.replace({ name: "manga" });
+  }
+}
+
 function handleAndroidBack(event: Event) {
   if (view.value === "detail" || view.value === "reader") {
     event.preventDefault();
     back();
+  } else if (view.value === "manga-detail") {
+    event.preventDefault();
+    backFromManga();
   }
 }
 
@@ -263,8 +281,10 @@ async function loadNovel(source: string, novelId: string): Promise<boolean> {
 }
 
 async function openNovel(novel: NovelSummary) {
-  if (view.value === "novels" || view.value === "bookshelf") {
-    lastLibraryView.value = view.value;
+  if (view.value === "novels") {
+    lastLibraryView.value = route.name === "novel-search" ? "novel-search" : "novels";
+  } else if (view.value === "bookshelf") {
+    lastLibraryView.value = "bookshelf";
   }
   if (await loadNovel(novel.source, novel.id)) {
     await router.push({
@@ -279,8 +299,13 @@ function openManga(manga: MangaSummary) {
   void router.push({ name: "manga-detail", params: { mangaId: manga.id } });
 }
 
-async function openChapter(chapterId: string, navigate = true) {
+async function openChapter(
+  chapterId: string,
+  navigate = true,
+  entry: "default" | "next" | "previous" = "default",
+) {
   if (!detail.value) return;
+  readerChapterEntry.value = entry;
   const isChangingChapter = view.value === "reader";
   const response = await run("chapter", async () => {
     return getReaderDocument(
@@ -321,11 +346,11 @@ async function openChapter(chapterId: string, navigate = true) {
 }
 
 function openNextChapter() {
-  if (nextChapterId.value) void openChapter(nextChapterId.value);
+  if (nextChapterId.value) void openChapter(nextChapterId.value, true, "next");
 }
 
 function openPreviousChapter() {
-  if (previousChapterId.value) void openChapter(previousChapterId.value);
+  if (previousChapterId.value) void openChapter(previousChapterId.value, true, "previous");
 }
 
 function continueReading() {
@@ -400,12 +425,17 @@ watch(
       return;
     }
     if (routeName === "novels" || routeName === "bookshelf") {
-      lastLibraryView.value = routeName;
+      lastLibraryView.value =
+        route.name === "novel-search" ? "novel-search" : routeName;
       if (routeName === "bookshelf") loadActiveBookshelf();
       return;
     }
 
-    if (route.query.from === "bookshelf" || route.query.from === "novels") {
+    if (
+      route.query.from === "bookshelf" ||
+      route.query.from === "novels" ||
+      route.query.from === "novel-search"
+    ) {
       lastLibraryView.value = route.query.from;
     }
     const source = lightNovelSourceId;
@@ -502,15 +532,6 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="page-bg">
-    <header v-if="auth.user && view === 'detail'" class="topbar">
-      <div class="topbar-inner detail-topbar">
-        <var-button text @click="back">
-          <var-icon name="arrow-left" />
-          {{ `返回${lastLibraryView === "bookshelf" ? "书架" : "小说"}` }}
-        </var-button>
-      </div>
-    </header>
-
     <RouterView v-slot="{ Component }">
       <component :is="Component" v-if="view === 'login'" />
 
@@ -561,6 +582,8 @@ onBeforeUnmount(() => {
           :loading="loading"
           :on-bookshelf="onBookshelf"
           :resume-chapter-id="resumeChapterId"
+          :back-label="backLabel"
+          @back="back"
           @toggle-bookshelf="toggleBookshelf"
           @continue-reading="continueReading"
           @open-chapter="openChapter"
@@ -572,6 +595,7 @@ onBeforeUnmount(() => {
           :key="`${readerDocument.id}:${readerRenderKey}`"
           :document="readerDocument"
           :resume-position="resumeReadPosition"
+          :chapter-entry="readerChapterEntry"
           :loading="loading"
           :has-previous-chapter="Boolean(previousChapterId)"
           :has-next-chapter="Boolean(nextChapterId)"
@@ -594,7 +618,6 @@ onBeforeUnmount(() => {
     <MainNavigation
       v-if="auth.user"
       :view="view"
-      :book-count="books.length"
       @navigate="openLibraryView"
     />
   </div>

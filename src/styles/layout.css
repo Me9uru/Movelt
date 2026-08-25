@@ -1,3 +1,5 @@
+/* Layout: app frame — element reset, page background, topbar, view dock,
+   app shell, and page scaffolds (search, bookshelf, settings, auth). */
 * {
   box-sizing: border-box;
 }
@@ -8,13 +10,6 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-}
-button,
-input {
-  font: inherit;
-}
-button {
-  cursor: pointer;
 }
 .page-bg {
   position: relative;
@@ -29,8 +24,7 @@ button {
     color 0.25s ease,
     background 0.25s ease;
 }
-.page-bg:has(.reader--paged),
-.page-bg:has(.manga-reader--paged) {
+.page-bg:has(.book-reader--paged) {
   display: flex;
   flex-direction: column;
   height: 100dvh;
@@ -73,30 +67,6 @@ button {
   backdrop-filter: blur(18px);
   transform: translateX(-50%);
 }
-.view-dock button {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-1);
-  min-width: 96px;
-  height: var(--space-6);
-  padding: 0 var(--space-3);
-  border: 0;
-  border-radius: var(--radius-pill);
-  color: var(--color-text-muted);
-  background: transparent;
-  transition:
-    color 0.2s ease,
-    background 0.2s ease;
-}
-.view-dock button:hover {
-  color: var(--color-primary-deep);
-}
-.view-dock button.active {
-  color: var(--color-primary-deep);
-  background: var(--color-primary-soft);
-}
 .view-dock .var-icon {
   font-size: 17px;
 }
@@ -123,12 +93,10 @@ button {
   margin: 0 auto;
   padding: 0 0 calc(var(--space-8) + var(--space-7));
 }
-.app-shell:has(.reader),
-.app-shell:has(.manga-reader) {
+.app-shell:has(.book-reader) {
   padding-bottom: 0;
 }
-.app-shell:has(.reader--paged),
-.app-shell:has(.manga-reader--paged) {
+.app-shell:has(.book-reader--paged) {
   flex: 1;
   min-height: 0;
 }
@@ -161,16 +129,6 @@ button {
 .search-box .var-field-decorator {
   min-width: 0;
 }
-.search-box .var-button {
-  min-width: 118px;
-  height: 44px;
-  border-radius: var(--radius-control);
-}
-.book-search .var-button {
-  min-width: 44px;
-  width: 44px;
-  padding: 0;
-}
 .book-search {
   display: grid;
   gap: var(--space-2);
@@ -198,27 +156,6 @@ button {
 .book-search-controls .var-form-details {
   display: none;
 }
-.book-search-mode {
-  flex: 1;
-  min-width: 0;
-  height: 36px;
-  padding: 0 var(--space-2);
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: transparent;
-  color: var(--color-text-muted);
-  font: inherit;
-  cursor: pointer;
-}
-.book-search-mode--active {
-  border-bottom-color: var(--color-primary);
-  color: var(--color-primary-deep);
-}
-.book-search-mode:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: -2px;
-}
-
 .bookshelf-view {
   min-height: 424px;
   margin-bottom: var(--space-8);
@@ -241,64 +178,6 @@ button {
 }
 .settings-list {
   border-top: 1px solid var(--color-border);
-}
-.settings-row {
-  display: flex;
-  width: 100%;
-  min-height: 60px;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-2);
-  border: 0;
-  border-bottom: 1px solid var(--color-border);
-  color: var(--color-text);
-  background: transparent;
-  text-align: left;
-  transition: background 0.2s ease;
-}
-.settings-row--link {
-  text-decoration: none;
-}
-.settings-row:hover:not(:disabled),
-.settings-row:focus-visible {
-  background: var(--color-primary-softer);
-  outline: none;
-}
-.settings-row:disabled {
-  cursor: wait;
-}
-.settings-row--account {
-  min-height: 76px;
-}
-.settings-row__content {
-  min-width: 0;
-  flex: 1;
-}
-.settings-row__content strong {
-  display: block;
-  overflow: hidden;
-  color: var(--color-text-strong);
-  font-size: 15px;
-  font-weight: 500;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.settings-row__icon {
-  color: var(--color-primary-deep);
-  font-size: 19px;
-}
-.settings-row__arrow {
-  flex: 0 0 auto;
-  color: var(--color-text-subtle);
-  font-size: 17px;
-}
-.settings-row__status {
-  color: var(--color-text-muted);
-  font-size: 13px;
-}
-.settings-row--danger .settings-row__content strong,
-.settings-row--danger .settings-row__arrow {
-  color: var(--color-danger);
 }
 .auth-page {
   display: grid;
@@ -351,14 +230,6 @@ button {
   min-width: 0;
   flex: 1;
 }
-.auth-code-row .var-button {
-  flex: 0 0 auto;
-}
-.auth-card form > .var-button {
-  display: flex;
-  min-width: 60%;
-  margin: var(--space-5) auto 0;
-}
 .bookshelf-view > .result-grid {
   margin-top: var(--space-3);
 }
@@ -395,28 +266,27 @@ button {
 .bookshelf-empty p {
   font-size: 13px;
 }
-.bookshelf-empty .var-button {
-  margin-top: var(--space-3);
-}
-.library-search-trigger {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-control);
-  color: var(--color-primary-deep);
-  background: transparent;
-  font-size: 18px;
-  transition:
-    color 0.2s ease,
-    background 0.2s ease;
-}
-.library-search-trigger:hover,
-.library-search-trigger:focus-visible {
-  color: var(--color-primary-deep);
-  background: var(--color-primary-softer);
+
+/* Mobile overrides (folded in from responsive.css). */
+@media (max-width: 720px) {
+  .auth-page {
+    padding-right: max(var(--layout-gutter-compact), env(safe-area-inset-right));
+    padding-left: max(var(--layout-gutter-compact), env(safe-area-inset-left));
+  }
+  .topbar-inner,
+  .app-shell {
+    width: min(100% - (var(--layout-gutter-compact) * 2), 1160px);
+  }
+  .topbar-inner {
+    height: 56px;
+  }
+  .view-dock {
+    padding: 4px;
+  }
+  .view-dock {
+    width: min(calc(100% - 16px), 400px);
+  }
+  .view-dock small {
+    display: none;
+  }
 }

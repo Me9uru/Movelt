@@ -1,14 +1,9 @@
-<script setup lang="ts">
-import WorkCover from "./WorkCover.vue";
+<script setup lang="ts" generic="T">
+import BookCover from "./BookCover.vue";
+import type { BookGridItem } from "../../types/book";
 
-export interface WorkGridItem {
-  id: string;
-  title: string;
-  coverUrl: string | null;
-}
-
-defineProps<{ items: WorkGridItem[]; loading?: boolean }>();
-const emit = defineEmits<{ open: [item: WorkGridItem] }>();
+defineProps<{ items: BookGridItem<T>[]; loading?: boolean }>();
+const emit = defineEmits<{ open: [item: BookGridItem<T>] }>();
 </script>
 
 <template>
@@ -30,7 +25,7 @@ const emit = defineEmits<{ open: [item: WorkGridItem] }>();
       class="book-card"
       @click="emit('open', item)"
     >
-      <WorkCover class="book-cover" :cover-url="item.coverUrl" :title="item.title" />
+      <BookCover class="book-cover" :cover-url="item.coverUrl" :title="item.title" />
       <div class="book-meta"><strong>{{ item.title }}</strong></div>
     </button>
   </div>

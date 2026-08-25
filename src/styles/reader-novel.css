@@ -1,44 +1,9 @@
-.reader {
-  --reader-bg: var(--color-background);
-  --reader-surface: var(--color-surface-panel);
-  --reader-text: var(--color-text-strong);
-  --reader-muted: var(--color-text-muted);
-  --reader-border: var(--color-border);
-  --reader-accent: var(--color-primary);
-  --reader-shadow: color-mix(in srgb, var(--color-text) 9%, transparent);
-  min-height: 100dvh;
-  margin: 0 calc(50% - 50vw);
+/* Novel reader content. The shared .book-reader base lives in reader.css;
+   :not(.manga-reader) keeps these novel-only rules off the manga reader. */
+.book-reader:not(.manga-reader) {
   padding: var(--space-3) max(var(--layout-gutter), calc(50vw - 580px))
     var(--space-8);
-  background: var(--reader-bg);
   font-family: var(--reader-font-family);
-  transition:
-    background 0.25s,
-    color 0.25s;
-}
-.reader--paper {
-  --reader-bg: #f4f0e7;
-  --reader-surface: #fffdf7;
-  --reader-text: #34312c;
-  --reader-muted: #7d756a;
-  --reader-border: #ded6c8;
-  --reader-accent: #836c50;
-}
-.reader--light {
-  --reader-bg: #f7fbff;
-  --reader-surface: #ffffff;
-  --reader-text: #19364f;
-  --reader-muted: #698399;
-  --reader-border: #d7e9f6;
-  --reader-accent: #2778ba;
-}
-.reader--night {
-  --reader-bg: #191f25;
-  --reader-surface: #222b33;
-  --reader-text: #e2ebf1;
-  --reader-muted: #91a2af;
-  --reader-border: #35434e;
-  --reader-accent: #74b8ec;
 }
 .reader-body {
   width: min(var(--reader-width), 100%);
@@ -95,8 +60,8 @@
   text-align: center;
   text-indent: 0;
 }
-.reader--chapter-font .reader-content,
-.reader--chapter-font
+.book-reader--chapter-font .reader-content,
+.book-reader--chapter-font
   .reader-content
   :is(p, div, span, li, blockquote, h1, h2, h3, h4, h5, h6) {
   font-family: "movel-chapter", sans-serif;
@@ -362,4 +327,98 @@
 .reader-body > .var-divider .var-divider__text {
   color: var(--reader-muted);
   background: var(--reader-bg);
+}
+
+/* Paged reading machinery (novel only). */
+.book-reader--paged:not(.manga-reader) {
+  flex-direction: column;
+  padding-bottom: var(--space-3);
+}
+.paged-reader {
+  display: grid;
+  flex: 1;
+  grid-template-rows: minmax(0, 1fr) 56px;
+  width: min(1100px, 100%);
+  min-height: 0;
+  margin: 0 auto;
+}
+.page-viewport {
+  height: 100%;
+  min-height: 0;
+  padding: var(--space-6) var(--space-7);
+  overflow: hidden;
+  outline: none;
+  column-count: 1;
+  column-gap: var(--space-8);
+  column-fill: auto;
+  touch-action: pan-y;
+}
+.paged-reader--spread .page-viewport {
+  column-count: 2;
+  column-gap: 72px;
+}
+.paged-heading {
+  margin-bottom: var(--space-5);
+  text-align: center;
+  break-inside: avoid;
+}
+.paged-heading h1 {
+  margin: 0;
+  font-size: clamp(26px, 4vw, 38px);
+}
+.page-viewport .chapter-image,
+.page-viewport .reader-content img {
+  max-height: calc(100dvh - 290px);
+}
+.page-viewport .chapter-end {
+  margin-top: var(--space-5);
+  color: var(--reader-muted);
+  font-size: 13px;
+  text-align: center;
+  break-inside: avoid;
+}
+.page-controls {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  height: 56px;
+  color: var(--reader-muted);
+  font-size: 12px;
+}
+.page-controls .page-status {
+  position: absolute;
+  left: 50%;
+  min-width: 88px;
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+@media (max-width: 720px) {
+  .book-reader:not(.manga-reader) {
+    min-height: 100dvh;
+    padding: var(--space-2) var(--layout-gutter-compact) var(--space-7);
+  }
+  .reader-heading {
+    margin-bottom: var(--space-5);
+  }
+  .book-reader--paged:not(.manga-reader) {
+    padding-bottom: 8px;
+  }
+  .paged-reader {
+    grid-template-rows: minmax(0, 1fr) 50px;
+  }
+  .page-viewport {
+    padding: var(--space-4) var(--space-3);
+    column-gap: var(--space-6);
+  }
+  .paged-heading {
+    margin-bottom: var(--space-4);
+  }
+  .paged-heading h1 {
+    font-size: 25px;
+  }
+  .page-controls {
+    height: 50px;
+  }
 }

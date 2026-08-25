@@ -1,13 +1,8 @@
-import { ref } from "vue";
+import { ref, type Ref } from "vue";
 
-import {
-  getLatest,
-  getRank,
-  getRanking,
-  searchDiscovery,
-} from "../services/novel";
-import type { DiscoveryList, NovelSummary, RecommendBlock } from "../domain/content";
+import type { DiscoveryList, RecommendBlock } from "../domain/discovery";
 import type { BookSearchMode } from "../domain/search";
+import type { DiscoveryAdapter, DiscoveryRegion } from "../types/discovery";
 import { getErrorMessage } from "../utils/error";
 
 export const rankingPeriods = [
@@ -15,27 +10,31 @@ export const rankingPeriods = [
   { value: 30, label: "近 30 天" },
   { value: 365, label: "近一年" },
 ];
-type Region = "recommend" | "ranking" | "search";
-
-export function useDiscovery() {
+export function useDiscovery<T>(adapter: DiscoveryAdapter<T>) {
   const unavailableMessage = ref("");
-  const recommendations = ref<RecommendBlock[]>([]);
-  const ranking = ref<NovelSummary[] | null>(null);
-  const search = ref<DiscoveryList | null>(null);
+  // ref 的 UnwrapRef 会递归展开泛型结构，导致 .value 类型与 T 不一致；断言回
+  // 原始类型以便向 adapter 透传与增量追加。
+  const recommendations = ref<RecommendBlock<T>[]>([]) as Ref<
+    RecommendBlock<T>[]
+  >;
+  const ranking = ref<T[] | null>(null) as Ref<T[] | null>;
+  const search = ref<DiscoveryList<T> | null>(
+    null,
+  ) as Ref<DiscoveryList<T> | null>;
   const rankingDays = ref(7);
   const searchQuery = ref("");
   const searchMode = ref<BookSearchMode>("title");
-  const loading = ref<Record<Region, boolean>>({
+  const loading = ref<Record<DiscoveryRegion, boolean>>({
     recommend: false,
     ranking: false,
     search: false,
   });
-  const errors = ref<Record<Region, string>>({
+  const errors = ref<Record<DiscoveryRegion, string>>({
     recommend: "",
     ranking: "",
     search: "",
   });
-  async function run(region: Region, task: () => Promise<void>) {
+  async function run(region: DiscoveryRegion, task: () => Promise<void>) {
     loading.value[region] = true;
     errors.value[region] = "";
     try {
@@ -48,28 +47,33 @@ export function useDiscovery() {
   }
   async function loadRecommendations() {
     await run("recommend", async () => {
-      const [latest, popular, newest] = await Promise.all([
-        getLatest(),
-        getRanking("view"),
-        getRanking("new"),
-      ]);
-      recommendations.value = [
-        { title: "最近更新", items: latest.items.slice(0, 6) },
-        { title: "热门作品", items: popular.items.slice(0, 6) },
-        { title: "新入库", items: newest.items.slice(0, 6) },
-      ];
+      // target 是 ref 持有的 reactive 代理本身；adapter 直接向它 push 即可触发
+      // 渲染（漫画两阶段加载：最近更新先渲染、热门/新入库随后追加）。
+      recommendations.value.splice(0, recommendations.value.length);
+      await adapter.loadRecommendations(recommendations.value);
     });
   }
   async function loadRanking(days = rankingDays.value) {
     await run("ranking", async () => {
-      ranking.value = await getRank(days);
+      ranking.value = await adapter.loadRanking(days);
     });
   }
   async function runSearch(page = 1) {
-    if (searchQuery.value.trim())
-      await run("search", async () => {
-        search.value = await searchDiscovery(searchQuery.value.trim(), page, searchMode.value);
-      });
+    if (!searchQuery.value.trim()) return;
+    await run("search", async () => {
+      const result = await adapter.search(
+        searchQuery.value.trim(),
+        page,
+        searchMode.value,
+      );
+      if (page <= 1 || !search.value) {
+        search.value = result;
+      } else {
+        // 无限滚动：同一搜索词翻页时在现有列表上追加，并推进分页游标。
+        search.value.items.push(...result.items);
+        search.value.pagination = result.pagination;
+      }
+    });
   }
   async function initialize() {
     unavailableMessage.value = "";

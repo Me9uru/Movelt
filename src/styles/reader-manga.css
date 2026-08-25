@@ -1,0 +1,48 @@
+/* Manga reader content. The shared .book-reader base lives in reader.css. */
+.manga-reader-pages {
+  width: min(960px, 100%);
+  margin: 0 auto;
+}
+.manga-reader-page {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+.manga-reader-page-placeholder {
+  display: grid;
+  min-height: 160px;
+  place-items: center;
+  color: var(--reader-muted);
+  background: var(--reader-surface);
+}
+.manga-reader-pending {
+  margin: 0;
+  padding: var(--space-5) var(--space-3);
+  color: var(--reader-muted);
+  font-size: 12px;
+  text-align: center;
+}
+.book-reader--paged .manga-reader-pages {
+  display: grid;
+  flex: 1;
+  min-height: 0;
+  place-items: center;
+}
+.book-reader--paged .manga-reader-page {
+  width: auto;
+  max-width: 100%;
+  max-height: 100dvh;
+  object-fit: contain;
+}
+.book-reader--paged .manga-reader-page-placeholder {
+  width: min(640px, 100%);
+  min-height: 100%;
+}
+
+@media (max-width: 720px) {
+  .manga-reader {
+    width: calc(100% + (var(--layout-gutter-compact) * 2));
+    margin-left: calc(var(--layout-gutter-compact) * -1);
+  }
+}

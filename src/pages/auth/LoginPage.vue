@@ -81,7 +81,7 @@ onMounted(() => {
     <div class="auth-card">
       <div class="auth-page-title">
         <strong id="auth-page-title">Movel</strong>
-        <span>登录 LightNovelShelf，继续阅读</span>
+        <span>Ciallo～(∠・ω< )⌒★</span>
       </div>
       <var-tabs :active="authMode" class="auth-tabs" @update:active="authMode = $event as 'login' | 'register'">
         <var-tab name="login">登录</var-tab>

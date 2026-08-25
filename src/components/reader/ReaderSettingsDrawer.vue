@@ -3,6 +3,15 @@ import { useReaderSettings, type ReaderKind } from "../../composables/useReaderS
 
 const props = defineProps<{
   kind: ReaderKind;
+  title: string;
+  titleClick?: () => void;
+  previousDisabled?: boolean;
+  nextDisabled?: boolean;
+}>();
+
+const emit = defineEmits<{
+  previous: [];
+  next: [];
 }>();
 
 const visible = defineModel<boolean>({ required: true });
@@ -10,6 +19,39 @@ const { settings, reset } = useReaderSettings(props.kind);
 </script>
 
 <template>
+  <Teleport to="body">
+    <Transition name="reader-chapter-nav">
+      <nav v-if="visible" class="reader-chapter-nav" aria-label="章节导航">
+        <var-button
+          round
+          :disabled="previousDisabled"
+          :title="previousDisabled ? '已是第一话' : '上一话'"
+          aria-label="上一话"
+          @click="emit('previous')"
+        ><var-icon name="arrow-left" /></var-button>
+        <strong
+          v-if="!titleClick"
+          class="reader-chapter-nav-title"
+          :title="title"
+        >{{ title }}</strong>
+        <button
+          v-else
+          class="reader-chapter-nav-title"
+          type="button"
+          :title="title"
+          @click="titleClick"
+        >{{ title }}</button>
+        <var-button
+          round
+          :disabled="nextDisabled"
+          :title="nextDisabled ? '已是最后一话' : '下一话'"
+          aria-label="下一话"
+          @click="emit('next')"
+        ><var-icon name="arrow-right" /></var-button>
+      </nav>
+    </Transition>
+  </Teleport>
+
   <var-popup
     v-model:show="visible"
     class="reader-settings-drawer"
@@ -39,10 +81,10 @@ const { settings, reset } = useReaderSettings(props.kind);
       </var-radio-group>
 
       <template v-if="settings.mode === 'paged'">
-        <label>翻页点击方向</label>
+        <label>翻页方向</label>
         <var-radio-group v-model="settings.pageTurnDirection">
-          <var-radio checked-value="left-previous">左边上一页 · 右边下一页</var-radio>
-          <var-radio checked-value="left-next">左边下一页 · 右边上一页</var-radio>
+          <var-radio checked-value="left-previous">从左至右</var-radio>
+          <var-radio checked-value="left-next">从右至左</var-radio>
         </var-radio-group>
       </template>
 

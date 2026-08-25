@@ -1,11 +1,8 @@
 import { command } from "./bridge";
-import type { NovelSummary } from "../domain/content";
+import type { NovelSummary } from "../domain/novel";
+import type { BookshelfEntry } from "../domain/bookshelf";
 
-export interface BookshelfEntry {
-  book: NovelSummary;
-  addedAt: string;
-  progress: null;
-}
+export type { BookshelfEntry } from "../domain/bookshelf";
 
 export function listBookshelf() {
   return command<BookshelfEntry[]>("list_bookshelf");

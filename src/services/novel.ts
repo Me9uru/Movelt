@@ -4,7 +4,7 @@ import type {
   NovelOverview,
   NovelSummary,
   ReaderDocument,
-} from "../domain/content";
+} from "../domain/novel";
 import type { BookSearchMode } from "../domain/search";
 
 export const lightNovelSourceId = "lightnovel";
@@ -13,10 +13,10 @@ export type RankingSort = "latest" | "view" | "new";
 export type { BookSearchMode } from "../domain/search";
 
 export function getLatest(page = 1) {
-  return command<DiscoveryList>("get_latest", { pageNumber: page });
+  return command<DiscoveryList<NovelSummary>>("get_latest", { pageNumber: page });
 }
 export function getRanking(sort: RankingSort, page = 1) {
-  return command<DiscoveryList>("get_ranking", { sort, pageNumber: page });
+  return command<DiscoveryList<NovelSummary>>("get_ranking", { sort, pageNumber: page });
 }
 export function getRank(days: number) {
   return command<NovelSummary[]>("get_rank", { days });
@@ -29,7 +29,7 @@ export function searchDiscovery(
   page = 1,
   mode: BookSearchMode = "title",
 ) {
-  return command<DiscoveryList>("search_novels", {
+  return command<DiscoveryList<NovelSummary>>("search_novels", {
     query,
     pageNumber: page,
     mode,

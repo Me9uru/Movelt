@@ -1,13 +1,6 @@
 import { createRouter, createWebHashHistory } from "vue-router";
 
-export type LibraryRouteName = "novels" | "bookshelf" | "manga" | "settings";
-export type AppRouteName =
-  | LibraryRouteName
-  | "login"
-  | "detail"
-  | "reader"
-  | "manga-detail"
-  | "manga-reader";
+export type { AppRouteName, LibraryRouteName } from "../types/router";
 
 export const router = createRouter({
   history: createWebHashHistory(),
@@ -21,6 +14,11 @@ export const router = createRouter({
     {
       path: "/novels",
       name: "novels",
+      component: () => import("../pages/novel/NovelPage.vue"),
+    },
+    {
+      path: "/novels/search",
+      name: "novel-search",
       component: () => import("../pages/novel/NovelPage.vue"),
     },
     {

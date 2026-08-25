@@ -8,13 +8,12 @@ import { setupDevInvoke } from "./dev-invoke";
 import { router } from "./router";
 import { showError, showErrorDialog } from "./utils/error";
 import "./styles/theme.css";
-import "./styles/app.css";
+import "./styles/layout.css";
 import "./styles/components.css";
-import "./styles/novel.css";
-import "./styles/manga.css";
-import "./styles/responsive.css";
-import "./styles/reader-content.css";
+import "./styles/book.css";
 import "./styles/reader.css";
+import "./styles/reader-novel.css";
+import "./styles/reader-manga.css";
 
 if (import.meta.env.DEV) setupDevInvoke();
 

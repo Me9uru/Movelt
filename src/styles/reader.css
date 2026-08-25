@@ -18,7 +18,8 @@
   backdrop-filter: blur(18px);
   transform: translateX(-50%);
 }
-.reader-chapter-nav strong {
+.reader-chapter-nav strong,
+.reader-chapter-nav .reader-chapter-nav-title {
   overflow: hidden;
   color: var(--color-text-strong);
   font-family: Georgia, "Source Han Sans CN", "Noto Serif SC", serif;
@@ -28,13 +29,11 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.reader-chapter-nav .var-button {
-  width: 36px;
-  height: 36px;
-  margin: 0;
-  border-color: var(--color-border);
-  color: var(--color-text-strong);
-  background: var(--color-surface-panel);
+.reader-chapter-nav .reader-chapter-nav-title {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
 }
 .reader-chapter-nav-enter-active,
 .reader-chapter-nav-leave-active {
@@ -48,140 +47,123 @@
   transform: translate(-50%, -100%);
 }
 
-.reader--paged {
+/* Shared reader root: both the novel and manga readers use .book-reader. */
+.book-reader {
+  min-height: 100dvh;
+  margin: 0 calc(50% - 50vw);
+  background: var(--reader-bg);
+  transition:
+    background 0.25s ease,
+    color 0.25s;
+}
+.book-reader--paged {
   display: flex;
-  flex-direction: column;
-  height: 100%;
   min-height: 0;
-  padding-bottom: var(--space-3);
+  height: 100%;
   overflow: hidden;
 }
-.paged-reader {
-  display: grid;
-  flex: 1;
-  grid-template-rows: minmax(0, 1fr) 56px;
-  width: min(1100px, 100%);
-  min-height: 0;
-  margin: 0 auto;
+
+.reader-boundary-switch {
+  display: contents;
 }
-.page-viewport {
-  height: 100%;
-  min-height: 0;
-  padding: var(--space-6) var(--space-7);
-  overflow: hidden;
-  outline: none;
-  column-count: 1;
-  column-gap: var(--space-8);
-  column-fill: auto;
-  touch-action: pan-y;
-}
-.paged-reader--spread .page-viewport {
-  column-count: 2;
-  column-gap: 72px;
-}
-.paged-heading {
-  margin-bottom: var(--space-5);
-  text-align: center;
-  break-inside: avoid;
-}
-.paged-heading h1 {
-  margin: 0;
-  font-size: clamp(26px, 4vw, 38px);
-}
-.page-viewport .chapter-image,
-.page-viewport .reader-content img {
-  max-height: calc(100dvh - 290px);
-}
-.page-viewport .chapter-end {
-  margin-top: var(--space-5);
-  color: var(--reader-muted);
-  font-size: 13px;
-  text-align: center;
-  break-inside: avoid;
-}
-.page-controls {
-  position: relative;
-  display: flex;
-  flex: none;
-  align-items: center;
-  height: 56px;
-  color: var(--reader-muted);
-  font-size: 12px;
-}
-.page-controls .page-status {
-  position: absolute;
+.reader-boundary-hint {
+  position: fixed;
   left: 50%;
-  min-width: 88px;
-  text-align: center;
+  z-index: 2002;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--reader-border);
+  border-radius: var(--radius-control);
+  color: var(--reader-text);
+  background: var(--color-surface-glass);
+  box-shadow: var(--shadow-floating);
+  font-size: 14px;
   transform: translateX(-50%);
+  backdrop-filter: blur(12px);
+}
+.reader-boundary-hint--previous {
+  top: calc(var(--space-4) + env(safe-area-inset-top));
+}
+.reader-boundary-hint--next {
+  right: auto;
+  bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
+}
+.reader-boundary-hint-enter-active,
+.reader-boundary-hint-leave-active {
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+.reader-boundary-hint-enter-from,
+.reader-boundary-hint-leave-to {
+  opacity: 0;
+  transform: translate(-50%, 8px);
 }
 
 .reader-settings-drawer {
-  max-height: min(80dvh, 720px);
+  /* Align the lower settings panel with the chapter navigation above it. */
+  right: auto;
+  left: max(20px, calc((100% - 620px) / 2));
+  width: min(620px, calc(100% - 40px));
+  max-height: min(68dvh, 600px);
   padding: var(--space-2) var(--space-4)
     max(var(--space-4), env(safe-area-inset-bottom));
   overflow-y: auto;
   border-radius: var(--radius-panel) var(--radius-panel) 0 0;
   background: var(--color-surface-panel);
 }
-.reader-settings-drawer .settings-panel {
+.settings-panel {
   display: grid;
   gap: var(--space-2);
   width: min(560px, 100%);
   margin: 0 auto;
 }
-.reader-settings-drawer .settings-handle {
+.settings-handle {
   width: 42px;
   height: 4px;
   margin: 0 auto 6px;
   border-radius: var(--radius-pill);
   background: var(--color-border);
 }
-.reader-settings-drawer .settings-title {
+.settings-title {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 4px;
 }
-.reader-settings-drawer .settings-title strong {
+.settings-title strong {
   color: var(--color-text-strong);
   font-family: Georgia, "Noto Serif SC", serif;
   font-size: 18px;
 }
-.reader-settings-drawer .settings-panel > label {
+.settings-panel > label {
   display: flex;
   justify-content: space-between;
   color: var(--color-text-muted);
   font-size: 13px;
 }
-.reader-settings-drawer .settings-panel > label:not(:first-of-type) {
+.settings-panel > label:not(:first-of-type) {
   margin-top: 5px;
 }
-.reader-settings-drawer .settings-panel > label b {
+.settings-panel > label b {
   color: var(--color-primary-deep);
   font-size: 12px;
   font-weight: 500;
 }
-.reader-settings-drawer .var-radio-group {
+.var-radio-group {
   flex-direction: row;
   flex-wrap: wrap;
   column-gap: var(--space-4);
   row-gap: var(--space-1);
   width: 100%;
 }
-.reader-settings-drawer .var-radio__wrap {
+.var-radio__wrap {
   flex: 1;
   min-width: max-content;
 }
-.reader-settings-drawer .var-slider {
+.var-slider {
   padding: 0 6px;
 }
 
 @media (max-width: 720px) {
-  .reader {
-    min-height: 100dvh;
-    padding: var(--space-2) var(--layout-gutter-compact) var(--space-7);
-  }
   .reader-chapter-nav {
     grid-template-columns: 36px minmax(0, 1fr) 36px;
     gap: 8px;
@@ -189,36 +171,13 @@
     min-height: calc(52px + env(safe-area-inset-top));
     padding: calc(6px + env(safe-area-inset-top)) 8px 6px;
   }
-  .reader-chapter-nav strong {
+  .reader-chapter-nav strong,
+  .reader-chapter-nav .reader-chapter-nav-title {
     font-size: 14px;
   }
-  .reader-chapter-nav .var-button {
-    width: 32px;
-    height: 32px;
-  }
-  .reader-heading {
-    margin-bottom: var(--space-5);
-  }
-  .reader--paged {
-    padding-bottom: 8px;
-  }
-  .paged-reader {
-    grid-template-rows: minmax(0, 1fr) 50px;
-  }
-  .page-viewport {
-    padding: var(--space-4) var(--space-3);
-    column-gap: var(--space-6);
-  }
-  .paged-heading {
-    margin-bottom: var(--space-4);
-  }
-  .paged-heading h1 {
-    font-size: 25px;
-  }
-  .page-controls {
-    height: 50px;
-  }
   .reader-settings-drawer {
+    left: 12px;
+    width: calc(100% - 24px);
     padding-inline: 18px;
   }
 }

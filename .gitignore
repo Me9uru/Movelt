@@ -45,6 +45,7 @@ src/components.d.ts
 
 # Agents
 .agents/
-agents.md
+src/AGENTS.md
+AGENTS.md
 api.md
 CLAUDE.md
