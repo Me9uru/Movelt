@@ -5,7 +5,7 @@
 
 **LightNovel 轻书架的非官方第三方客户端**
 
-基于 Tauri 2、Vue 3 与 Rust 构建，提供小说与漫画浏览、书架、阅读和官方账号同步能力。
+基于 Tauri 2、Vue 3 与 Rust 构建，提供小说与漫画浏览、书架、阅读、账号与进度同步能力。
 
 [![Tauri](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white)](https://tauri.app/)
 [![Vue.js](https://img.shields.io/badge/Vue.js-3-42B883?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
@@ -17,37 +17,36 @@
 
 ## 关于 Movel
 
-Movel 是 [LightNovel 轻书架](https://www.lightnovel.life/) 的非官方第三方客户端。前端提供轻盈、响应式的阅读界面；Rust 后端作为官方 API 的客户端边界，负责认证、请求、响应校验与领域 DTO 映射；两端通过 Tauri IPC 通信。
+Movel 是 [LightNovel 轻书架](https://www.lightnovel.life/) 的非官方第三方客户端。前端提供轻量、响应式的阅读界面；Rust 后端作为官方 API 的客户端边界，负责认证、会话续期、请求与响应校验及领域 DTO 映射；两端通过 Tauri IPC 通信。
 
 > [!WARNING]
 > 项目目前处于快速迭代阶段。功能、界面与数据契约可能随版本调整；欢迎通过 Issue 反馈问题和建议。
 
 ## 界面预览
 
-![小说首页：推荐、排行榜与分类浏览](docs/images/novels-overview.webp)
+![Movel 小说首页：推荐书单、热门作品与底部导航](docs/images/novels-overview.png)
 
 ## 功能
 
-- **小说与漫画浏览**：推荐、排行榜、分类和关键词搜索。
-- **作品详情与目录**：查看封面、作者、状态、简介、标签及章节目录。
-- **官方书架与账号**：登录后同步小说、漫画收藏与阅读进度。
-- **沉浸式阅读**：支持小说章节阅读与漫画章节阅读。
-- **两种阅读模式**：支持连续滚动与分页阅读；横屏宽屏下可自动使用双页布局。
-- **丰富的阅读设置**：自由调整字体、字号、行距、字距、段距与正文宽度。
-- **三套阅读主题**：纸张、明亮与夜间主题，设置会自动保存在本地。
-- **便捷翻页操作**：分页模式支持按钮、键盘方向键、空格键与触摸滑动。
-- **响应式界面**：适配桌面与窄屏窗口，并支持 Android 返回行为。
+- **小说与漫画发现**：首页书单、排行榜、关键词搜索与搜索结果分页；漫画首页会优先呈现最近更新。
+- **作品详情与目录**：查看封面、作者、状态、简介、标签、分卷与章节，并可直接加入或移出书架。
+- **账号与官方书架**：支持登录、邮箱验证码注册、恢复登录状态；小说与漫画收藏、阅读位置均与官方服务同步。
+- **小说阅读器**：连续滚动或分页阅读，宽屏分页自动采用单页/双页布局；支持键盘、触摸与按钮翻页。
+- **漫画阅读器**：滚动或分页观看，按批次加载图片、自动记录页码，并可在章节间连续阅读。
+- **可定制阅读体验**：纸张、明亮、夜间三套主题；小说还可设置字体、简繁转换、字号、行距、字距、段距和正文宽度。
+- **更顺畅的续读**：原生侧缓存章节内容，并在后台预加载相邻章节，减少翻章等待。
+- **响应式与移动端行为**：适配桌面与窄屏窗口，并处理 Android 返回导航。
 
 ## 特点
 
 | 特点 | 说明 |
 | --- | --- |
-| 轻量原生 | Tauri 使用系统 WebView，相比捆绑完整浏览器内核拥有更小的应用体积。 |
-| Rust 驱动 | 官方 API 访问、认证、响应校验和 DTO 映射均在 Rust 侧完成。 |
+| 轻量原生 | Tauri 使用系统 WebView，应用不打包完整浏览器内核。 |
+| Rust 服务边界 | 官方 API、SignalR、认证、令牌刷新、压缩响应与 DTO 映射均由 Rust 处理。 |
+| 凭据不出原生层 | 刷新凭据仅写入系统凭据库，前端不会接收或保存访问令牌。 |
 | 官方服务同步 | 认证、书架、阅读位置与内容由 LightNovel 轻书架服务维护。 |
-| 清晰边界 | UI 只调用类型化 Tauri commands，不处理上游 URL、令牌或响应解析。 |
-| 阅读优先 | 界面使用克制的暖色视觉、响应式排版与可定制阅读参数。 |
-| 开发友好 | Debug 模式提供仅监听 localhost 的浏览器调用桥，方便使用 Chrome DevTools 调试。 |
+| 阅读优先 | 提供多主题、响应式排版、丰富排版参数和相邻章节预加载。 |
+| 开发友好 | Debug 模式提供只监听 localhost 的浏览器调用桥，方便使用 Chrome DevTools 调试。 |
 
 ## 技术栈
 
@@ -63,8 +62,8 @@ Movel 是 [LightNovel 轻书架](https://www.lightnovel.life/) 的非官方第�
 - [Tauri 2](https://tauri.app/)：窗口、IPC 与跨平台应用打包
 - [Rust](https://www.rust-lang.org/) + Tokio：业务逻辑与异步任务
 - [Reqwest](https://docs.rs/reqwest/)：HTTP 请求与压缩传输
-- Tokio Tungstenite：SignalR WebSocket 通信
-- Keyring：系统凭据库中的刷新凭据存储
+- [tokio-tungstenite](https://docs.rs/tokio-tungstenite/)：SignalR WebSocket 通信
+- Keyring：系统凭据库中的刷新凭据存储（通过本地 Tauri 插件）
 - Serde / Thiserror：数据序列化与结构化错误处理
 
 ## 快速开始
@@ -82,7 +81,7 @@ pnpm install
 pnpm tauri dev
 ```
 
-仅开发前端界面时，可以运行：
+只开发前端界面时，可以运行：
 
 ```bash
 pnpm dev
@@ -128,16 +127,20 @@ pnpm tauri dev
 ```text
 Movel/
 ├── src/
-│   ├── components/       # Vue 组件
-│   ├── pages/            # 小说、漫画、阅读器与设置页面
+│   ├── components/       # 通用、作品、布局与阅读器组件
+│   ├── composables/      # 发现页、书架与阅读设置逻辑
+│   ├── domain/           # 面向界面的类型化领域模型
+│   ├── pages/            # 认证、小说、漫画、书架与设置页面
 │   ├── services/         # 类型化 Tauri command 调用封装
-│   └── stores/           # 前端应用状态
+│   ├── stores/           # 登录状态与本地阅读设置
+│   └── styles/           # 主题、布局、作品与阅读器样式
 ├── src-tauri/
 │   ├── capabilities/     # 最小化的 Tauri 权限配置
 │   └── src/
-│       ├── api.rs        # 官方 API 客户端、认证与请求处理
-│       ├── commands/     # 小说、漫画、书架与用户命令
-│       └── dto/          # 上游与命令 DTO
+│       ├── api/          # 官方 API、认证、HTTP 与 SignalR 连接
+│       ├── commands/     # 用户、小说、漫画与书架 commands
+│       ├── dto/          # 上游与命令 DTO
+│       └── reader_cache.rs # 章节与漫画页面的 LRU 内存缓存
 ├── docs/images/          # README 展示图片
 └── scripts/              # 开发与平台同步脚本
 ```
