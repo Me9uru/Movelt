@@ -34,21 +34,21 @@ export const novelDiscoveryAdapter: DiscoveryAdapter<NovelSummary> = {
 
 export const mangaDiscoveryAdapter: DiscoveryAdapter<MangaSummary> = {
   async loadRecommendations(target) {
-    const latest = await browseManga(null, 1, "LATEST");
-    target.push({ title: "最近更新", items: latest.slice(0, 6) });
-    // target 是 composable 持有的 reactive 代理；在后台继续向同一数组 push，
-    // 实现"最近更新先渲染、热门/新入库随后追加"的渐进加载。
-    void Promise.allSettled([
+    const [latest, popular, newest] = await Promise.allSettled([
+      browseManga(null, 1, "LATEST"),
       browseManga(null, 1, "POPULAR"),
       browseManga(null, 1, "NEW"),
-    ]).then(([popular, newest]) => {
-      if (popular.status === "fulfilled") {
-        target.push({ title: "热门作品", items: popular.value.slice(0, 6) });
-      }
-      if (newest.status === "fulfilled") {
-        target.push({ title: "新入库", items: newest.value.slice(0, 6) });
-      }
-    });
+    ]);
+
+    if (latest.status === "rejected") throw latest.reason;
+
+    target.push({ title: "最近更新", items: latest.value.slice(0, 6) });
+    if (popular.status === "fulfilled") {
+      target.push({ title: "热门作品", items: popular.value.slice(0, 6) });
+    }
+    if (newest.status === "fulfilled") {
+      target.push({ title: "新入库", items: newest.value.slice(0, 6) });
+    }
   },
   async loadRanking() {
     return browseManga(null, 1, "POPULAR");

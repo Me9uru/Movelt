@@ -19,11 +19,3 @@ const emit = defineEmits<{ retry: [] }>();
     </var-result>
   </div>
 </template>
-
-<style scoped>
-.content-error-state {
-  display: grid;
-  min-height: 300px;
-  place-items: center;
-}
-</style>

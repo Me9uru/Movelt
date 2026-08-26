@@ -57,7 +57,6 @@ export interface BookDetailLayoutProps {
 /** Props accepted by the reusable book grid. */
 export interface BookGridProps<T> {
   items: BookGridItem<T>[];
-  loading?: boolean;
   disabled?: boolean;
 }
 

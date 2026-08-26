@@ -346,9 +346,17 @@
   );
   box-shadow: none;
 }
+.book-cover-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.book-cover-root .var-image {
+  width: 100%;
+  height: 100%;
+}
 .book-grid .book-cover,
-.book-grid .cover-placeholder,
-.book-grid .skeleton-cover {
+.book-grid .cover-placeholder {
   aspect-ratio: 3 / 5;
   border-radius: var(--radius-card);
 }
@@ -365,6 +373,73 @@
 }
 .cover-placeholder .var-icon {
   font-size: 36px;
+}
+.content-error-state {
+  display: grid;
+  min-height: 300px;
+  place-items: center;
+}
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: grid;
+  place-items: center;
+  background: var(--popup-overlay-background-color);
+  cursor: wait;
+  -webkit-backdrop-filter: blur(4px) saturate(108%);
+  backdrop-filter: blur(4px) saturate(108%);
+}
+.loading-overlay__icon {
+  width: 48px;
+  height: 48px;
+  color: var(--color-primary);
+  filter: drop-shadow(0 3px 8px rgb(39 120 186 / 18%));
+  animation: loading-rotate 1.5s linear infinite;
+}
+.loading-overlay__icon .path {
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 4px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 90 150;
+  animation: loading-dash 1.5s ease-in-out infinite;
+}
+.loading-overlay--inline {
+  position: static;
+  z-index: auto;
+  min-height: 280px;
+  background: transparent;
+  cursor: wait;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.loading-overlay--contained {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  min-height: 0;
+  background: transparent;
+  cursor: wait;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.loading-fade-enter-active,
+.loading-fade-leave-active {
+  transition: opacity 0.18s ease;
+}
+.loading-fade-enter-from,
+.loading-fade-leave-to {
+  opacity: 0;
+}
+@keyframes loading-rotate {
+  to { transform: rotate(360deg); }
+}
+@keyframes loading-dash {
+  0% { stroke-dasharray: 1 200; stroke-dashoffset: 0; }
+  50% { stroke-dasharray: 90 150; stroke-dashoffset: -40px; }
+  100% { stroke-dasharray: 90 150; stroke-dashoffset: -120px; }
 }
 .book-meta strong {
   display: -webkit-box;
@@ -387,19 +462,6 @@
 }
 .shelf-card .book-meta strong {
   min-height: auto;
-}
-.skeleton-card {
-  cursor: default;
-}
-.skeleton-card:hover {
-  transform: none;
-}
-.skeleton-cover {
-  width: 100%;
-  height: auto;
-  aspect-ratio: 3 / 4;
-  margin-bottom: var(--space-3);
-  border-radius: var(--radius-control);
 }
 .empty-tip {
   margin: -8px 0 0;

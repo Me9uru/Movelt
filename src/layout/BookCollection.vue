@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import BookGrid from "../components/common/BookGrid.vue";
 import ErrorState from "../components/common/ErrorState.vue";
+import LoadingOverlay from "../components/common/LoadingOverlay.vue";
 import type { BookCollectionProps, BookGridItem } from "../types/book";
 
 // Vue 会将缺省的 Boolean prop 转成 false。这里显式保留 undefined，才能让
@@ -74,7 +75,7 @@ onBeforeUnmount(() => loadMoreObserver?.disconnect());
       />
     </slot>
     <slot v-else-if="loading" name="loading">
-      <BookGrid :class="gridClass" :items="[]" loading />
+      <LoadingOverlay inline visible label="正在加载内容" />
     </slot>
     <slot v-else-if="items" name="empty">
       <var-result type="empty" :description="emptyMessage ?? '暂无作品'" />

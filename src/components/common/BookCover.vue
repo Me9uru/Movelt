@@ -1,5 +1,8 @@
 <script setup lang="ts">
-withDefaults(
+import { ref, watch } from "vue";
+import LoadingOverlay from "./LoadingOverlay.vue";
+
+const props = withDefaults(
   defineProps<{
     coverUrl: string | null;
     title: string;
@@ -9,13 +12,47 @@ withDefaults(
     fit: "cover",
   },
 );
+
+const loading = ref(Boolean(props.coverUrl));
+const failed = ref(false);
+
+watch(
+  () => props.coverUrl,
+  (coverUrl) => {
+    loading.value = Boolean(coverUrl);
+    failed.value = false;
+  },
+);
+
+function handleLoad(): void {
+  loading.value = false;
+}
+
+function handleError(): void {
+  loading.value = false;
+  failed.value = true;
+}
 </script>
 
 <template>
-  <var-image v-if="coverUrl" :src="coverUrl" :alt="title" :fit="fit">
-    <template #error>
-      <span class="cover-placeholder"><var-icon name="bookmark" /></span>
-    </template>
-  </var-image>
-  <span v-else class="cover-placeholder"><var-icon name="bookmark" /></span>
+  <div class="book-cover-root">
+    <var-image
+      v-if="coverUrl"
+      v-show="!loading && !failed"
+      :src="coverUrl"
+      :alt="title"
+      :fit="fit"
+      @load="handleLoad"
+      @error="handleError"
+    />
+    <LoadingOverlay
+      :visible="loading"
+      inline
+      contained
+      label="正在加载封面"
+    />
+    <span v-if="!coverUrl || failed" class="cover-placeholder">
+      <var-icon name="bookmark" />
+    </span>
+  </div>
 </template>

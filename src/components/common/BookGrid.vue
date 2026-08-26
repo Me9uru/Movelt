@@ -7,17 +7,7 @@ const emit = defineEmits<{ open: [item: BookGridItem<T>] }>();
 </script>
 
 <template>
-  <div v-if="loading" class="book-grid result-grid" aria-label="正在加载">
-    <div v-for="item in 6" :key="item" class="book-card skeleton-card">
-      <var-skeleton>
-        <template #default>
-          <div class="skeleton-cover" />
-          <div style="width: 82%" />
-        </template>
-      </var-skeleton>
-    </div>
-  </div>
-  <div v-else class="book-grid result-grid">
+  <div class="book-grid result-grid">
     <var-button
       v-for="item in items"
       :key="item.id"
