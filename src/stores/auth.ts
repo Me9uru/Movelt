@@ -6,7 +6,7 @@ import {
   register as registerRequest,
   restoreUser,
 } from "../services/auth";
-import type { LightNovelUser } from "../domain/auth";
+import type { LightNovelUser, LoginInput, RegisterInput } from "../domain/auth";
 
 export const useAuthStore = defineStore("auth", () => {
   const user = ref<LightNovelUser | null>(null);
@@ -23,13 +23,13 @@ export const useAuthStore = defineStore("auth", () => {
     }
   }
 
-  async function login(email: string, password: string) {
-    user.value = await loginRequest(email, password);
+  async function login(input: LoginInput) {
+    user.value = await loginRequest(input);
     return user.value;
   }
 
-  async function register(userName: string, email: string, password: string, code: string, inviteCode = "") {
-    user.value = await registerRequest(userName, email, password, code, inviteCode);
+  async function register(input: RegisterInput) {
+    user.value = await registerRequest(input);
     return user.value;
   }
 

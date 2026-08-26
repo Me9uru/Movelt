@@ -29,6 +29,10 @@ fn manga(value: &Value) -> MangaSummary {
     }
 }
 
+fn title_matches_query(title: &str, query: &str) -> bool {
+    query.is_empty() || title.to_lowercase().contains(query)
+}
+
 /// 从官方漫画图片数组中提取 URL。
 ///
 /// 当前官方接口返回 `string[]`，旧响应则可能为 `{ Url: string }[]`；
@@ -69,6 +73,7 @@ pub(crate) async fn browse_manga(
 /// 获取漫画书架中的作品。
 pub(crate) async fn list_manga_bookshelf(
     client: State<'_, OfficialClient>,
+    query: Option<String>,
 ) -> Result<Vec<MangaSummary>> {
     let shelf = client.bookshelf().await?;
     let ids = shelf_items(&shelf)
@@ -76,6 +81,7 @@ pub(crate) async fn list_manga_bookshelf(
         .filter(|item| is_kind(item, "COMIC"))
         .map(|item| number(&item, "id"))
         .collect();
+    let query = query.unwrap_or_default().to_lowercase();
     Ok(books_for_ids(&client, ids, Some("Comic"))
         .await?
         .iter()
@@ -87,6 +93,7 @@ pub(crate) async fn list_manga_bookshelf(
             unread_count: 0,
             source_name: Some("LightNovelShelf".into()),
         })
+        .filter(|manga| title_matches_query(&manga.title, &query))
         .collect())
 }
 
@@ -286,7 +293,7 @@ pub(crate) async fn get_manga_page_batch(
 mod tests {
     use serde_json::json;
 
-    use super::manga_page_urls;
+    use super::{manga_page_urls, title_matches_query};
 
     #[test]
     fn maps_current_string_image_urls() {
@@ -300,5 +307,12 @@ mod tests {
         let chapter = json!({"Images": [{"Url": "https://images.example/1.webp"}]});
 
         assert_eq!(manga_page_urls(&chapter), ["https://images.example/1.webp"]);
+    }
+
+    #[test]
+    fn filters_manga_bookshelf_titles_case_insensitively() {
+        assert!(title_matches_query("My Favorite Comic", "favorite"));
+        assert!(!title_matches_query("My Favorite Comic", "author"));
+        assert!(title_matches_query("My Favorite Comic", ""));
     }
 }

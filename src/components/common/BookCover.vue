@@ -1,11 +1,14 @@
 <script setup lang="ts">
-withDefaults(defineProps<{
-  coverUrl: string | null;
-  title: string;
-  fit?: "contain" | "cover" | "fill" | "none" | "scale-down";
-}>(), {
-  fit: "cover",
-});
+withDefaults(
+  defineProps<{
+    coverUrl: string | null;
+    title: string;
+    fit?: "contain" | "cover" | "fill" | "none" | "scale-down";
+  }>(),
+  {
+    fit: "cover",
+  },
+);
 </script>
 
 <template>

@@ -1,14 +1,14 @@
 import { command } from "./bridge";
-import type { LightNovelUser } from "../domain/auth";
+import type { LightNovelUser, LoginInput, RegisterInput } from "../domain/auth";
 
-export type { LightNovelUser } from "../domain/auth";
+export type { LightNovelUser, LoginInput, RegisterInput } from "../domain/auth";
 
-export function login(email: string, password: string) {
-  return command<LightNovelUser>("login", { email, password });
+export function login(input: LoginInput) {
+  return command<LightNovelUser>("login", { ...input });
 }
 
-export function register(userName: string, email: string, password: string, code: string, inviteCode = "") {
-  return command<LightNovelUser>("register", { userName, email, password, code, inviteCode });
+export function register(input: RegisterInput) {
+  return command<LightNovelUser>("register", { ...input });
 }
 
 export function sendRegisterEmail(email: string) {

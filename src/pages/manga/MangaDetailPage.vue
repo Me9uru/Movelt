@@ -9,10 +9,11 @@ import {
 } from "../../services/manga";
 import type { MangaChapter, MangaDetail } from "../../domain/manga";
 import { getErrorMessage, showError } from "../../utils/error";
-import BookChapterList from "../../components/book/BookChapterList.vue";
+import BookChapterList from "../../components/detail/BookChapterList.vue";
 import type { BookChapterItem } from "../../types/book";
-import BookDetailView from "../../components/book/BookDetailView.vue";
-import BookDetailSection from "../../components/book/BookDetailSection.vue";
+import BookDetailLayout from "../../layout/BookDetailLayout.vue";
+import ErrorState from "../../components/common/ErrorState.vue";
+import LoadingOverlay from "../../components/common/LoadingOverlay.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -39,6 +40,11 @@ function toChapterItem(chapter: MangaChapter): BookChapterItem<MangaChapter> {
   };
 }
 
+function read(chapterId: string): void {
+  if (!manga.value) return;
+  void router.push({ name: "manga-reader", params: { mangaId: manga.value.id, chapterId } });
+}
+
 async function load(): Promise<void> {
   loading.value = true;
   error.value = "";
@@ -54,13 +60,6 @@ async function load(): Promise<void> {
   }
 }
 onMounted(() => void load());
-function read(chapterId: string): void {
-  if (!manga.value) return;
-  void router.push({
-    name: "manga-reader",
-    params: { mangaId: manga.value.id, chapterId },
-  });
-}
 function continueReading(): void {
   if (!manga.value) return;
   read(resumeChapterId.value ?? manga.value.chapters[0].id);
@@ -70,18 +69,28 @@ function goBack(): void {
   else void router.replace({ name: "manga" });
 }
 async function toggleBookshelf(): Promise<void> {
+  if (!manga.value) return;
   try {
-    if (!manga.value) return;
     if (onBookshelf.value) await removeFromMangaBookshelf(manga.value.id);
     else await addToMangaBookshelf(manga.value.id);
     onBookshelf.value = !onBookshelf.value;
-  } catch (errorValue) {
-    showError(errorValue, "更新漫画书架失败");
+  } catch (value) {
+    showError(value, "更新漫画书架失败");
   }
 }
 </script>
 <template>
-  <BookDetailView
+  <div>
+    <header class="topbar book-detail-topbar">
+      <div class="topbar-inner detail-topbar">
+        <var-button text @click="goBack"><var-icon name="arrow-left" />返回漫画</var-button>
+      </div>
+    </header>
+    <section class="detail-view">
+      <LoadingOverlay v-if="loading" inline visible label="正在加载漫画详情" />
+      <ErrorState v-if="error" title="漫画详情加载失败" :message="error" :loading="loading" @retry="load" />
+  <BookDetailLayout
+    v-else-if="manga"
     :title="manga?.title ?? ''"
     :cover-url="manga?.thumbnailUrl ?? null"
     :author="manga?.author || manga?.artist || '作者未知'"
@@ -92,27 +101,17 @@ async function toggleBookshelf(): Promise<void> {
     :loading="loading"
     :resume-chapter-id="resumeChapterId"
     :can-start-reading="Boolean(manga?.chapters[0])"
-    :loaded="Boolean(manga)"
-    :error="error"
-    error-title="漫画详情加载失败"
-    show-inline-loading
-    loading-label="正在加载漫画详情"
-    back-label="返回漫画"
-    @back="goBack"
+    :stats="[{ value: manga.chapters.length, label: '话' }]"
+    section-title="章节"
+    :section-summary="`共 ${manga.chapters.length} 话`"
     @toggle-bookshelf="toggleBookshelf"
     @continue-reading="continueReading"
-    @retry="load"
   >
-    <template #stats>
-      <span><strong>{{ manga?.chapters.length ?? 0 }}</strong> 话</span>
-    </template>
-    <template #chapters>
-      <BookDetailSection v-if="manga" title="章节" :summary="`共 ${manga.chapters.length} 话`">
-        <BookChapterList
-          :items="manga.chapters.map(toChapterItem)"
-          @open="read($event.data.id)"
-        />
-      </BookDetailSection>
-    </template>
-  </BookDetailView>
+    <BookChapterList
+      :items="manga.chapters.map(toChapterItem)"
+      @open="read($event.data.id)"
+    />
+  </BookDetailLayout>
+    </section>
+  </div>
 </template>

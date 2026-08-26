@@ -1,66 +1,116 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import type { ChapterSummary, NovelSummary, Volume } from "../../domain/novel";
-import BookChapterList from "../../components/book/BookChapterList.vue";
-import type {
-  BookChapterGroup,
-  BookChapterItem,
-} from "../../types/book";
-import BookDetailView from "../../components/book/BookDetailView.vue";
-import BookDetailSection from "../../components/book/BookDetailSection.vue";
+import BookChapterList from "../../components/detail/BookChapterList.vue";
+import type { BookChapterItem } from "../../types/book";
+import BookDetailLayout from "../../layout/BookDetailLayout.vue";
+import LoadingOverlay from "../../components/common/LoadingOverlay.vue";
+import ErrorState from "../../components/common/ErrorState.vue";
+import { useLibrary } from "../../composables/useLibrary";
+import { getReaderOverview, lightNovelSourceId } from "../../services/novel";
+import { getErrorMessage, showError } from "../../utils/error";
 
-const props = defineProps<{
-  detail: NovelSummary;
-  catalogue: Volume[];
-  loading: boolean;
-  onBookshelf: boolean;
-  resumeChapterId?: string | null;
-  backLabel: string;
-}>();
+const route = useRoute();
+const router = useRouter();
+const { addBook, removeBook, isOnBookshelf } = useLibrary();
+const detail = ref<NovelSummary | null>(null);
+const catalogue = ref<Volume[]>([]);
+const resumeChapterId = ref<string | null>(null);
+const loading = ref(true);
+const error = ref("");
+const bookId = computed(() => typeof route.params.bookId === "string" ? route.params.bookId : "");
+const from = computed(() => route.query.from === "bookshelf" || route.query.from === "novel-search" ? route.query.from : "novels");
+const backLabel = computed(() => `返回${from.value === "bookshelf" ? "书架" : "小说"}`);
+const onBookshelf = computed(() => detail.value ? isOnBookshelf(detail.value) : false);
 
-const emit = defineEmits<{
-  back: [];
-  toggleBookshelf: [];
-  continueReading: [];
-  openChapter: [chapterId: string];
-}>();
+async function load(): Promise<void> {
+  if (!bookId.value) return;
+  loading.value = true;
+  error.value = "";
+  try {
+    const overview = await getReaderOverview(lightNovelSourceId, bookId.value);
+    detail.value = overview.detail;
+    catalogue.value = overview.volumes;
+    resumeChapterId.value = overview.readPosition?.chapterId ?? null;
+  } catch (value) {
+    error.value = getErrorMessage(value, "无法加载作品详情");
+    showError(value, "无法加载作品详情");
+  } finally {
+    loading.value = false;
+  }
+}
 
-const activeVolume = ref<number | string>("");
+function goBack(): void {
+  if (window.history.state?.back) router.back();
+  else void router.replace({ name: from.value });
+}
+
+function openChapter(chapterId: string): void {
+  if (!detail.value) return;
+  void router.push({ name: "reader", params: { bookId: detail.value.id, chapterId }, query: route.query });
+}
+
+function continueReading(): void {
+  const chapterId = resumeChapterId.value ?? catalogue.value.flatMap(collectChapterItems)[0]?.data.id;
+  if (chapterId) openChapter(chapterId);
+}
+
+async function toggleBookshelf(): Promise<void> {
+  if (!detail.value) return;
+  loading.value = true;
+  try {
+    if (onBookshelf.value) await removeBook(detail.value);
+    else await addBook(detail.value);
+  } catch (value) {
+    showError(value, "更新书架失败");
+  } finally {
+    loading.value = false;
+  }
+}
+
+onMounted(() => void load());
+watch(bookId, () => void load());
+
 const chapterCount = computed(() =>
-  props.catalogue.reduce((total, volume) => total + countChapters(volume), 0),
+  catalogue.value.reduce((total, volume) => total + countChapters(volume), 0),
 );
-
-watch(
-  [() => props.catalogue],
-  ([catalogue]) => {
-    let activeVolumeIndex = catalogue.length > 0 ? 0 : -1;
-    activeVolume.value = activeVolumeIndex >= 0 ? activeVolumeIndex : "";
-  },
-  { immediate: true },
-);
+const stats = computed(() => [
+  { value: catalogue.value.length, label: "篇" },
+  { value: chapterCount.value, label: "话" },
+  ...(detail.value?.updated_at ? [{ label: `更新于 ${detail.value.updated_at}` }] : []),
+]);
 
 function countChapters(volume: Volume): number {
   return volume.chapters.length + volume.sections.reduce((total, section) => total + countChapters(section), 0);
 }
 
-const chaptersPerPage = 100;
-
 function toChapterItem(chapter: ChapterSummary): BookChapterItem<ChapterSummary> {
   return { id: chapter.id, title: chapter.title, data: chapter };
 }
 
-function toGroup(volume: Volume): BookChapterGroup<ChapterSummary> {
-  return {
-    title: volume.title,
-    count: countChapters(volume),
-    chapters: volume.chapters.map(toChapterItem),
-    groups: volume.sections.map(toGroup),
-  };
+function collectChapterItems(volume: Volume): BookChapterItem<ChapterSummary>[] {
+  return [
+    ...volume.chapters.map(toChapterItem),
+    ...volume.sections.flatMap(collectChapterItems),
+  ];
 }
+
+const chapterItems = computed(() => catalogue.value.flatMap(collectChapterItems));
 </script>
 
 <template>
-  <BookDetailView
+  <div>
+    <header class="topbar book-detail-topbar">
+      <div class="topbar-inner detail-topbar">
+        <var-button text @click="goBack"><var-icon name="arrow-left" />{{ backLabel }}</var-button>
+      </div>
+    </header>
+    <section class="detail-view">
+    <LoadingOverlay v-if="loading && !detail" inline visible label="正在加载作品详情" />
+    <ErrorState v-else-if="error" title="作品详情加载失败" :message="error" :loading="loading" @retry="load" />
+  <BookDetailLayout
+    v-else-if="detail"
     :title="detail.title"
     :cover-url="detail.cover_url"
     :author="detail.author || '佚名'"
@@ -71,42 +121,18 @@ function toGroup(volume: Volume): BookChapterGroup<ChapterSummary> {
     :on-bookshelf="onBookshelf"
     :loading="loading"
     :resume-chapter-id="resumeChapterId"
-    :back-label="backLabel"
-    @back="emit('back')"
-    @toggle-bookshelf="emit('toggleBookshelf')"
-    @continue-reading="emit('continueReading')"
+    :stats="stats"
+    section-title="作品目录"
+    :section-summary="`共 ${catalogue.length} 篇 · ${chapterCount} 话`"
+    @toggle-bookshelf="toggleBookshelf"
+    @continue-reading="continueReading"
   >
-    <template #stats>
-      <span><strong>{{ catalogue.length }}</strong> 篇</span>
-      <var-divider vertical />
-      <span><strong>{{ chapterCount }}</strong> 话</span>
-      <template v-if="detail.updated_at">
-        <var-divider vertical />
-        <span>更新于 {{ detail.updated_at }}</span>
-      </template>
-    </template>
-    <template #chapters>
-      <BookDetailSection title="作品目录" :summary="`共 ${catalogue.length} 篇 · ${chapterCount} 话`">
-
-        <var-collapse v-model="activeVolume" accordion class="catalogue">
-          <var-collapse-item v-for="(volume, volumeIndex) in catalogue" :key="`${volume.title}-${volumeIndex}`"
-            class="catalogue-volume" :name="volumeIndex">
-            <template #title>
-              <div class="volume-title volume-title--part">
-                <span class="volume-index">{{ String(volumeIndex + 1).padStart(2, "0") }}</span>
-                <strong>{{ volume.title }}</strong>
-                <var-chip class="count-tag" size="small" plain>{{ countChapters(volume) }} 话</var-chip>
-              </div>
-            </template>
-            <BookChapterList v-if="activeVolume === volumeIndex"
-              :groups="volume.sections.map(toGroup)"
-              :items="volume.chapters.map(toChapterItem)"
-              :loading="loading"
-              :page-size="chaptersPerPage"
-              @open="emit('openChapter', $event.data.id)" />
-          </var-collapse-item>
-        </var-collapse>
-      </BookDetailSection>
-    </template>
-  </BookDetailView>
+    <BookChapterList
+      :items="chapterItems"
+      :loading="loading"
+      @open="openChapter($event.data.id)"
+    />
+  </BookDetailLayout>
+    </section>
+  </div>
 </template>

@@ -1,13 +1,8 @@
 <script setup lang="ts">
-import { useReaderSettings, type ReaderKind } from "../../composables/useReaderSettings";
+import { useReaderSettings } from "../../composables/useReaderSettings";
+import type { ReaderSettingsDrawerProps } from "../../types/reader";
 
-const props = defineProps<{
-  kind: ReaderKind;
-  title: string;
-  titleClick?: () => void;
-  previousDisabled?: boolean;
-  nextDisabled?: boolean;
-}>();
+const props = defineProps<ReaderSettingsDrawerProps>();
 
 const emit = defineEmits<{
   previous: [];
@@ -28,26 +23,31 @@ const { settings, reset } = useReaderSettings(props.kind);
           :title="previousDisabled ? '已是第一话' : '上一话'"
           aria-label="上一话"
           @click="emit('previous')"
-        ><var-icon name="arrow-left" /></var-button>
+          ><var-icon name="arrow-left"
+        /></var-button>
         <strong
           v-if="!titleClick"
           class="reader-chapter-nav-title"
           :title="title"
-        >{{ title }}</strong>
-        <button
+          >{{ title }}</strong
+        >
+        <var-button
           v-else
+          text
           class="reader-chapter-nav-title"
-          type="button"
           :title="title"
           @click="titleClick"
-        >{{ title }}</button>
+        >
+          {{ title }}
+        </var-button>
         <var-button
           round
           :disabled="nextDisabled"
           :title="nextDisabled ? '已是最后一话' : '下一话'"
           aria-label="下一话"
           @click="emit('next')"
-        ><var-icon name="arrow-right" /></var-button>
+          ><var-icon name="arrow-right"
+        /></var-button>
       </nav>
     </Transition>
   </Teleport>
@@ -63,12 +63,7 @@ const { settings, reset } = useReaderSettings(props.kind);
       <div class="settings-handle" aria-hidden="true"></div>
       <div class="settings-title">
         <strong>阅读设置</strong>
-        <var-button
-          v-if="kind === 'novel'"
-          text
-          size="small"
-          @click="reset"
-        >
+        <var-button v-if="kind === 'novel'" text size="small" @click="reset">
           恢复默认
           <var-icon name="restore" />
         </var-button>
@@ -109,20 +104,53 @@ const { settings, reset } = useReaderSettings(props.kind);
           <var-radio checked-value="s2t">简转繁</var-radio>
         </var-radio-group>
 
-        <label><span>字体大小</span><b>{{ settings.fontSize }} px</b></label>
+        <label
+          ><span>字体大小</span><b>{{ settings.fontSize }} px</b></label
+        >
         <var-slider v-model="settings.fontSize" :min="14" :max="30" :step="1" />
 
-        <label><span>行间距</span><b>{{ settings.lineHeight.toFixed(1) }} 倍</b></label>
-        <var-slider v-model="settings.lineHeight" :min="1.4" :max="2.6" :step="0.1" />
+        <label
+          ><span>行间距</span
+          ><b>{{ settings.lineHeight.toFixed(1) }} 倍</b></label
+        >
+        <var-slider
+          v-model="settings.lineHeight"
+          :min="1.4"
+          :max="2.6"
+          :step="0.1"
+        />
 
-        <label><span>字间距</span><b>{{ settings.letterSpacing.toFixed(1) }} px</b></label>
-        <var-slider v-model="settings.letterSpacing" :min="0" :max="4" :step="0.2" />
+        <label
+          ><span>字间距</span
+          ><b>{{ settings.letterSpacing.toFixed(1) }} px</b></label
+        >
+        <var-slider
+          v-model="settings.letterSpacing"
+          :min="0"
+          :max="4"
+          :step="0.2"
+        />
 
-        <label><span>段间距</span><b>{{ settings.paragraphSpacing.toFixed(1) }} 倍</b></label>
-        <var-slider v-model="settings.paragraphSpacing" :min="0.6" :max="2.4" :step="0.1" />
+        <label
+          ><span>段间距</span
+          ><b>{{ settings.paragraphSpacing.toFixed(1) }} 倍</b></label
+        >
+        <var-slider
+          v-model="settings.paragraphSpacing"
+          :min="0.6"
+          :max="2.4"
+          :step="0.1"
+        />
 
-        <label><span>阅读宽度</span><b>{{ settings.contentWidth }} px</b></label>
-        <var-slider v-model="settings.contentWidth" :min="560" :max="1100" :step="20" />
+        <label
+          ><span>阅读宽度</span><b>{{ settings.contentWidth }} px</b></label
+        >
+        <var-slider
+          v-model="settings.contentWidth"
+          :min="560"
+          :max="1100"
+          :step="20"
+        />
       </template>
     </div>
   </var-popup>

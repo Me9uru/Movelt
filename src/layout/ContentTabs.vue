@@ -1,19 +1,11 @@
 <script setup lang="ts" generic="T extends string">
 import { nextTick, ref } from "vue";
-import type { BookSearchMode } from "../../domain/search";
-import BookSearchBar from "../book/BookSearchBar.vue";
+import type { BookSearchMode } from "../domain/search";
+import type { DiscoveryTabProps } from "../types/discovery";
+import BookSearchBar from "../components/discovery/BookSearchBar.vue";
 
 const props = withDefaults(
-  defineProps<{
-    tabs: { name: T; label: string }[];
-    modelValue: T;
-    searchLabel: string;
-    query: string;
-    searchLoading: boolean;
-    searchMode?: BookSearchMode;
-    twoPrimary?: boolean;
-    swipe?: boolean;
-  }>(),
+  defineProps<DiscoveryTabProps<T>>(),
   {
     searchMode: undefined,
     twoPrimary: false,
@@ -103,14 +95,14 @@ function handleTouchEnd(event: TouchEvent): void {
         tab.label
       }}</var-tab>
     </var-tabs>
-    <button
+    <var-button
       class="library-search-trigger discovery-search-trigger"
-      type="button"
+      text
       :aria-label="searchLabel"
       @click="searchDialogVisible = true"
     >
       <var-icon name="magnify" />
-    </button>
+    </var-button>
   </div>
 
   <var-popup

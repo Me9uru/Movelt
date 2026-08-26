@@ -14,12 +14,12 @@ export const router = createRouter({
     {
       path: "/novels",
       name: "novels",
-      component: () => import("../pages/novel/NovelPage.vue"),
+      component: () => import("../pages/novel/NovelDiscoveryPage.vue"),
     },
     {
       path: "/novels/search",
       name: "novel-search",
-      component: () => import("../pages/novel/NovelPage.vue"),
+      component: () => import("../pages/novel/NovelDiscoveryPage.vue"),
     },
     {
       path: "/bookshelf",
@@ -29,7 +29,7 @@ export const router = createRouter({
     {
       path: "/manga",
       name: "manga",
-      component: () => import("../pages/manga/MangaPage.vue"),
+      component: () => import("../pages/manga/MangaDiscoveryPage.vue"),
     },
     {
       path: "/settings",

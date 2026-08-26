@@ -111,7 +111,7 @@
   .discovery-block .result-grid {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }
-  .discovery-block .work-grid.result-grid {
+  .discovery-block .book-grid.result-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }

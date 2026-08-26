@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import type { LoginInput, RegisterInput } from "../../domain/auth";
 import { sendRegisterEmail } from "../../services/auth";
 import { useAuthStore } from "../../stores/auth";
 import { showError } from "../../utils/error";
@@ -10,12 +11,16 @@ const router = useRouter();
 const auth = useAuthStore();
 
 const authMode = ref<"login" | "register">("login");
-const email = ref("");
-const password = ref("");
+const credentials = reactive<LoginInput>({
+  email: "",
+  password: "",
+});
 const submitting = ref(false);
-const registerName = ref("");
-const registerCode = ref("");
-const registerInviteCode = ref("");
+const registration = reactive<Omit<RegisterInput, keyof LoginInput>>({
+  userName: "",
+  code: "",
+  inviteCode: "",
+});
 const registerPasswordConfirmation = ref("");
 const registerEmailSending = ref(false);
 const redirectTarget = computed(() => {
@@ -30,10 +35,10 @@ async function finishAuthentication() {
 }
 
 async function submitLogin() {
-  if (!email.value || !password.value) return;
+  if (!credentials.email || !credentials.password) return;
   submitting.value = true;
   try {
-    await auth.login(email.value, password.value);
+    await auth.login(credentials);
     await finishAuthentication();
   } catch (error) {
     showError(error);
@@ -43,10 +48,10 @@ async function submitLogin() {
 }
 
 async function sendRegistrationCode() {
-  if (!email.value) return;
+  if (!credentials.email) return;
   registerEmailSending.value = true;
   try {
-    await sendRegisterEmail(email.value);
+    await sendRegisterEmail(credentials.email);
   } catch (error) {
     showError(error);
   } finally {
@@ -55,14 +60,14 @@ async function sendRegistrationCode() {
 }
 
 async function submitRegistration() {
-  if (!registerName.value || !email.value || !password.value || !registerCode.value) return;
-  if (password.value !== registerPasswordConfirmation.value) {
+  if (!registration.userName || !credentials.email || !credentials.password || !registration.code) return;
+  if (credentials.password !== registerPasswordConfirmation.value) {
     showError("两次输入的密码不一致");
     return;
   }
   submitting.value = true;
   try {
-    await auth.register(registerName.value, email.value, password.value, registerCode.value, registerInviteCode.value);
+    await auth.register({ ...credentials, ...registration });
     await finishAuthentication();
   } catch (error) {
     showError(error);
@@ -88,22 +93,22 @@ onMounted(() => {
         <var-tab name="register">注册</var-tab>
       </var-tabs>
       <form v-if="authMode === 'login'" @submit.prevent="submitLogin">
-        <label>邮箱<var-input v-model="email" autocomplete="email" /></label>
-        <label>密码<var-input v-model="password" type="password" autocomplete="current-password" /></label>
+        <label>邮箱<var-input v-model="credentials.email" autocomplete="email" /></label>
+        <label>密码<var-input v-model="credentials.password" type="password" autocomplete="current-password" /></label>
         <var-button type="primary" :loading="submitting" native-type="submit">登录</var-button>
       </form>
       <form v-else @submit.prevent="submitRegistration">
-        <label>昵称<var-input v-model="registerName" autocomplete="username" /></label>
-        <label>邮箱<var-input v-model="email" autocomplete="email" /></label>
+        <label>昵称<var-input v-model="registration.userName" autocomplete="username" /></label>
+        <label>邮箱<var-input v-model="credentials.email" autocomplete="email" /></label>
         <label>验证码
           <span class="auth-code-row">
-            <var-input v-model="registerCode" autocomplete="one-time-code" />
+            <var-input v-model="registration.code" autocomplete="one-time-code" />
             <var-button :loading="registerEmailSending" @click="sendRegistrationCode">发送验证码</var-button>
           </span>
         </label>
-        <label>密码<var-input v-model="password" type="password" autocomplete="new-password" /></label>
+        <label>密码<var-input v-model="credentials.password" type="password" autocomplete="new-password" /></label>
         <label>确认密码<var-input v-model="registerPasswordConfirmation" type="password" autocomplete="new-password" /></label>
-        <label>邀请码（可选）<var-input v-model="registerInviteCode" /></label>
+        <label>邀请码（可选）<var-input v-model="registration.inviteCode" /></label>
         <var-button type="primary" :loading="submitting" native-type="submit">注册并登录</var-button>
       </form>
     </div>

@@ -1,47 +1,15 @@
 /* Shared components: buttons, section headings, cards, covers, tags,
    and book-detail blocks. */
-/* ---- Buttons ---- */
+/* ---- Varlet control refinements ---- */
 
-button,
-input {
-  font: inherit;
-}
-button {
-  cursor: pointer;
-}
-
-/* Shared full-width row-button base (.settings-row, .chapter-list button). */
+/* Shared full-width row-control base. */
 .settings-row,
-.chapter-list button {
+.chapter-list .var-button {
   width: 100%;
   border: 0;
   color: var(--color-text);
   background: transparent;
   text-align: left;
-}
-.view-dock button {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-1);
-  min-width: 96px;
-  height: var(--space-6);
-  padding: 0 var(--space-3);
-  border: 0;
-  border-radius: var(--radius-pill);
-  color: var(--color-text-muted);
-  background: transparent;
-  transition:
-    color 0.2s ease,
-    background 0.2s ease;
-}
-.view-dock button:hover {
-  color: var(--color-primary-deep);
-}
-.view-dock button.active {
-  color: var(--color-primary-deep);
-  background: var(--color-primary-soft);
 }
 .settings-row {
   display: flex;
@@ -53,6 +21,7 @@ button {
   transition: background 0.2s ease;
 }
 .settings-row--link {
+  display: flex;
   text-decoration: none;
 }
 .settings-row:hover:not(:disabled),
@@ -79,7 +48,8 @@ button {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.settings-row__icon {
+.settings-row__icon,
+.settings-row .var-cell__icon {
   color: var(--color-primary-deep);
   font-size: 19px;
 }
@@ -102,7 +72,7 @@ button {
   border-radius: var(--radius-control);
 }
 .book-search .var-button,
-.library-search-trigger {
+.library-search-trigger.var-button {
   padding: 0;
 }
 .book-search .var-button {
@@ -125,14 +95,15 @@ button {
     color 0.2s ease,
     background 0.2s ease;
 }
-.library-search-trigger:hover,
-.library-search-trigger:focus-visible {
+.library-search-trigger.var-button:hover,
+.library-search-trigger.var-button:focus-visible {
   color: var(--color-primary-deep);
   background: var(--color-primary-softer);
 }
 .book-search-mode {
   flex: 1;
   min-width: 0;
+  min-height: 36px;
   height: 36px;
   padding: 0 var(--space-2);
   border: 0;
@@ -150,9 +121,11 @@ button {
   outline: 2px solid var(--color-primary);
   outline-offset: -2px;
 }
-.chapter-list button {
+.chapter-list .var-button {
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr) auto;
+  min-height: 0;
+  height: auto;
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2);
@@ -163,8 +136,8 @@ button {
     border-color 0.2s,
     background 0.2s;
 }
-.chapter-list button:hover,
-.chapter-list button.chapter-current {
+.chapter-list .var-button:hover,
+.chapter-list .var-button.chapter-current {
   color: var(--color-primary-deep);
   border-left-color: var(--color-primary);
   background: color-mix(in srgb, var(--color-primary-soft) 65%, transparent);
@@ -179,9 +152,6 @@ button {
   margin-top: var(--space-1);
   color: var(--color-primary-deep);
   font-size: 11px;
-}
-.bookshelf-empty .var-button {
-  margin-top: var(--space-3);
 }
 .auth-code-row .var-button {
   flex: 0 0 auto;
@@ -206,6 +176,7 @@ button {
   }
 }
 .description-toggle {
+  min-width: 0;
   min-height: 44px;
   margin-top: var(--space-1);
   padding: 0;
@@ -291,7 +262,7 @@ button {
   min-height: 220px;
   margin-top: var(--space-3);
 }
-.discovery-load-more {
+.book-collection__load-more {
   min-height: var(--space-6);
   padding: var(--space-3) 0 var(--space-5);
   color: var(--color-text-muted);
@@ -306,12 +277,15 @@ button {
   grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
   gap: var(--space-4) var(--space-3);
 }
-.work-grid.result-grid {
+.book-grid.result-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   row-gap: var(--space-5);
   column-gap: var(--space-4);
 }
-.work-grid .book-card {
+.book-grid .book-card {
+  min-width: 0;
+  min-height: 0;
+  height: auto;
   width: 100%;
   padding: 0;
   border-color: transparent;
@@ -322,7 +296,12 @@ button {
   font: inherit;
   text-align: left;
 }
-.work-grid .book-card:hover {
+.book-grid .book-card .var-button__content {
+  display: block;
+  width: 100%;
+  white-space: normal;
+}
+.book-grid .book-card:hover {
   border-color: transparent;
   box-shadow: none;
 }
@@ -347,6 +326,9 @@ button {
   pointer-events: none;
   cursor: wait;
 }
+.chapter-list .var-button__content {
+  display: contents;
+}
 .book-card .var-card__container {
   padding: 0 0 var(--space-2);
 }
@@ -364,16 +346,16 @@ button {
   );
   box-shadow: none;
 }
-.work-grid .book-cover,
-.work-grid .cover-placeholder,
-.work-grid .skeleton-cover {
+.book-grid .book-cover,
+.book-grid .cover-placeholder,
+.book-grid .skeleton-cover {
   aspect-ratio: 3 / 5;
   border-radius: var(--radius-card);
 }
-.work-grid .book-cover .var-image__image {
+.book-grid .book-cover .var-image__image {
   border-radius: inherit;
 }
-.work-grid .book-meta {
+.book-grid .book-meta {
   padding: var(--space-2) var(--space-1) var(--space-2);
 }
 .cover-placeholder {
@@ -393,7 +375,7 @@ button {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
-.work-grid .book-meta strong {
+.book-grid .book-meta strong {
   min-height: auto;
   -webkit-line-clamp: 1;
 }
@@ -448,7 +430,7 @@ button {
 .book-detail-description--no-stats {
   margin-top: var(--space-4);
 }
-.book-detail-description .work-description {
+.book-detail-description .book-description {
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;
@@ -460,7 +442,7 @@ button {
 .book-detail-description p + p {
   margin-top: var(--space-2);
 }
-.book-detail-description--expanded .work-description {
+.book-detail-description--expanded .book-description {
   display: block;
   overflow: visible;
   -webkit-line-clamp: unset;
@@ -530,11 +512,9 @@ button {
 
 /* Mobile overrides (folded in from responsive.css). */
 @media (max-width: 720px) {
-  .view-dock button {
+  .view-dock .var-bottom-navigation-item {
     min-width: 0;
     flex: 1;
-    height: 36px;
-    padding: 0 10px;
   }
   .search-box .var-button {
     min-width: 92px;
@@ -551,7 +531,7 @@ button {
   }
   /* .discovery-block prefix keeps this winning its specificity tie with
      .discovery-block .result-grid (book.css) at ≤720px. */
-  .discovery-block .work-grid.result-grid {
+  .discovery-block .book-grid.result-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     row-gap: var(--space-3);
     column-gap: var(--space-3);
@@ -593,7 +573,7 @@ button {
     text-align: left;
   }
   .book-detail-description:not(.book-detail-description--expanded)
-    .work-description {
+    .book-description {
     -webkit-line-clamp: 7;
   }
 }

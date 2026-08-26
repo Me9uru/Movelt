@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { BookSearchMode } from "../../domain/search";
+import type { BookSearchBarProps } from "../../types/discovery";
 
 const searchModes: { value: BookSearchMode; label: string }[] = [
   { value: "title", label: "作品名" },
@@ -8,13 +9,7 @@ const searchModes: { value: BookSearchMode; label: string }[] = [
   { value: "tags", label: "标签" },
 ];
 
-const props = defineProps<{
-  modelValue: string;
-  loading: boolean;
-  placeholder?: string;
-  ariaLabel?: string;
-  searchMode?: BookSearchMode;
-}>();
+const props = defineProps<BookSearchBarProps>();
 
 const emit = defineEmits<{
   clear: [];
@@ -36,22 +31,32 @@ const ariaLabel = computed(() => {
   if (props.searchMode === "tags") return "按标签搜索";
   return "按作品名搜索";
 });
-
 </script>
 
 <template>
-  <form class="search-box book-search" role="search" @submit.prevent="emit('submit')">
-    <div v-if="searchMode" class="book-search-modes" role="tablist" aria-label="搜索方式">
-      <button
+  <form
+    class="search-box book-search"
+    role="search"
+    @submit.prevent="emit('submit')"
+  >
+    <div
+      v-if="searchMode"
+      class="book-search-modes"
+      role="tablist"
+      aria-label="搜索方式"
+    >
+      <var-button
         v-for="mode in searchModes"
         :key="mode.value"
+        text
         class="book-search-mode"
         :class="{ 'book-search-mode--active': searchMode === mode.value }"
-        type="button"
         role="tab"
         :aria-selected="searchMode === mode.value"
         @click="emit('update:searchMode', mode.value)"
-      >{{ mode.label }}</button>
+      >
+        {{ mode.label }}
+      </var-button>
     </div>
     <div class="book-search-controls">
       <var-input
@@ -69,7 +74,8 @@ const ariaLabel = computed(() => {
         :loading="loading"
         aria-label="搜索"
         title="搜索"
-      ><var-icon name="magnify" /></var-button>
+        ><var-icon name="magnify"
+      /></var-button>
     </div>
   </form>
 </template>

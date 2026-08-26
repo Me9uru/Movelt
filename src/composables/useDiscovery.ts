@@ -10,8 +10,24 @@ export const rankingPeriods = [
   { value: 30, label: "近 30 天" },
   { value: 365, label: "近一年" },
 ];
-export function useDiscovery<T>(adapter: DiscoveryAdapter<T>) {
-  const unavailableMessage = ref("");
+
+export interface DiscoveryState<T> {
+  recommendations: Ref<RecommendBlock<T>[]>;
+  ranking: Ref<T[] | null>;
+  search: Ref<DiscoveryList<T> | null>;
+  rankingDays: Ref<number>;
+  searchQuery: Ref<string>;
+  searchMode: Ref<BookSearchMode>;
+  loading: Ref<Record<DiscoveryRegion, boolean>>;
+  errors: Ref<Record<DiscoveryRegion, string>>;
+  loadRecommendations: () => Promise<void>;
+  loadRanking: (days?: number) => Promise<void>;
+  runSearch: (page?: number) => Promise<void>;
+}
+
+export function useDiscovery<T>(
+  adapter: DiscoveryAdapter<T>,
+): DiscoveryState<T> {
   // ref 的 UnwrapRef 会递归展开泛型结构，导致 .value 类型与 T 不一致；断言回
   // 原始类型以便向 adapter 透传与增量追加。
   const recommendations = ref<RecommendBlock<T>[]>([]) as Ref<
@@ -75,12 +91,7 @@ export function useDiscovery<T>(adapter: DiscoveryAdapter<T>) {
       }
     });
   }
-  async function initialize() {
-    unavailableMessage.value = "";
-    await loadRecommendations();
-  }
   return {
-    unavailableMessage,
     recommendations,
     ranking,
     search,
@@ -89,7 +100,6 @@ export function useDiscovery<T>(adapter: DiscoveryAdapter<T>) {
     searchMode,
     loading,
     errors,
-    initialize,
     loadRecommendations,
     loadRanking,
     runSearch,

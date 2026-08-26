@@ -52,38 +52,23 @@ body {
   justify-content: flex-start;
 }
 .view-dock {
-  display: flex;
-  position: fixed;
   bottom: max(var(--space-3), env(safe-area-inset-bottom));
   left: 50%;
   z-index: 30;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-1);
+  width: min(400px, calc(100% - (var(--space-4) * 2)));
   border: 1px solid var(--color-border);
   border-radius: var(--radius-pill);
-  background: var(--color-surface-glass);
+  --bottom-navigation-background-color: var(--color-surface-glass);
+  --bottom-navigation-item-active-background-color: var(--color-primary-soft);
+  --bottom-navigation-item-variant-active-background-color: var(--color-primary-soft);
+  --bottom-navigation-item-active-color: var(--color-primary-deep);
+  --bottom-navigation-item-inactive-color: var(--color-text-muted);
   box-shadow: var(--shadow-floating);
   backdrop-filter: blur(18px);
   transform: translateX(-50%);
 }
-.view-dock .var-icon {
+.view-dock .var-bottom-navigation-item .var-icon {
   font-size: 17px;
-}
-.view-dock small {
-  display: grid;
-  place-items: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: var(--radius-pill);
-  color: var(--color-primary-deep);
-  background: var(--color-primary-soft);
-  font-size: 10px;
-}
-.view-dock button.active small {
-  color: var(--color-primary-deep);
-  background: var(--color-primary-soft);
 }
 
 .app-shell {
@@ -230,7 +215,7 @@ body {
   min-width: 0;
   flex: 1;
 }
-.bookshelf-view > .result-grid {
+.bookshelf-view > .book-collection {
   margin-top: var(--space-3);
 }
 .bookshelf-empty {
@@ -281,12 +266,6 @@ body {
     height: 56px;
   }
   .view-dock {
-    padding: 4px;
-  }
-  .view-dock {
     width: min(calc(100% - 16px), 400px);
-  }
-  .view-dock small {
-    display: none;
   }
 }

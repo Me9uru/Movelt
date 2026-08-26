@@ -171,10 +171,7 @@ function handleWheel(event: WheelEvent): void {
   }, 200);
 }
 
-watch(
-  () => [props.disabled, props.hasPrevious, props.hasNext],
-  clearPending,
-);
+watch(() => [props.disabled, props.hasPrevious, props.hasNext], clearPending);
 
 onMounted(() => {
   lastScrollY = window.scrollY;

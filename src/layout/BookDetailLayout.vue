@@ -1,24 +1,21 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useSlots, watch } from "vue";
-import BookCover from "./BookCover.vue";
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+} from "vue";
+import BookCover from "../components/common/BookCover.vue";
+import type { BookDetailLayoutProps } from "../types/book";
 
 const props = withDefaults(
-  defineProps<{
-    title: string;
-    coverUrl: string | null;
-    author: string;
-    status?: string | null;
-    tags: string[];
-    description: string | null | undefined;
-    descriptionFallback?: string;
-    onBookshelf: boolean;
-    loading: boolean;
-    resumeChapterId?: string | null;
-    canStartReading?: boolean;
-  }>(),
+  defineProps<BookDetailLayoutProps>(),
   {
     descriptionFallback: "暂无简介。",
     canStartReading: false,
+    stats: () => [],
   },
 );
 
@@ -27,8 +24,7 @@ const emit = defineEmits<{
   continueReading: [];
 }>();
 
-const slots = useSlots();
-const hasStats = computed(() => Boolean(slots.stats));
+const hasStats = computed(() => props.stats.length > 0);
 
 const descriptionElement = ref<HTMLElement | null>(null);
 const descriptionExpanded = ref(false);
@@ -36,7 +32,8 @@ const descriptionCanExpand = ref(false);
 let descriptionResizeObserver: ResizeObserver | undefined;
 
 function updateDescriptionExpansion(): void {
-  const element = descriptionElement.value?.querySelector<HTMLElement>(".work-description");
+  const element =
+    descriptionElement.value?.querySelector<HTMLElement>(".book-description");
   if (!element || descriptionExpanded.value) return;
   descriptionCanExpand.value = element.scrollHeight > element.clientHeight + 1;
 }
@@ -52,7 +49,8 @@ watch(
 
 onMounted(() => {
   descriptionResizeObserver = new ResizeObserver(updateDescriptionExpansion);
-  if (descriptionElement.value) descriptionResizeObserver.observe(descriptionElement.value);
+  if (descriptionElement.value)
+    descriptionResizeObserver.observe(descriptionElement.value);
   void nextTick(updateDescriptionExpansion);
 });
 
@@ -62,8 +60,11 @@ onBeforeUnmount(() => descriptionResizeObserver?.disconnect());
 <template>
   <section class="book-detail-view">
     <article class="book-detail-profile">
-      <BookCover class="book-detail-cover" :title="title" :cover-url="coverUrl" />
-
+      <BookCover
+        class="book-detail-cover"
+        :title="title"
+        :cover-url="coverUrl"
+      />
       <div class="book-detail-copy">
         <h1>{{ title }}</h1>
         <p class="book-detail-byline">
@@ -74,7 +75,16 @@ onBeforeUnmount(() => descriptionResizeObserver?.disconnect());
           </template>
         </p>
         <div v-if="hasStats" class="book-detail-stats">
-          <slot name="stats" />
+          <template
+            v-for="(stat, index) in stats"
+            :key="`${stat.value}-${stat.label}`"
+          >
+            <var-divider v-if="index" vertical />
+            <span
+              ><strong v-if="stat.value !== undefined">{{ stat.value }}</strong>
+              {{ stat.label }}</span
+            >
+          </template>
         </div>
         <div
           ref="descriptionElement"
@@ -84,16 +94,19 @@ onBeforeUnmount(() => descriptionResizeObserver?.disconnect());
             'book-detail-description--no-stats': !hasStats,
           }"
         >
-          <div class="work-description" v-html="description || descriptionFallback" />
-          <button
+          <div
+            class="book-description"
+            v-html="description || descriptionFallback"
+          />
+          <var-button
             v-if="descriptionCanExpand"
-            type="button"
+            text
             class="description-toggle"
             :aria-expanded="descriptionExpanded"
             @click="descriptionExpanded = !descriptionExpanded"
           >
             {{ descriptionExpanded ? "收起简介" : "展开全部" }}
-          </button>
+          </var-button>
         </div>
         <div v-if="tags.length" class="book-detail-tags">
           <var-chip v-for="tag in tags" :key="tag" plain>{{ tag }}</var-chip>
@@ -102,20 +115,40 @@ onBeforeUnmount(() => descriptionResizeObserver?.disconnect());
 
       <aside class="book-detail-rail">
         <div class="book-detail-actions">
-          <var-button :type="onBookshelf ? 'default' : 'primary'" size="large"
-            :disabled="loading" @click="emit('toggleBookshelf')">
+          <var-button
+            :type="onBookshelf ? 'default' : 'primary'"
+            size="large"
+            :disabled="loading"
+            @click="emit('toggleBookshelf')"
+          >
             <var-icon :name="onBookshelf ? 'check' : 'star'" />
             {{ onBookshelf ? "已加入书架" : "加入书架" }}
           </var-button>
-          <var-button v-if="resumeChapterId" size="large" :disabled="loading" @click="emit('continueReading')">
+          <var-button
+            v-if="resumeChapterId"
+            size="large"
+            :disabled="loading"
+            @click="emit('continueReading')"
+          >
             <var-icon name="play" />继续阅读
           </var-button>
-          <var-button v-else-if="canStartReading" size="large" :disabled="loading" @click="emit('continueReading')">
+          <var-button
+            v-else-if="canStartReading"
+            size="large"
+            :disabled="loading"
+            @click="emit('continueReading')"
+          >
             <var-icon name="play" />开始阅读
           </var-button>
         </div>
       </aside>
     </article>
-    <slot name="chapters" />
+    <section class="catalogue-section">
+      <div class="catalogue-heading">
+        <h2>{{ sectionTitle }}</h2>
+        <p>{{ sectionSummary }}</p>
+      </div>
+      <slot />
+    </section>
   </section>
 </template>

@@ -7,26 +7,30 @@ import {
   ref,
   watch,
 } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import type { ReaderDocument } from "../../domain/novel";
 import { useReaderSettings } from "../../composables/useReaderSettings";
 import ReaderSettingsDrawer from "../../components/reader/ReaderSettingsDrawer.vue";
 import ReaderBoundarySwitch from "../../components/reader/ReaderBoundarySwitch.vue";
+import NovelChapterContent from "../../components/reader/NovelChapterContent.vue";
+import LoadingOverlay from "../../components/common/LoadingOverlay.vue";
+import ErrorState from "../../components/common/ErrorState.vue";
+import { getReaderDocument, getReaderOverview, lightNovelSourceId, saveReadPosition } from "../../services/novel";
+import { getErrorMessage, showError } from "../../utils/error";
 
-const props = defineProps<{
-  document: ReaderDocument;
-  resumePosition?: { chapterId: string; position: string } | null;
-  chapterEntry?: "default" | "next" | "previous";
-  loading?: boolean;
-  initialProgress?: { location: number } | null;
-  hasPreviousChapter?: boolean;
-  hasNextChapter?: boolean;
-}>();
-
-const emit = defineEmits<{
-  previous: [];
-  next: [];
-  progress: [xpath: string];
-}>();
+const route = useRoute();
+const router = useRouter();
+const readerDocument = ref<ReaderDocument | null>(null);
+const resumePosition = ref<{ chapterId: string; position: string } | null>(null);
+const chapterIds = ref<string[]>([]);
+const loading = ref(true);
+const error = ref("");
+const chapterEntry = ref<"default" | "next" | "previous">("default");
+const bookId = computed(() => typeof route.params.bookId === "string" ? route.params.bookId : "");
+const chapterId = computed(() => typeof route.params.chapterId === "string" ? route.params.chapterId : "");
+const chapterIndex = computed(() => chapterIds.value.indexOf(chapterId.value));
+const hasPreviousChapter = computed(() => chapterIndex.value > 0);
+const hasNextChapter = computed(() => chapterIndex.value >= 0 && chapterIndex.value < chapterIds.value.length - 1);
 
 const { settings, style } = useReaderSettings("novel");
 const readerRoot = ref<HTMLElement | null>(null);
@@ -34,13 +38,10 @@ const pageViewport = ref<HTMLElement | null>(null);
 const readerContent = ref<HTMLElement | null>(null);
 const currentPage = ref(0);
 const pageCount = ref(1);
-const previewImageUrl = ref<string | null>(null);
-const footnoteHtml = ref("");
-const footnoteVisible = ref(false);
+const previewVisible = ref(false);
 const isSpread = ref(false);
 const settingsVisible = ref(false);
 let resizeObserver: ResizeObserver | undefined;
-let contentResizeObserver: ResizeObserver | undefined;
 let spreadQuery: MediaQueryList | undefined;
 let pointerStartX: number | null = null;
 let suppressReaderClickUntil = 0;
@@ -54,29 +55,64 @@ let hasRestoredPage = false;
 let hasRestoredServerPosition = false;
 let nextChapterRequested = false;
 let previousChapterRequested = false;
-const chapterFontStyle = document.createElement("style");
-document.head.append(chapterFontStyle);
 
-function loadChapterFont(fontUrl: string | null): void {
-  chapterFontStyle.textContent = fontUrl
-    ? `@font-face { font-family: "movel-chapter"; font-display: block; src: url(${JSON.stringify(fontUrl)}); }`
-    : "";
-  void document.fonts.ready.then(() => {
-    observeChapterContent();
-    updatePagination(true);
+function collectChapterIds(volumes: { chapters: { id: string }[]; sections: unknown[] }[]): string[] {
+  return volumes.flatMap((volume) => [
+    ...volume.chapters.map((chapter) => chapter.id),
+    ...collectChapterIds(volume.sections as { chapters: { id: string }[]; sections: unknown[] }[]),
+  ]);
+}
+
+async function load(): Promise<void> {
+  if (!bookId.value || !chapterId.value) return;
+  loading.value = true;
+  error.value = "";
+  readerDocument.value = null;
+  try {
+    const overview = await getReaderOverview(lightNovelSourceId, bookId.value);
+    chapterIds.value = collectChapterIds(overview.volumes);
+    resumePosition.value = overview.readPosition;
+    readerDocument.value = await getReaderDocument(
+      lightNovelSourceId,
+      bookId.value,
+      chapterId.value,
+      settings.convert,
+    );
+  } catch (value) {
+    error.value = getErrorMessage(value, "无法加载章节");
+    showError(value, "无法加载章节");
+  } finally {
+    loading.value = false;
+  }
+}
+
+function recordProgress(): void {
+  if (!readerDocument.value || !bookId.value) return;
+  const xpath = visibleXPath();
+  resumePosition.value = { chapterId: chapterId.value, position: xpath };
+  void saveReadPosition(bookId.value, readerDocument.value.serverChapterId, xpath)
+    .catch((value) => showError(value, "保存阅读进度失败"));
+}
+
+function changeChapter(offset: number): void {
+  const nextId = chapterIds.value[chapterIndex.value + offset];
+  if (!nextId) return;
+  recordProgress();
+  chapterEntry.value = offset > 0 ? "next" : "previous";
+  void router.replace({
+    name: "reader",
+    params: { bookId: bookId.value, chapterId: nextId },
+    query: route.query,
   });
+}
+
+function restoreAfterForeground(): void {
+  if (document.visibilityState === "visible" && readerDocument.value && !loading.value) void load();
 }
 
 const pageLabel = computed(
   () => `${currentPage.value + 1} / ${pageCount.value}`,
 );
-const hasLeadingDocumentHeading = computed(() => {
-  const content = new DOMParser().parseFromString(
-    props.document.html,
-    "text/html",
-  ).body;
-  return /^H[1-6]$/.test(content.firstElementChild?.tagName ?? "");
-});
 
 function updateSpread() {
   isSpread.value = Boolean(spreadQuery?.matches);
@@ -110,9 +146,9 @@ function performPagination(resetPage: boolean) {
   pageCount.value = Math.max(1, Math.floor(scrollDistance / step) + 1);
   if (resetPage && !hasRestoredPage) {
     pageLocation =
-      props.chapterEntry !== "default"
+      chapterEntry.value !== "default"
         ? 0
-        : clampLocation(props.initialProgress?.location ?? pageLocation);
+        : pageLocation;
   }
   currentPage.value = Math.round(
     pageLocation * Math.max(0, pageCount.value - 1),
@@ -139,85 +175,8 @@ function updatePagination(resetPage = false) {
   });
 }
 
-function observeChapterContent() {
-  const content = readerContent.value;
-  if (!content) return;
-  prepareFootnotes(content);
-  contentResizeObserver?.disconnect();
-  contentResizeObserver?.observe(content);
-  content
-    .querySelectorAll("img")
-    .forEach((image) => contentResizeObserver?.observe(image));
-}
-
-function prepareFootnotes(content: HTMLElement): void {
-  content
-    .querySelectorAll<HTMLAnchorElement>("a.duokan-footnote")
-    .forEach((footnote) => {
-      if (footnote.dataset.movelFootnoteReady) return;
-      footnote.dataset.movelFootnoteReady = "true";
-
-      const targetId = footnote.getAttribute("href")?.replace(/^#/, "");
-      if (!targetId) return;
-      const note = content.querySelector<HTMLElement>(
-        `#${CSS.escape(targetId)}`,
-      );
-      if (!note) return;
-
-      note.hidden = true;
-      footnote.removeAttribute("href");
-      footnote
-        .querySelectorAll<HTMLImageElement>("img.footnote")
-        .forEach((image) => {
-          image.replaceWith(document.createTextNode("*"));
-        });
-      footnote.setAttribute("aria-label", "查看注释");
-      footnote.title = note.textContent?.trim() || "查看注释";
-      footnote.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        // 章节 HTML 已在 Rust 边界清洗。保留注释片段的标记，避免实体和排版在弹窗中被当作纯文本显示。
-        footnoteHtml.value = note.innerHTML || "暂无注释内容";
-        footnoteVisible.value = true;
-      });
-    });
-}
-
-function handleChapterImageLoad(event: Event) {
-  if (event.target instanceof HTMLImageElement) updatePagination();
-}
-
-function handleChapterImageClick(event: MouseEvent) {
-  const image = event.target;
-  if (!(image instanceof HTMLImageElement)) return;
-  if (!image.closest(".illus, .illu, .duokan-image-single, .image-preview"))
-    return;
-  event.stopPropagation();
-  previewImageUrl.value = image.currentSrc || image.src;
-}
-
-function handleChapterLinkClick(event: MouseEvent) {
-  const target = event.target;
-  if (!(target instanceof Element)) return;
-  const link = target.closest<HTMLAnchorElement>("a[href]");
-  if (!link) return;
-  const href = link.getAttribute("href");
-  if (!href) return;
-  if (href.startsWith("#")) {
-    event.preventDefault();
-    document
-      .getElementById(href.slice(1))
-      ?.scrollIntoView({ block: "start", behavior: "smooth" });
-    return;
-  }
-  try {
-    const url = new URL(href, window.location.href);
-    if (url.protocol !== "http:" && url.protocol !== "https:") return;
-    event.preventDefault();
-    window.open(url.href, "_blank", "noopener,noreferrer");
-  } catch {
-    event.preventDefault();
-  }
+function setReaderContent(element: HTMLElement): void {
+  readerContent.value = element;
 }
 
 function cancelPaginationUpdate() {
@@ -233,12 +192,12 @@ function goToPage(page: number) {
   const viewport = pageViewport.value;
   if (!viewport) return;
   if (page >= pageCount.value) {
-    emit("progress", visibleXPath());
+    recordProgress();
     requestNextChapter();
     return;
   }
   if (page < 0) {
-    emit("progress", visibleXPath());
+    recordProgress();
     requestPreviousChapter();
     return;
   }
@@ -251,7 +210,7 @@ function goToPage(page: number) {
     left: currentPage.value * pageStep(),
     behavior: "smooth",
   });
-  emit("progress", visibleXPath());
+  recordProgress();
 }
 
 function pageOffsetForSide(side: "left" | "right"): number {
@@ -275,7 +234,7 @@ function recordScrollProgress(): number | null {
   pageLocation = clampLocation(
     (window.scrollY - metrics.start) / metrics.distance,
   );
-  emit("progress", visibleXPath());
+  recordProgress();
   return pageLocation;
 }
 
@@ -313,13 +272,13 @@ function visibleXPath(): string {
 }
 
 function restoreServerPosition() {
-  if (hasRestoredServerPosition || props.chapterEntry !== "default") return;
+  if (hasRestoredServerPosition || chapterEntry.value !== "default") return;
   const position =
-    props.resumePosition?.chapterId === props.document.chapterId
-      ? props.resumePosition
-      : props.document.readPosition?.chapterId ===
-          props.document.serverChapterId
-        ? props.document.readPosition
+    resumePosition.value?.chapterId === readerDocument.value?.chapterId
+      ? resumePosition.value
+      : readerDocument.value?.readPosition?.chapterId ===
+          readerDocument.value?.serverChapterId
+        ? readerDocument.value?.readPosition ?? null
         : null;
   const root = readerContent.value;
   if (!position || !root || !position.position) return;
@@ -347,16 +306,16 @@ function restoreServerPosition() {
 }
 
 function requestNextChapter() {
-  if (nextChapterRequested || props.loading || !props.hasNextChapter) return;
+  if (nextChapterRequested || loading.value || !hasNextChapter.value) return;
   nextChapterRequested = true;
-  emit("next");
+  changeChapter(1);
 }
 
 function requestPreviousChapter() {
-  if (previousChapterRequested || props.loading || !props.hasPreviousChapter)
+  if (previousChapterRequested || loading.value || !hasPreviousChapter.value)
     return;
   previousChapterRequested = true;
-  emit("previous");
+  changeChapter(-1);
 }
 
 function handleScroll() {
@@ -382,7 +341,7 @@ function restoreScrollProgress() {
 }
 
 function handleKeydown(event: KeyboardEvent) {
-  if (previewImageUrl.value) return;
+  if (previewVisible.value) return;
   if (settings.mode !== "paged") return;
   const target = event.target;
   if (
@@ -400,12 +359,12 @@ function handleKeydown(event: KeyboardEvent) {
 }
 
 function handlePointerDown(event: PointerEvent) {
-  if (previewImageUrl.value) return;
+  if (previewVisible.value) return;
   pointerStartX = event.clientX;
 }
 
 function handlePointerUp(event: PointerEvent) {
-  if (previewImageUrl.value) {
+  if (previewVisible.value) {
     pointerStartX = null;
     return;
   }
@@ -418,7 +377,7 @@ function handlePointerUp(event: PointerEvent) {
 }
 
 function handleReaderClick(event: MouseEvent) {
-  if (previewImageUrl.value) return;
+  if (previewVisible.value) return;
   if (performance.now() < suppressReaderClickUntil) return;
 
   const target = event.target;
@@ -458,27 +417,24 @@ watch(
 );
 
 watch(
-  () => props.document,
+  () => readerDocument.value,
   () => {
     nextChapterRequested = false;
     previousChapterRequested = false;
     hasRestoredPage = false;
     hasRestoredScroll = false;
-    hasRestoredServerPosition = props.chapterEntry !== "default";
+    hasRestoredServerPosition = chapterEntry.value !== "default";
     pageLocation =
-      props.chapterEntry !== "default"
+      chapterEntry.value !== "default"
         ? 0
-        : clampLocation(props.initialProgress?.location ?? 0);
+        : 0;
     void nextTick(() => {
-      observeChapterContent();
       updatePagination(true);
       if (settings.mode === "scroll") restoreServerPosition();
     });
   },
   { immediate: true },
 );
-
-watch(() => props.document.fontUrl, loadChapterFont, { immediate: true });
 
 watch(
   () => settings.mode,
@@ -498,38 +454,45 @@ onMounted(() => {
   updateSpread();
   spreadQuery.addEventListener("change", updateSpread);
   resizeObserver = new ResizeObserver(() => updatePagination());
-  contentResizeObserver = new ResizeObserver(() => updatePagination());
   if (pageViewport.value) resizeObserver.observe(pageViewport.value);
   window.addEventListener("keydown", handleKeydown);
   window.addEventListener("scroll", handleScroll, { passive: true });
+  document.addEventListener("visibilitychange", restoreAfterForeground);
   updatePagination(true);
-  void nextTick(observeChapterContent);
   restoreScrollProgress();
   if (settings.mode === "scroll") void nextTick(restoreServerPosition);
+  void load();
+});
+
+watch(chapterId, () => void load());
+watch(() => settings.convert, () => {
+  if (readerDocument.value) void load();
 });
 
 onBeforeUnmount(() => {
   // 路由返回会立即销毁阅读器；此时仍可从挂载的正文取到最后可见锚点。
   // 不能只依赖滚动事件或翻页操作，否则分页模式直接返回会漏掉最后进度。
-  emit("progress", visibleXPath());
+  recordProgress();
   cancelPaginationUpdate();
   spreadQuery?.removeEventListener("change", updateSpread);
   resizeObserver?.disconnect();
-  contentResizeObserver?.disconnect();
   window.removeEventListener("keydown", handleKeydown);
   window.removeEventListener("scroll", handleScroll);
+  document.removeEventListener("visibilitychange", restoreAfterForeground);
   if (scrollTimer !== null) window.clearTimeout(scrollTimer);
-  chapterFontStyle.remove();
 });
 </script>
 
 <template>
+  <LoadingOverlay v-if="loading && !readerDocument" inline visible label="正在加载章节" />
+  <ErrorState v-else-if="error" title="章节加载失败" :message="error" :loading="loading" @retry="load" />
   <article
+    v-else-if="readerDocument"
     ref="readerRoot"
     class="book-reader"
     :class="[
       `book-reader--${settings.mode}`,
-      { 'book-reader--chapter-font': Boolean(document.fontUrl) },
+      { 'book-reader--chapter-font': Boolean(readerDocument.fontUrl) },
     ]"
     :style="style"
     @click="handleReaderClick"
@@ -543,17 +506,12 @@ onBeforeUnmount(() => {
       @next="requestNextChapter"
     >
       <div class="reader-body">
-        <header v-if="!hasLeadingDocumentHeading" class="reader-heading">
-          <h1>{{ document.title }}</h1>
-        </header>
-
-        <div
-          ref="readerContent"
-          class="reader-content"
-          v-html="document.html"
-          @click="handleChapterLinkClick"
-          @click.capture="handleChapterImageClick"
-          @load.capture="handleChapterImageLoad"
+        <NovelChapterContent
+          :document="readerDocument"
+          heading-class="reader-heading"
+          @ready="setReaderContent"
+          @layout-change="updatePagination(true)"
+          @preview-visible="previewVisible = $event"
         />
 
         <var-divider>本章结束</var-divider>
@@ -574,16 +532,12 @@ onBeforeUnmount(() => {
         @pointerup="handlePointerUp"
         @pointercancel="pointerStartX = null"
       >
-        <header v-if="!hasLeadingDocumentHeading" class="paged-heading">
-          <h1>{{ document.title }}</h1>
-        </header>
-        <div
-          ref="readerContent"
-          class="reader-content"
-          v-html="document.html"
-          @click="handleChapterLinkClick"
-          @click.capture="handleChapterImageClick"
-          @load.capture="handleChapterImageLoad"
+        <NovelChapterContent
+          :document="readerDocument"
+          heading-class="paged-heading"
+          @ready="setReaderContent"
+          @layout-change="updatePagination(true)"
+          @preview-visible="previewVisible = $event"
         />
         <p class="chapter-end">— 本章结束 —</p>
       </div>
@@ -598,32 +552,12 @@ onBeforeUnmount(() => {
     <ReaderSettingsDrawer
       v-model="settingsVisible"
       kind="novel"
-      :title="document.title"
+      :title="readerDocument.title"
       :previous-disabled="!hasPreviousChapter || loading"
       :next-disabled="!hasNextChapter || loading"
-      @previous="emit('previous')"
-      @next="emit('next')"
+      @previous="changeChapter(-1)"
+      @next="changeChapter(1)"
     />
 
-    <var-image-preview
-      :show="Boolean(previewImageUrl)"
-      :images="previewImageUrl ? [previewImageUrl] : []"
-      @update:show="previewImageUrl = null"
-    />
-
-    <var-dialog
-      :show="footnoteVisible"
-      title="注释"
-      confirm-button-text="关闭"
-      :dialog-class="
-        document.fontUrl
-          ? 'reader-footnote-dialog reader-footnote-dialog--chapter-font'
-          : 'reader-footnote-dialog'
-      "
-      @update:show="footnoteVisible = $event"
-      @confirm="footnoteVisible = false"
-    >
-      <div class="reader-footnote-content" v-html="footnoteHtml" />
-    </var-dialog>
   </article>
 </template>
