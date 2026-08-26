@@ -215,7 +215,13 @@ fn decode_hub_envelope(value: &MessagePackValue) -> Result<Value> {
     let response = hub_field(value, "Response")
         .cloned()
         .unwrap_or(MessagePackValue::Nil);
+    if response.is_nil() {
+        return Ok(Value::Null);
+    }
     if let Some(bytes) = response.as_slice() {
+        if bytes.is_empty() {
+            return Ok(Value::Null);
+        }
         let mut decoder = flate2::read::GzDecoder::new(bytes);
         let mut json = String::new();
         decoder
@@ -289,5 +295,34 @@ mod tests {
         let data = with_length_prefix(vec![1, 2, 3]);
         let frames = split_binary_frames(&data).unwrap();
         assert_eq!(frames, vec![&[1, 2, 3]]);
+    }
+
+    #[test]
+    fn decodes_successful_empty_response_as_null() {
+        let envelope = MessagePackValue::Map(vec![
+            (
+                MessagePackValue::from("Success"),
+                MessagePackValue::Boolean(true),
+            ),
+            (MessagePackValue::from("Response"), MessagePackValue::Nil),
+        ]);
+
+        assert_eq!(decode_hub_envelope(&envelope).unwrap(), Value::Null);
+    }
+
+    #[test]
+    fn decodes_successful_empty_binary_response_as_null() {
+        let envelope = MessagePackValue::Map(vec![
+            (
+                MessagePackValue::from("Success"),
+                MessagePackValue::Boolean(true),
+            ),
+            (
+                MessagePackValue::from("Response"),
+                MessagePackValue::Binary(Vec::new()),
+            ),
+        ]);
+
+        assert_eq!(decode_hub_envelope(&envelope).unwrap(), Value::Null);
     }
 }

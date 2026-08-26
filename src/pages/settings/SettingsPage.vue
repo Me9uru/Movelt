@@ -1,12 +1,28 @@
 <script setup lang="ts">
 import { Snackbar } from "@varlet/ui";
+import { ref } from "vue";
 import { useRouter } from "vue-router";
+import AccountProfileDialog from "../../components/settings/AccountProfileDialog.vue";
+import type { LightNovelUser } from "../../domain/auth";
 import { clearWebviewCache } from "../../services/settings";
 import { useAuthStore } from "../../stores/auth";
 import { showError } from "../../utils/error";
 
 const auth = useAuthStore();
 const router = useRouter();
+const profileVisible = ref(false);
+
+function openAccount() {
+  if (auth.user) {
+    profileVisible.value = true;
+    return;
+  }
+  router.push({ name: "login" });
+}
+
+function updateUser(user: LightNovelUser) {
+  auth.user = user;
+}
 
 async function logout() {
   try {
@@ -31,12 +47,12 @@ async function clearImageCache() {
     <section class="settings-group" aria-labelledby="account-settings-title">
       <h2 id="account-settings-title">账户</h2>
       <div class="settings-list">
-        <var-cell class="settings-row settings-row--account" ripple @click="!auth.user && router.push({ name: 'login' })">
+        <var-cell class="settings-row settings-row--account" ripple @click="openAccount">
           <template #icon><var-avatar :size="48" :src="auth.user?.Avatar" /></template>
           <span class="settings-row__content">
             <strong>{{ auth.user?.UserName ?? "登录 LightNovelShelf" }}</strong>
           </span>
-          <template v-if="!auth.user" #extra><var-icon class="settings-row__arrow" name="chevron-right" /></template>
+          <template #extra><var-icon class="settings-row__arrow" name="chevron-right" /></template>
         </var-cell>
         <var-cell v-if="auth.user" class="settings-row settings-row--danger" ripple @click="logout">
           <span class="settings-row__content"><strong>退出登录</strong></span>
@@ -76,5 +92,7 @@ async function clearImageCache() {
         </var-link>
       </div>
     </section>
+
+    <account-profile-dialog v-model:show="profileVisible" :user="auth.user" @updated="updateUser" />
   </section>
 </template>

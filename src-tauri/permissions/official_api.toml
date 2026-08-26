@@ -6,6 +6,8 @@ commands.allow = [
   "register",
   "send_register_email",
   "restore_user",
+  "set_avatar",
+  "sign_in",
   "logout",
   "get_latest",
   "get_ranking",

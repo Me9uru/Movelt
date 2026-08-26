@@ -25,6 +25,8 @@ pub fn run() {
             commands::user::register,
             commands::user::send_register_email,
             commands::user::restore_user,
+            commands::user::set_avatar,
+            commands::user::sign_in,
             commands::user::logout,
             commands::novel::get_latest,
             commands::novel::get_ranking,

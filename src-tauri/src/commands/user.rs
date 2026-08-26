@@ -1,7 +1,12 @@
 use serde_json::Value;
 use tauri::State;
 
-use crate::{api::OfficialClient, dto::user::User, error::Result, reader_cache::ReaderCache};
+use crate::{
+    api::OfficialClient,
+    dto::user::{Growth, User},
+    error::Result,
+    reader_cache::ReaderCache,
+};
 
 use super::adapter::{number, optional_string, string};
 
@@ -54,6 +59,19 @@ pub(crate) async fn restore_user(client: State<'_, OfficialClient>) -> Result<Op
 }
 
 #[tauri::command]
+/// 更新头像并返回最新的用户资料。
+pub(crate) async fn set_avatar(client: State<'_, OfficialClient>, url: String) -> Result<User> {
+    validate_avatar_url(&url)?;
+    user(client.set_avatar(url).await?)
+}
+
+#[tauri::command]
+/// 每日签到并返回最新的用户资料。
+pub(crate) async fn sign_in(client: State<'_, OfficialClient>) -> Result<User> {
+    user(client.sign_in().await?)
+}
+
+#[tauri::command]
 /// 注销当前会话并清理阅读缓存。
 pub(crate) async fn logout(
     client: State<'_, OfficialClient>,
@@ -71,5 +89,87 @@ fn user(value: Value) -> Result<User> {
         user_name: string(&value, "UserName"),
         avatar: optional_string(&value, "Avatar"),
         email: optional_string(&value, "Email"),
+        invite_code: optional_string(&value, "InviteCode"),
+        user_group: value
+            .get("Role")
+            .and_then(|role| optional_string(role, "Name")),
+        register_at: optional_string(&value, "RegisterAt"),
+        growth: growth(value.get("Growth")),
     })
+}
+
+fn growth(value: Option<&Value>) -> Option<Growth> {
+    let value = value?;
+    value.as_object()?;
+    Some(Growth {
+        exp: number(value, "Exp"),
+        coin: number(value, "Coin"),
+        level: number(value, "Level"),
+        growth_level: number(value, "GrowthLevel"),
+        current_level_exp: number(value, "CurrentLevelExp"),
+        next_level_exp: optional_number(value, "NextLevelExp"),
+        sign_streak: number(value, "SignStreak"),
+        today_signed: value
+            .get("TodaySigned")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+    })
+}
+
+fn optional_number(value: &Value, key: &str) -> Option<i64> {
+    value
+        .get(key)
+        .and_then(|value| value.as_i64().or_else(|| value.as_str()?.parse().ok()))
+}
+
+fn validate_avatar_url(value: &str) -> Result<()> {
+    let url = url::Url::parse(value)
+        .map_err(|_| crate::error::AppError::invalid_input("头像地址必须是有效的 HTTPS URL"))?;
+    if url.scheme() != "https" || url.host_str().is_none() {
+        return Err(crate::error::AppError::invalid_input(
+            "头像地址必须是有效的 HTTPS URL",
+        ));
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::{user, validate_avatar_url};
+
+    #[test]
+    fn maps_full_user_profile() {
+        let mapped = user(json!({
+            "Id": 42,
+            "UserName": "读者",
+            "Email": "reader@example.com",
+            "InviteCode": "welcome",
+            "Role": { "Name": "普通用户" },
+            "RegisterAt": "2025-01-02T03:04:05Z",
+            "Growth": {
+                "Exp": 10,
+                "Coin": 20,
+                "Level": 2,
+                "GrowthLevel": 1,
+                "CurrentLevelExp": 0,
+                "NextLevelExp": 100,
+                "SignStreak": 3,
+                "TodaySigned": true,
+            },
+        }))
+        .expect("profile should map");
+
+        assert_eq!(mapped.user_group.as_deref(), Some("普通用户"));
+        assert_eq!(mapped.register_at.as_deref(), Some("2025-01-02T03:04:05Z"));
+        assert_eq!(mapped.growth.expect("growth").coin, 20);
+    }
+
+    #[test]
+    fn accepts_only_https_avatar_urls() {
+        assert!(validate_avatar_url("https://example.com/avatar.png").is_ok());
+        assert!(validate_avatar_url("http://example.com/avatar.png").is_err());
+        assert!(validate_avatar_url("not-a-url").is_err());
+    }
 }

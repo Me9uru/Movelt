@@ -77,6 +77,16 @@ impl OfficialClient {
         }
     }
 
+    pub(crate) async fn set_avatar(&self, url: String) -> Result<Value> {
+        self.hub("SetAvatar", json!({ "Url": url })).await?;
+        self.hub("GetMyInfo", json!({})).await
+    }
+
+    pub(crate) async fn sign_in(&self) -> Result<Value> {
+        self.hub("SignIn", json!({})).await?;
+        self.hub("GetMyInfo", json!({})).await
+    }
+
     pub(crate) async fn logout(&self) -> Result<()> {
         *self.session.lock().await = Session::default();
         self.invalidate_hub().await;

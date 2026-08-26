@@ -4,6 +4,21 @@ export interface LightNovelUser {
   UserName: string;
   Avatar?: string;
   Email?: string;
+  InviteCode?: string;
+  UserGroup?: string;
+  RegisterAt?: string;
+  Growth?: UserGrowth;
+}
+
+export interface UserGrowth {
+  Exp: number;
+  Coin: number;
+  Level: number;
+  GrowthLevel: number;
+  CurrentLevelExp: number;
+  NextLevelExp?: number;
+  SignStreak: number;
+  TodaySigned: boolean;
 }
 
 /** Credentials used to authenticate an existing account. */

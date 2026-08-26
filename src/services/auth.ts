@@ -19,6 +19,14 @@ export function restoreUser() {
   return command<LightNovelUser | null>("restore_user");
 }
 
+export function setAvatar(url: string) {
+  return command<LightNovelUser>("set_avatar", { url });
+}
+
+export function signIn() {
+  return command<LightNovelUser>("sign_in");
+}
+
 export function logout() {
   return command<void>("logout");
 }

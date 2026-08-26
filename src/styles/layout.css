@@ -164,6 +164,21 @@ body {
 .settings-list {
   border-top: 1px solid var(--color-border);
 }
+.profile-dialog {
+  width: min(440px, calc(100vw - (var(--space-4) * 2)));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface-card);
+}
+.profile-dialog .var-dialog__title {
+  padding: var(--space-4) var(--space-4) 0;
+}
+.profile-dialog .var-dialog__message {
+  padding: var(--space-3) var(--space-4);
+}
+.profile-dialog .var-dialog__actions {
+  padding: 0 var(--space-4) var(--space-4);
+}
 .auth-page {
   display: grid;
   min-height: 100dvh;
