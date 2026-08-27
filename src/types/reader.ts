@@ -3,7 +3,7 @@ export type ReaderFont = "serif" | "sans";
 export type ReaderMode = "scroll" | "paged";
 export type PageTurnDirection = "left-previous" | "left-next";
 export type ReaderConvert = "original" | "t2s" | "s2t";
-export type ReaderKind = "novel" | "manga";
+export type ReaderKind = "novel" | "comic";
 
 export interface ReaderSettings {
   fontSize: number;
@@ -18,7 +18,7 @@ export interface ReaderSettings {
   convert: ReaderConvert;
 }
 
-/** Props for the shared novel and manga reader settings/navigation drawer. */
+/** Props for the shared novel and comic reader settings/navigation drawer. */
 export interface ReaderSettingsDrawerProps {
   kind: ReaderKind;
   title: string;

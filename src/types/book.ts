@@ -36,7 +36,7 @@ export interface BookDetailStat {
   label: string;
 }
 
-/** Presentation contract shared by the novel and manga detail layouts. */
+/** Presentation contract shared by the novel and comic detail layouts. */
 export interface BookDetailLayoutProps {
   title: string;
   coverUrl: string | null;

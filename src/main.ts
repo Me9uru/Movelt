@@ -13,7 +13,7 @@ import "./styles/components.css";
 import "./styles/book.css";
 import "./styles/reader.css";
 import "./styles/reader-novel.css";
-import "./styles/reader-manga.css";
+import "./styles/reader-comic.css";
 
 if (import.meta.env.DEV) setupDevInvoke();
 

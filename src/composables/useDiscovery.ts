@@ -63,15 +63,15 @@ export function useDiscovery<T>(
   }
   async function loadRecommendations() {
     await run("recommend", async () => {
-      // target 是 ref 持有的 reactive 代理本身；adapter 直接向它 push 即可触发
-      // 渲染（漫画两阶段加载：最近更新先渲染、热门/新入库随后追加）。
-      recommendations.value.splice(0, recommendations.value.length);
-      await adapter.loadRecommendations(recommendations.value);
+      const result: RecommendBlock<T>[] = [];
+      await adapter.loadRecommendations(result);
+      recommendations.value.splice(0, recommendations.value.length, ...result);
     });
   }
   async function loadRanking(days = rankingDays.value) {
     await run("ranking", async () => {
-      ranking.value = await adapter.loadRanking(days);
+      const result = await adapter.loadRanking(days);
+      ranking.value = result;
     });
   }
   async function runSearch(page = 1) {

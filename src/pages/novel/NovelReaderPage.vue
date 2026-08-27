@@ -8,7 +8,7 @@ import {
   watch,
 } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import type { ReaderDocument } from "../../domain/novel";
+import type { NovelChapterContent as NovelChapterContentDto } from "../../domain/novel";
 import { useReaderSettings } from "../../composables/useReaderSettings";
 import ReaderSettingsDrawer from "../../components/reader/ReaderSettingsDrawer.vue";
 import ReaderBoundarySwitch from "../../components/reader/ReaderBoundarySwitch.vue";
@@ -20,7 +20,7 @@ import { getErrorMessage, showError } from "../../utils/error";
 
 const route = useRoute();
 const router = useRouter();
-const readerDocument = ref<ReaderDocument | null>(null);
+const readerDocument = ref<NovelChapterContentDto | null>(null);
 const resumePosition = ref<{ chapterId: string; position: string } | null>(null);
 const chapterIds = ref<string[]>([]);
 const loading = ref(true);
@@ -56,13 +56,6 @@ let hasRestoredServerPosition = false;
 let nextChapterRequested = false;
 let previousChapterRequested = false;
 
-function collectChapterIds(volumes: { chapters: { id: string }[]; sections: unknown[] }[]): string[] {
-  return volumes.flatMap((volume) => [
-    ...volume.chapters.map((chapter) => chapter.id),
-    ...collectChapterIds(volume.sections as { chapters: { id: string }[]; sections: unknown[] }[]),
-  ]);
-}
-
 async function load(): Promise<void> {
   if (!bookId.value || !chapterId.value) return;
   loading.value = true;
@@ -70,7 +63,7 @@ async function load(): Promise<void> {
   readerDocument.value = null;
   try {
     const overview = await getReaderOverview(lightNovelSourceId, bookId.value);
-    chapterIds.value = collectChapterIds(overview.volumes);
+    chapterIds.value = overview.chapters.map((chapter) => chapter.id);
     resumePosition.value = overview.readPosition;
     readerDocument.value = await getReaderDocument(
       lightNovelSourceId,

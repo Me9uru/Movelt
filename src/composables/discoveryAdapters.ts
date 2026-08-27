@@ -1,69 +1,71 @@
 import type { DiscoveryList } from "../domain/discovery";
-import type { MangaSummary } from "../domain/manga";
+import type { ComicSummary } from "../domain/comic";
 import type { NovelSummary } from "../domain/novel";
 import type { BookSearchMode } from "../domain/search";
-import { browseManga } from "../services/manga";
+import { listComic, searchComic } from "../services/comic";
 import {
-  getLatest,
-  getRank,
-  getRanking,
+  listNovel,
+  rankNovels,
   searchDiscovery,
 } from "../services/novel";
 import type { DiscoveryAdapter } from "../types/discovery";
 
+const RECOMMENDATION_PAGE_SIZE = 6;
+const DISCOVERY_PAGE_SIZE = 24;
+
 export const novelDiscoveryAdapter: DiscoveryAdapter<NovelSummary> = {
   async loadRecommendations(target) {
     const [latest, popular, newest] = await Promise.all([
-      getLatest(),
-      getRanking("view"),
-      getRanking("new"),
+      listNovel(1, RECOMMENDATION_PAGE_SIZE, "latest"),
+      listNovel(1, RECOMMENDATION_PAGE_SIZE, "view"),
+      listNovel(1, RECOMMENDATION_PAGE_SIZE, "new"),
     ]);
     target.push(
-      { title: "最近更新", items: latest.items.slice(0, 6) },
-      { title: "热门作品", items: popular.items.slice(0, 6) },
-      { title: "新入库", items: newest.items.slice(0, 6) },
+      { title: "最近更新", items: latest },
+      { title: "热门作品", items: popular },
+      { title: "新入库", items: newest },
     );
   },
   async loadRanking(days) {
-    return getRank(days);
+    return rankNovels(days);
   },
   async search(query: string, page: number, mode: BookSearchMode) {
-    return searchDiscovery(query, page, mode);
+    // 小说 UI 的“作品名”搜索对应官方的系列名/作品名模式，而不是卷标题模式。
+    return searchDiscovery(
+      query,
+      page,
+      DISCOVERY_PAGE_SIZE,
+      mode === "title" ? "name" : mode,
+    );
   },
 };
 
-export const mangaDiscoveryAdapter: DiscoveryAdapter<MangaSummary> = {
+export const comicDiscoveryAdapter: DiscoveryAdapter<ComicSummary> = {
   async loadRecommendations(target) {
     const [latest, popular, newest] = await Promise.allSettled([
-      browseManga(null, 1, "LATEST"),
-      browseManga(null, 1, "POPULAR"),
-      browseManga(null, 1, "NEW"),
+      listComic(1, RECOMMENDATION_PAGE_SIZE, "latest"),
+      listComic(1, RECOMMENDATION_PAGE_SIZE, "view"),
+      listComic(1, RECOMMENDATION_PAGE_SIZE, "new"),
     ]);
 
     if (latest.status === "rejected") throw latest.reason;
 
-    target.push({ title: "最近更新", items: latest.value.slice(0, 6) });
+    target.push({ title: "最近更新", items: latest.value });
     if (popular.status === "fulfilled") {
-      target.push({ title: "热门作品", items: popular.value.slice(0, 6) });
+      target.push({ title: "热门作品", items: popular.value });
     }
     if (newest.status === "fulfilled") {
-      target.push({ title: "新入库", items: newest.value.slice(0, 6) });
+      target.push({ title: "新入库", items: newest.value });
     }
   },
   async loadRanking() {
-    return browseManga(null, 1, "POPULAR");
+    return listComic(1, DISCOVERY_PAGE_SIZE, "view");
   },
   async search(
     query: string,
     page: number,
     mode: BookSearchMode,
-  ): Promise<DiscoveryList<MangaSummary>> {
-    const items = await browseManga(query, page, "SEARCH", mode);
-    // 上游 SearchComicSeries 固定每页 30 条且不返回总数：少于 30 条即末页。
-    const last = items.length < 30 ? page : page + 1;
-    return {
-      items,
-      pagination: { page, previous: null, next: null, first: 1, last },
-    };
+  ): Promise<DiscoveryList<ComicSummary>> {
+    return searchComic(query, page, DISCOVERY_PAGE_SIZE, mode);
   },
 };

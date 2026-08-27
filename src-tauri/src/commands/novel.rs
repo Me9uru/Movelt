@@ -1,20 +1,23 @@
+use std::sync::Arc;
+
 use tauri::State;
 use url::Url;
 
 use crate::{
-    api::OfficialClient,
+    api::{
+        cache::{get_neighbor_ids, AppCache, NovelChapterKey},
+        OfficialClient,
+    },
     dto::{
-        novel::{
-            ChapterSummary, DiscoveryList, NovelOverview, NovelSummary, ReaderDocument, Volume,
-        },
-        search::BookSearchMode,
+        common::{ListKey, Order, PaginatedList, SearchMode},
+        novel::{NovelChapterContent, NovelChapterSummary, NovelDetail, NovelSummary},
     },
     error::{AppError, Result},
-    reader_cache::{neighbor_ids, ReaderCache},
 };
 
 use super::adapter::{
-    array, number, object, optional_html, optional_string, parse_id, position, string,
+    array, number, optional_html, optional_string, pagination, parse_id, position, string,
+    validate_page_size,
 };
 
 /// 将官方小说数据映射为应用摘要。
@@ -45,63 +48,58 @@ pub(super) fn novel(value: &serde_json::Value) -> NovelSummary {
 }
 
 /// 将官方小说分页结果映射为发现页 DTO。
-fn page(value: serde_json::Value) -> Result<DiscoveryList> {
-    let raw = object(&value)?;
-    let current = raw
-        .get("Page")
-        .and_then(serde_json::Value::as_i64)
-        .unwrap_or(1);
-    let last = raw
-        .get("TotalPages")
-        .and_then(serde_json::Value::as_i64)
-        .unwrap_or(1);
-    Ok(DiscoveryList {
-        items: raw
-            .get("Data")
-            .and_then(serde_json::Value::as_array)
-            .map(|items| items.iter().map(novel).collect())
-            .unwrap_or_default(),
-        pagination: crate::dto::novel::Pagination {
-            page: current,
-            previous: (current > 1).then_some(current - 1),
-            next: (current < last).then_some(current + 1),
-            first: 1,
-            last,
-        },
+fn page(value: serde_json::Value) -> Result<PaginatedList<NovelSummary>> {
+    Ok(PaginatedList {
+        items: novel_summaries(&value),
+        pagination: pagination(&value, 1)?,
     })
 }
 
-#[tauri::command]
-/// 获取最新小说列表。
-pub(crate) async fn get_latest(
-    client: State<'_, OfficialClient>,
-    page_number: Option<i64>,
-) -> Result<DiscoveryList> {
-    page(client.latest_novels(page_number.unwrap_or(1)).await?)
+fn novel_summaries(value: &serde_json::Value) -> Vec<NovelSummary> {
+    value
+        .get("Data")
+        .and_then(serde_json::Value::as_array)
+        .map(|items| items.iter().map(novel).collect())
+        .unwrap_or_default()
 }
 
 #[tauri::command]
 /// 获取指定排序方式的小说榜单。
-pub(crate) async fn get_ranking(
+pub(crate) async fn list_novels(
     client: State<'_, OfficialClient>,
-    sort: String,
+    cache: State<'_, AppCache>,
+    order: Order,
     page_number: Option<i64>,
-) -> Result<DiscoveryList> {
-    page(client.ranked_novels(sort, page_number.unwrap_or(1)).await?)
+    page_size: i64,
+) -> Result<Arc<Vec<NovelSummary>>> {
+    let page_number = page_number.unwrap_or(1);
+    let page_size = validate_page_size(page_size)?;
+    let key = ListKey::new(order, page_number, page_size);
+    cache
+        .load_cache(&cache.novel_list, key, async {
+            let response = client.list_novels(page_number, page_size, order).await?;
+            Ok(novel_summaries(&response))
+        })
+        .await
 }
 
 #[tauri::command]
 /// 获取指定天数范围的小说排行。
-pub(crate) async fn get_rank(
+pub(crate) async fn rank_novels(
     client: State<'_, OfficialClient>,
+    cache: State<'_, AppCache>,
     days: i64,
-) -> Result<Vec<NovelSummary>> {
-    Ok(client
-        .novel_rank(days)
-        .await?
-        .as_array()
-        .map(|items| items.iter().map(novel).collect())
-        .unwrap_or_default())
+) -> Result<Arc<Vec<NovelSummary>>> {
+    cache
+        .load_cache(&cache.novel_rank, days, async {
+            Ok(client
+                .get_novel_rank(days)
+                .await?
+                .as_array()
+                .map(|items| items.iter().map(novel).collect())
+                .unwrap_or_default())
+        })
+        .await
 }
 
 #[tauri::command]
@@ -110,11 +108,17 @@ pub(crate) async fn search_novels(
     client: State<'_, OfficialClient>,
     query: String,
     page_number: Option<i64>,
-    mode: BookSearchMode,
-) -> Result<DiscoveryList> {
+    page_size: i64,
+    mode: SearchMode,
+) -> Result<PaginatedList<NovelSummary>> {
     page(
         client
-            .search_novels(query, page_number.unwrap_or(1), mode)
+            .search_novels(
+                query,
+                page_number.unwrap_or(1),
+                validate_page_size(page_size)?,
+                mode,
+            )
             .await?,
     )
 }
@@ -123,10 +127,10 @@ pub(crate) async fn search_novels(
 /// 获取小说阅读器概览。
 pub(crate) async fn get_reader_overview(
     client: State<'_, OfficialClient>,
-    cache: State<'_, ReaderCache>,
+    cache: State<'_, AppCache>,
     book_id: String,
-) -> Result<NovelOverview> {
-    let response = client.novel_info(parse_id(&book_id)?).await?;
+) -> Result<NovelDetail> {
+    let response = client.get_novel_info(parse_id(&book_id)?).await?;
     let book = response
         .get("Book")
         .ok_or_else(|| AppError::protocol("小说详情响应缺少 Book"))?;
@@ -140,24 +144,26 @@ pub(crate) async fn get_reader_overview(
             position.chapter_id = (index + 1).to_string();
         }
     }
-    let chapter_ids = (1..=chapters.len())
-        .map(|index| index.to_string())
-        .collect::<Vec<_>>();
-    cache.store_novel_chapters(book_id.clone(), chapter_ids);
-    Ok(NovelOverview {
-        detail: novel(book),
-        volumes: vec![Volume {
-            title: "章节".into(),
-            chapters: chapters
-                .iter()
-                .enumerate()
-                .map(|(index, chapter)| ChapterSummary {
-                    id: (index + 1).to_string(),
-                    title: string(chapter, "Title"),
-                })
+    cache
+        .store_cache(
+            &cache.novel_chapters,
+            book_id.clone(),
+            (1..=chapters.len())
+                .map(|index| index.to_string())
                 .collect(),
-            sections: vec![],
-        }],
+        )
+        .await;
+    Ok(NovelDetail {
+        summary: novel(book),
+        chapters: chapters
+            .iter()
+            .enumerate()
+            .map(|(index, chapter)| NovelChapterSummary {
+                id: (index + 1).to_string(),
+                title: string(chapter, "Title"),
+                sequence: (index + 1) as i64,
+            })
+            .collect(),
         read_position,
     })
 }
@@ -166,15 +172,25 @@ pub(crate) async fn get_reader_overview(
 /// 获取小说章节内容并按需预加载后续章节。
 pub(crate) async fn get_reader_document(
     client: State<'_, OfficialClient>,
-    cache: State<'_, ReaderCache>,
+    cache: State<'_, AppCache>,
     book_id: String,
     document_id: String,
     convert: Option<String>,
-) -> Result<ReaderDocument> {
+) -> Result<Arc<NovelChapterContent>> {
     let convert = parse_convert(convert)?;
     let document = load_reader_document(&client, &cache, &book_id, &document_id, convert).await?;
-    let chapter_ids = cache.novel_chapters(&book_id).unwrap_or_default();
-    preload_novel_neighbors(
+    let chapter_ids = cache
+        .load_cache(&cache.novel_chapters, book_id.clone(), async {
+            let response = client.get_novel_info(parse_id(&book_id)?).await?;
+            let book = response
+                .get("Book")
+                .ok_or_else(|| AppError::protocol("小说详情响应缺少 Book"))?;
+            Ok((1..=array(book, "Chapter").len())
+                .map(|index| index.to_string())
+                .collect::<Vec<_>>())
+        })
+        .await?;
+    preload_novel_read_ahead(
         client.inner().clone(),
         cache.inner().clone(),
         book_id,
@@ -188,32 +204,33 @@ pub(crate) async fn get_reader_document(
 /// 从缓存或官方服务加载小说章节内容。
 async fn load_reader_document(
     client: &OfficialClient,
-    cache: &ReaderCache,
+    cache: &AppCache,
     book_id: &str,
     document_id: &str,
     convert: Option<&str>,
-) -> Result<ReaderDocument> {
-    if let Some(document) = cache.novel(book_id, document_id, convert) {
-        return Ok(document);
-    }
-    let response = client
-        .novel_content(parse_id(book_id)?, parse_id(document_id)?, convert)
-        .await?;
-    let chapter = response
-        .get("Chapter")
-        .ok_or_else(|| AppError::protocol("小说章节响应缺少 Chapter"))?;
-    let document = ReaderDocument {
-        id: format!("{book_id}:{document_id}"),
-        book_id: book_id.to_string(),
-        chapter_id: document_id.to_string(),
-        server_chapter_id: number(chapter, "Id").to_string(),
-        title: string(chapter, "Title"),
-        html: sanitize_chapter_html(&string(chapter, "Content")),
-        font_url: chapter_font_url(chapter),
-        read_position: position(response.get("ReadPosition")),
-    };
-    cache.store_novel(document.clone(), convert);
-    Ok(document)
+) -> Result<Arc<NovelChapterContent>> {
+    cache
+        .load_cache(
+            &cache.novel_pages,
+            NovelChapterKey::new(book_id, document_id, convert),
+            async {
+                let response = client
+                    .get_novel_content(parse_id(book_id)?, parse_id(document_id)?, convert)
+                    .await?;
+                let chapter = response
+                    .get("Chapter")
+                    .ok_or_else(|| AppError::protocol("小说章节响应缺少 Chapter"))?;
+                Ok(NovelChapterContent {
+                    chapter_id: document_id.to_string(),
+                    server_chapter_id: number(chapter, "Id").to_string(),
+                    title: string(chapter, "Title"),
+                    html: sanitize_chapter_html(&string(chapter, "Content")),
+                    font_url: chapter_font_url(chapter),
+                    read_position: position(response.get("ReadPosition")),
+                })
+            },
+        )
+        .await
 }
 
 /// 校验繁简转换选项。
@@ -234,20 +251,18 @@ fn sanitize_chapter_html(content: &str) -> String {
 }
 
 /// 在后台预加载当前章节之后的小说内容。
-fn preload_novel_neighbors(
+fn preload_novel_read_ahead(
     client: OfficialClient,
-    cache: ReaderCache,
+    cache: AppCache,
     book_id: String,
-    chapter_ids: Vec<String>,
+    chapter_ids: Arc<Vec<String>>,
     current_chapter_id: String,
     convert: Option<&'static str>,
 ) {
-    let neighbors = neighbor_ids(&chapter_ids, &current_chapter_id);
+    let neighbors = get_neighbor_ids(&chapter_ids, &current_chapter_id);
     tauri::async_runtime::spawn(async move {
         for chapter_id in neighbors {
-            if cache.novel(&book_id, &chapter_id, convert).is_none() {
-                let _ = load_reader_document(&client, &cache, &book_id, &chapter_id, convert).await;
-            }
+            let _ = load_reader_document(&client, &cache, &book_id, &chapter_id, convert).await;
         }
     });
 }

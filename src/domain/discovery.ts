@@ -1,5 +1,5 @@
 /**
- * Domain-generic discovery DTOs shared by the novel and manga discovery flows.
+ * Domain-generic discovery DTOs shared by the novel and comic discovery flows.
  */
 
 export interface RecommendBlock<T> {

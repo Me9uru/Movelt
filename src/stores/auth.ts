@@ -8,6 +8,7 @@ import {
   signIn as signInRequest,
 } from "../services/auth";
 import type { LightNovelUser, LoginInput, RegisterInput } from "../domain/auth";
+import { clearLibraryCache } from "../composables/useLibrary";
 
 export const useAuthStore = defineStore("auth", () => {
   const user = ref<LightNovelUser | null>(null);
@@ -27,12 +28,14 @@ export const useAuthStore = defineStore("auth", () => {
 
   async function login(input: LoginInput) {
     user.value = await loginRequest(input);
+    clearLibraryCache();
     void signInIfNeeded();
     return user.value;
   }
 
   async function register(input: RegisterInput) {
     user.value = await registerRequest(input);
+    clearLibraryCache();
     void signInIfNeeded();
     return user.value;
   }
@@ -51,10 +54,12 @@ export const useAuthStore = defineStore("auth", () => {
   async function logout() {
     await logoutRequest();
     user.value = null;
+    clearLibraryCache();
   }
 
   function expire() {
     user.value = null;
+    clearLibraryCache();
   }
 
   return {

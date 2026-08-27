@@ -16,8 +16,8 @@ export function useReaderSettings(kind: ReaderKind) {
   const store = useReaderSettingsStore();
   const isNovel = kind === "novel";
   return {
-    settings: isNovel ? store.novelSettings : store.mangaSettings,
-    style: computed(() => (isNovel ? store.novelStyle : store.mangaStyle)),
+    settings: isNovel ? store.novelSettings : store.comicSettings,
+    style: computed(() => (isNovel ? store.novelStyle : store.comicStyle)),
     reset: () => store.reset(kind),
   };
 }

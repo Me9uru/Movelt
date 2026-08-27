@@ -2,10 +2,9 @@ use serde_json::Value;
 use tauri::State;
 
 use crate::{
-    api::OfficialClient,
+    api::{cache::AppCache, OfficialClient},
     dto::user::{Growth, User},
     error::Result,
-    reader_cache::ReaderCache,
 };
 
 use super::adapter::{number, optional_string, string};
@@ -14,20 +13,24 @@ use super::adapter::{number, optional_string, string};
 /// 使用邮箱和密码登录，并清理阅读缓存。
 pub(crate) async fn login(
     client: State<'_, OfficialClient>,
-    cache: State<'_, ReaderCache>,
+    cache: State<'_, AppCache>,
     email: String,
     password: String,
 ) -> Result<User> {
     let user = user(client.login(email, password).await?)?;
-    cache.clear();
+    cache.clear_cache();
     Ok(user)
 }
 
 #[tauri::command]
 /// 注册用户、保存登录态并清理阅读缓存。
+///
+/// Tauri 将应用状态与注册字段分别注入此命令；保持现有调用 DTO，避免为
+/// 缓存依赖额外扩大前端请求结构。
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn register(
     client: State<'_, OfficialClient>,
-    cache: State<'_, ReaderCache>,
+    cache: State<'_, AppCache>,
     user_name: String,
     email: String,
     password: String,
@@ -39,7 +42,7 @@ pub(crate) async fn register(
             .register(user_name, email, password, code, invite_code)
             .await?,
     )?;
-    cache.clear();
+    cache.clear_cache();
     Ok(user)
 }
 
@@ -75,10 +78,10 @@ pub(crate) async fn sign_in(client: State<'_, OfficialClient>) -> Result<User> {
 /// 注销当前会话并清理阅读缓存。
 pub(crate) async fn logout(
     client: State<'_, OfficialClient>,
-    cache: State<'_, ReaderCache>,
+    cache: State<'_, AppCache>,
 ) -> Result<()> {
     client.logout().await?;
-    cache.clear();
+    cache.clear_cache();
     Ok(())
 }
 

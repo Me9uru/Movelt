@@ -1,6 +1,6 @@
 /* Novel reader content. The shared .book-reader base lives in reader.css;
-   :not(.manga-reader) keeps these novel-only rules off the manga reader. */
-.book-reader:not(.manga-reader) {
+   :not(.comic-reader) keeps these novel-only rules off the comic reader. */
+.book-reader:not(.comic-reader) {
   padding: var(--space-3) max(var(--layout-gutter), calc(50vw - 580px))
     var(--space-8);
   font-family: var(--reader-font-family);
@@ -330,7 +330,7 @@
 }
 
 /* Paged reading machinery (novel only). */
-.book-reader--paged:not(.manga-reader) {
+.book-reader--paged:not(.comic-reader) {
   flex-direction: column;
   padding-bottom: var(--space-3);
 }
@@ -395,14 +395,14 @@
 }
 
 @media (max-width: 720px) {
-  .book-reader:not(.manga-reader) {
+  .book-reader:not(.comic-reader) {
     min-height: 100dvh;
     padding: var(--space-2) var(--layout-gutter-compact) var(--space-7);
   }
   .reader-heading {
     margin-bottom: var(--space-5);
   }
-  .book-reader--paged:not(.manga-reader) {
+  .book-reader--paged:not(.comic-reader) {
     padding-bottom: 8px;
   }
   .paged-reader {

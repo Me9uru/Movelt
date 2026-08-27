@@ -25,21 +25,20 @@ tauri-build = { version = "2", features = [] }
 ammonia = "4"
 chrono = { version = "0.4", features = ["clock"] }
 flate2 = "1"
+moka = { version = "0.12", features = ["future"] }
 tauri = { version = "2", features = [] }
 tauri-plugin-dev-invoke = "0.2"
-futures-util = "0.3"
 tauri-plugin-movel-credentials = { path = "credential-store" }
 reqwest = { version = "0.12", default-features = false, features = ["gzip", "json", "rustls-tls"] }
-rmp-serde = "1"
 rmpv = { version = "1", features = ["with-serde"] }
-serde = { version = "1", features = ["derive"] }
+serde = { version = "1", features = ["derive", "rc"] }
 serde_json = "1"
 sha2 = "0.10"
 thiserror = "2"
 tokio = { version = "1", features = ["net", "sync", "time"] }
-tokio-tungstenite = { version = "0.26", features = ["rustls-tls-webpki-roots"] }
 url = "2"
 uuid = { version = "1", features = ["v4"] }
+signalr-client = { version = "0.3.2", features = ["messagepack"] }
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

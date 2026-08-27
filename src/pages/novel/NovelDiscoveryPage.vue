@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { rankingPeriods } from "../../composables/useDiscovery";
+import { rankingPeriods, useDiscovery } from "../../composables/useDiscovery";
 import type { NovelSummary } from "../../domain/novel";
 import DiscoveryView from "../../layout/DiscoveryView.vue";
 import type { BookGridItem } from "../../types/book";
 import type { DiscoveryTab, DiscoveryTabOption } from "../../types/discovery";
 import { novelDiscoveryAdapter } from "../../composables/discoveryAdapters";
-import { useDiscovery } from "../../composables/useDiscovery";
 import { useDiscoveryPresentation } from "../../composables/useDiscoveryPresentation";
 
 const discovery = useDiscovery(novelDiscoveryAdapter);

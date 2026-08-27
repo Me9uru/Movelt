@@ -27,9 +27,9 @@ export const router = createRouter({
       component: () => import("../pages/bookshelf/BookshelfPage.vue"),
     },
     {
-      path: "/manga",
-      name: "manga",
-      component: () => import("../pages/manga/MangaDiscoveryPage.vue"),
+      path: "/comic",
+      name: "comic",
+      component: () => import("../pages/comic/ComicDiscoveryPage.vue"),
     },
     {
       path: "/settings",
@@ -37,14 +37,14 @@ export const router = createRouter({
       component: () => import("../pages/settings/SettingsPage.vue"),
     },
     {
-      path: "/manga/:mangaId",
-      name: "manga-detail",
-      component: () => import("../pages/manga/MangaDetailPage.vue"),
+      path: "/comic/:comicId",
+      name: "comic-detail",
+      component: () => import("../pages/comic/ComicDetailPage.vue"),
     },
     {
-      path: "/manga/:mangaId/read/:chapterId",
-      name: "manga-reader",
-      component: () => import("../pages/manga/MangaReaderPage.vue"),
+      path: "/comic/:comicId/read/:chapterId",
+      name: "comic-reader",
+      component: () => import("../pages/comic/ComicReaderPage.vue"),
     },
     {
       path: "/library/:bookId",

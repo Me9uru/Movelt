@@ -1,9 +1,11 @@
+use std::sync::Arc;
+
 use chrono::Utc;
 use serde_json::{json, Value};
 use tauri::State;
 
 use crate::{
-    api::OfficialClient,
+    api::{cache::AppCache, OfficialClient},
     dto::{bookshelf::BookshelfEntry, novel::NovelSummary},
     error::Result,
 };
@@ -34,7 +36,7 @@ pub(super) async fn books_for_ids(
 ) -> Result<Vec<NovelSummary>> {
     let mut books = Vec::new();
     for ids in ids.chunks(24) {
-        let response = client.books_by_ids(ids, ty).await?;
+        let response = client.get_books_by_ids(ids, ty).await?;
         let items = response
             .as_array()
             .map(Vec::as_slice)
@@ -51,7 +53,7 @@ pub(super) async fn set_shelf(
     kind: &str,
     present: bool,
 ) -> Result<()> {
-    let shelf = client.bookshelf().await?;
+    let shelf = client.get_bookshelf().await?;
     let mut items = shelf_items(&shelf);
     let exists = items
         .iter()
@@ -77,20 +79,37 @@ pub(super) async fn set_shelf(
 /// 获取小说书架，并支持按标题筛选。
 pub(crate) async fn list_bookshelf(
     client: State<'_, OfficialClient>,
+    cache: State<'_, AppCache>,
     query: Option<String>,
-) -> Result<Vec<BookshelfEntry>> {
-    let shelf = client.bookshelf().await?;
+) -> Result<Arc<Vec<BookshelfEntry>>> {
+    let query = query.unwrap_or_default().to_lowercase();
+    if query.is_empty() {
+        return cache
+            .load_cache(&cache.novel_bookshelf, (), load_bookshelf_entries(&client))
+            .await;
+    }
+
+    Ok(Arc::new(
+        load_bookshelf_entries(&client)
+            .await?
+            .into_iter()
+            .filter(|entry| entry.book.title.to_lowercase().contains(&query))
+            .collect(),
+    ))
+}
+
+async fn load_bookshelf_entries(client: &OfficialClient) -> Result<Vec<BookshelfEntry>> {
+    let shelf = client.get_bookshelf().await?;
     let items: Vec<_> = shelf_items(&shelf)
         .into_iter()
         .filter(|item| is_kind(item, "BOOK"))
         .collect();
     let books = books_for_ids(
-        &client,
+        client,
         items.iter().map(|item| number(item, "id")).collect(),
         None,
     )
     .await?;
-    let query = query.unwrap_or_default().to_lowercase();
     Ok(items
         .into_iter()
         .filter_map(|item| {
@@ -104,7 +123,6 @@ pub(crate) async fn list_bookshelf(
                     progress: None,
                 })
         })
-        .filter(|entry| query.is_empty() || entry.book.title.to_lowercase().contains(&query))
         .collect())
 }
 
@@ -112,8 +130,11 @@ pub(crate) async fn list_bookshelf(
 /// 设置小说是否存在于书架中。
 pub(crate) async fn set_novel_bookshelf(
     client: State<'_, OfficialClient>,
+    cache: State<'_, AppCache>,
     book_id: String,
     present: bool,
 ) -> Result<()> {
-    set_shelf(&client, parse_id(&book_id)?, "BOOK", present).await
+    set_shelf(&client, parse_id(&book_id)?, "BOOK", present).await?;
+    cache.invalidate_bookshelves();
+    Ok(())
 }

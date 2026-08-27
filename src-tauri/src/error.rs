@@ -1,7 +1,7 @@
 use serde::{Serialize, Serializer};
 use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Clone, Debug, Error)]
 pub(crate) enum AppError {
     #[error("网络连接失败，请检查网络后重试")]
     Transport { detail: String },

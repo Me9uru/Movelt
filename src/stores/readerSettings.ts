@@ -7,7 +7,7 @@ import type { ReaderKind, ReaderSettings, ReaderTheme } from "../types/reader";
 const themeStorageKey = "reader.theme.v1";
 const storageKeys: Record<ReaderKind, string> = {
   novel: "novel.reader.settings.v1",
-  manga: "manga.reader.settings.v1",
+  comic: "comic.reader.settings.v1",
 };
 const defaults: ReaderSettings = {
   fontSize: 18,
@@ -41,8 +41,8 @@ function loadTheme(): ReaderTheme {
   // Migrate the existing per-reader theme on first launch after this change.
   const novelTheme = loadStoredSettings("novel").theme;
   if (isReaderTheme(novelTheme)) return novelTheme;
-  const mangaTheme = loadStoredSettings("manga").theme;
-  return isReaderTheme(mangaTheme) ? mangaTheme : defaults.theme;
+  const comicTheme = loadStoredSettings("comic").theme;
+  return isReaderTheme(comicTheme) ? comicTheme : defaults.theme;
 }
 
 function createSettings(kind: ReaderKind, theme: { value: ReaderTheme }): ReaderSettings {
@@ -95,9 +95,9 @@ function resolveVarletTheme(value: ReaderTheme) {
 export const useReaderSettingsStore = defineStore("reader-settings", () => {
   const theme = ref<ReaderTheme>(loadTheme());
   const novelSettings = createSettings("novel", theme);
-  const mangaSettings = createSettings("manga", theme);
+  const comicSettings = createSettings("comic", theme);
   const novelStyle = createReaderStyle(novelSettings);
-  const mangaStyle = createReaderStyle(mangaSettings);
+  const comicStyle = createReaderStyle(comicSettings);
 
   watch(theme, (value) => {
     localStorage.setItem(themeStorageKey, value);
@@ -106,15 +106,15 @@ export const useReaderSettingsStore = defineStore("reader-settings", () => {
   }, { immediate: true });
 
   function reset(kind: ReaderKind) {
-    Object.assign(kind === "novel" ? novelSettings : mangaSettings, defaults);
+    Object.assign(kind === "novel" ? novelSettings : comicSettings, defaults);
   }
 
   return {
     theme,
     novelSettings,
-    mangaSettings,
+    comicSettings,
     novelStyle,
-    mangaStyle,
+    comicStyle,
     reset,
   };
 });

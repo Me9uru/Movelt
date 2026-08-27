@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import type { ChapterSummary, NovelSummary, Volume } from "../../domain/novel";
+import type { NovelChapterSummary, NovelDetail } from "../../domain/novel";
 import BookChapterList from "../../components/detail/BookChapterList.vue";
 import type { BookChapterItem } from "../../types/book";
 import BookDetailLayout from "../../layout/BookDetailLayout.vue";
@@ -14,8 +14,8 @@ import { getErrorMessage, showError } from "../../utils/error";
 const route = useRoute();
 const router = useRouter();
 const { addBook, removeBook, isOnBookshelf } = useLibrary();
-const detail = ref<NovelSummary | null>(null);
-const catalogue = ref<Volume[]>([]);
+const detail = ref<NovelDetail | null>(null);
+const chapters = ref<NovelChapterSummary[]>([]);
 const resumeChapterId = ref<string | null>(null);
 const loading = ref(true);
 const error = ref("");
@@ -30,8 +30,8 @@ async function load(): Promise<void> {
   error.value = "";
   try {
     const overview = await getReaderOverview(lightNovelSourceId, bookId.value);
-    detail.value = overview.detail;
-    catalogue.value = overview.volumes;
+    detail.value = overview;
+    chapters.value = overview.chapters;
     resumeChapterId.value = overview.readPosition?.chapterId ?? null;
   } catch (value) {
     error.value = getErrorMessage(value, "无法加载作品详情");
@@ -52,7 +52,7 @@ function openChapter(chapterId: string): void {
 }
 
 function continueReading(): void {
-  const chapterId = resumeChapterId.value ?? catalogue.value.flatMap(collectChapterItems)[0]?.data.id;
+  const chapterId = resumeChapterId.value ?? chapters.value[0]?.id;
   if (chapterId) openChapter(chapterId);
 }
 
@@ -72,31 +72,17 @@ async function toggleBookshelf(): Promise<void> {
 onMounted(() => void load());
 watch(bookId, () => void load());
 
-const chapterCount = computed(() =>
-  catalogue.value.reduce((total, volume) => total + countChapters(volume), 0),
-);
+const chapterCount = computed(() => chapters.value.length);
 const stats = computed(() => [
-  { value: catalogue.value.length, label: "篇" },
   { value: chapterCount.value, label: "话" },
   ...(detail.value?.updated_at ? [{ label: `更新于 ${detail.value.updated_at}` }] : []),
 ]);
 
-function countChapters(volume: Volume): number {
-  return volume.chapters.length + volume.sections.reduce((total, section) => total + countChapters(section), 0);
-}
-
-function toChapterItem(chapter: ChapterSummary): BookChapterItem<ChapterSummary> {
+function toChapterItem(chapter: NovelChapterSummary): BookChapterItem<NovelChapterSummary> {
   return { id: chapter.id, title: chapter.title, data: chapter };
 }
 
-function collectChapterItems(volume: Volume): BookChapterItem<ChapterSummary>[] {
-  return [
-    ...volume.chapters.map(toChapterItem),
-    ...volume.sections.flatMap(collectChapterItems),
-  ];
-}
-
-const chapterItems = computed(() => catalogue.value.flatMap(collectChapterItems));
+const chapterItems = computed(() => chapters.value.map(toChapterItem));
 </script>
 
 <template>
@@ -123,7 +109,7 @@ const chapterItems = computed(() => catalogue.value.flatMap(collectChapterItems)
     :resume-chapter-id="resumeChapterId"
     :stats="stats"
     section-title="作品目录"
-    :section-summary="`共 ${catalogue.length} 篇 · ${chapterCount} 话`"
+    :section-summary="`共 ${chapterCount} 话`"
     @toggle-bookshelf="toggleBookshelf"
     @continue-reading="continueReading"
   >

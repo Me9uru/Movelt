@@ -14,9 +14,9 @@ const view = computed<AppRouteName>(() => {
   return routeName === "bookshelf" ||
     routeName === "detail" ||
     routeName === "reader" ||
-    routeName === "manga" ||
-    routeName === "manga-detail" ||
-    routeName === "manga-reader" ||
+    routeName === "comic" ||
+    routeName === "comic-detail" ||
+    routeName === "comic-reader" ||
     routeName === "settings" ||
     routeName === "login"
     ? routeName
@@ -37,7 +37,7 @@ function handleAndroidBack(event: Event) {
   if (
     view.value !== "detail" &&
     view.value !== "reader" &&
-    view.value !== "manga-detail"
+    view.value !== "comic-detail"
   )
     return;
   event.preventDefault();
@@ -50,7 +50,7 @@ function handleAndroidBack(event: Event) {
     });
   } else
     void router.replace({
-      name: view.value === "manga-detail" ? "manga" : "novels",
+      name: view.value === "comic-detail" ? "comic" : "novels",
     });
 }
 

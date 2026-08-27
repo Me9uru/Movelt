@@ -47,7 +47,7 @@
   transform: translate(-50%, -100%);
 }
 
-/* Shared reader root: both the novel and manga readers use .book-reader. */
+/* Shared reader root: both the novel and comic readers use .book-reader. */
 .book-reader {
   min-height: 100dvh;
   margin: 0 calc(50% - 50vw);

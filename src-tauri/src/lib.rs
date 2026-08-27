@@ -2,7 +2,6 @@ mod api;
 mod commands;
 mod dto;
 mod error;
-mod reader_cache;
 
 use tauri::Manager;
 
@@ -17,7 +16,7 @@ pub fn run() {
             let client = api::OfficialClient::new(app.credential_store().clone())
                 .expect("failed to initialize official API client");
             app.manage(client);
-            app.manage(reader_cache::ReaderCache::default());
+            app.manage(api::cache::AppCache::default());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -28,23 +27,23 @@ pub fn run() {
             commands::user::set_avatar,
             commands::user::sign_in,
             commands::user::logout,
-            commands::novel::get_latest,
-            commands::novel::get_ranking,
-            commands::novel::get_rank,
+            commands::novel::list_novels,
+            commands::novel::rank_novels,
             commands::novel::search_novels,
             commands::novel::get_reader_overview,
             commands::novel::get_reader_document,
             commands::novel::save_read_position,
             commands::bookshelf::list_bookshelf,
             commands::bookshelf::set_novel_bookshelf,
-            commands::manga::browse_manga,
-            commands::manga::list_manga_bookshelf,
-            commands::manga::is_on_manga_bookshelf,
-            commands::manga::set_manga_bookshelf,
-            commands::manga::get_manga,
-            commands::manga::get_manga_chapter_pages,
-            commands::manga::get_manga_page_batch,
-            commands::manga::save_manga_read_position,
+            commands::comic::list_comics,
+            commands::comic::search_comics,
+            commands::comic::list_comic_bookshelf,
+            commands::comic::is_on_comic_bookshelf,
+            commands::comic::set_comic_bookshelf,
+            commands::comic::get_comic_series,
+            commands::comic::get_comic_book,
+            commands::comic::get_comic_chapter_pages,
+            commands::comic::save_comic_read_position,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Movel");

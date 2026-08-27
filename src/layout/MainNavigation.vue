@@ -11,7 +11,7 @@ function navigate(view: string | number): void {
 
 <template>
   <var-bottom-navigation
-    v-if="view === 'novels' || view === 'bookshelf' || view === 'manga' || view === 'settings'"
+    v-if="view === 'novels' || view === 'bookshelf' || view === 'comic' || view === 'settings'"
     class="view-dock"
     :active="view"
     fixed
@@ -20,7 +20,7 @@ function navigate(view: string | number): void {
     @update:active="navigate"
   >
     <var-bottom-navigation-item name="novels" icon="notebook" label="小说" />
-    <var-bottom-navigation-item name="manga" icon="image" label="漫画" />
+    <var-bottom-navigation-item name="comic" icon="image" label="漫画" />
     <var-bottom-navigation-item name="bookshelf" icon="bookmark" label="书架" />
     <var-bottom-navigation-item name="settings" icon="cog" label="设置" />
   </var-bottom-navigation>

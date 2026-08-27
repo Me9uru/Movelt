@@ -9,12 +9,11 @@ import {
 } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
-  getMangaChapterPages,
-  getManga,
-  getMangaPageBatch,
-  saveMangaReadPosition,
-} from "../../services/manga";
-import type { MangaDetail } from "../../domain/manga";
+  getComicChapterPages,
+  getComicBook,
+  saveComicReadPosition,
+} from "../../services/comic";
+import type { ComicBook } from "../../domain/comic";
 import { useReaderSettings } from "../../composables/useReaderSettings";
 import { getErrorMessage, showError } from "../../utils/error";
 import ErrorState from "../../components/common/ErrorState.vue";
@@ -24,10 +23,10 @@ import LoadingOverlay from "../../components/common/LoadingOverlay.vue";
 
 const route = useRoute();
 const router = useRouter();
-const mangaId = computed(() => String(route.params.mangaId));
+const comicId = computed(() => String(route.params.comicId));
 const chapterId = computed(() => String(route.params.chapterId));
-const { settings } = useReaderSettings("manga");
-const manga = ref<MangaDetail | null>(null);
+const { settings } = useReaderSettings("comic");
+const comic = ref<ComicBook | null>(null);
 const pages = ref<string[]>([]);
 const loading = ref(true);
 const error = ref("");
@@ -36,12 +35,12 @@ const pageList = ref<HTMLElement | null>(null);
 const currentPage = ref(0);
 const hasPreviousChapter = computed(
   () =>
-    (manga.value?.chapters.findIndex(
+    (comic.value?.chapters.findIndex(
       (chapter) => chapter.id === chapterId.value,
     ) ?? 0) > 0,
 );
 const hasNextChapter = computed(() => {
-  const chapters = manga.value?.chapters ?? [];
+  const chapters = comic.value?.chapters ?? [];
   const index = chapters.findIndex((chapter) => chapter.id === chapterId.value);
   return index >= 0 && index < chapters.length - 1;
 });
@@ -52,7 +51,7 @@ let savedPage = -1;
 let saveTimer: number | undefined;
 // Vue Router 会在组件卸载前更新 route；保存进度必须使用本次已加载的
 // 官方数字分卷 ID，而不能在卸载钩子中重新读取路由参数。
-let loadedMangaId = "";
+let loadedComicId = "";
 let loadedChapterId = "";
 
 async function loadPage(index: number): Promise<void> {
@@ -61,7 +60,11 @@ async function loadPage(index: number): Promise<void> {
   if (requestedBatches.has(batchStart)) return;
   requestedBatches.add(batchStart);
   try {
-    const batch = await getMangaPageBatch(chapterId.value, index);
+    const batch = await getComicChapterPages(
+      comicId.value,
+      chapterId.value,
+      index,
+    );
     batch.pageUrls.forEach((url, offset) => {
       if (batch.startIndex + offset < pages.value.length)
         pages.value[batch.startIndex + offset] = url;
@@ -82,16 +85,20 @@ async function load(): Promise<void> {
   saveTimer = undefined;
   savedPage = -1;
   currentPage.value = 0;
-  const pagesRequest = getMangaChapterPages(mangaId.value, chapterId.value);
-  const detailRequest = getManga(mangaId.value);
+  const pagesRequest = getComicChapterPages(
+    comicId.value,
+    chapterId.value,
+    0,
+  );
+  const detailRequest = getComicBook(comicId.value);
   try {
     const [list, detail] = await Promise.all([pagesRequest, detailRequest]);
-    manga.value = detail;
-    loadedMangaId = detail.id;
+    comic.value = detail;
+    loadedComicId = detail.id;
     loadedChapterId = list.chapterId;
     pages.value = Array.from(
       { length: list.pageCount },
-      (_, index) => list.firstPageUrls[index] || "",
+      (_, index) => list.pageUrls[index] || "",
     );
     const position = list.readPosition ?? detail.readPosition;
     const page =
@@ -120,13 +127,13 @@ async function load(): Promise<void> {
 }
 
 function saveProgress(immediate = false): void {
-  if (!manga.value || savedPage < 0 || !loadedMangaId || !loadedChapterId)
+  if (!comic.value || savedPage < 0 || !loadedComicId || !loadedChapterId)
     return;
   if (saveTimer !== undefined) window.clearTimeout(saveTimer);
   const save = () => {
     saveTimer = undefined;
-    void saveMangaReadPosition(
-      loadedMangaId,
+    void saveComicReadPosition(
+      loadedComicId,
       loadedChapterId,
       savedPage + 1,
     ).catch((errorValue) => {
@@ -170,7 +177,7 @@ function observePages(): void {
     { rootMargin: "0px 0px -50%", threshold: 0.01 },
   );
   pageList.value
-    ?.querySelectorAll<HTMLElement>(".manga-reader-page")
+    ?.querySelectorAll<HTMLElement>(".comic-reader-page")
     .forEach((page) => {
       loadObserver?.observe(page);
       progressObserver?.observe(page);
@@ -178,31 +185,23 @@ function observePages(): void {
 }
 
 function chapterOffset(offset: number): void {
-  const chapters = manga.value?.chapters ?? [];
+  const chapters = comic.value?.chapters ?? [];
   const index = chapters.findIndex((chapter) => chapter.id === chapterId.value);
   const next = chapters[index + offset];
   if (next) {
     savedPage = currentPage.value;
     saveProgress(true);
     void router.replace({
-      name: "manga-reader",
-      params: { mangaId: mangaId.value, chapterId: next.id },
+      name: "comic-reader",
+      params: { comicId: comicId.value, chapterId: next.id },
     });
   }
 }
 
-/**
- * 阅读器只接受官方 `GetComicInfo` 所使用的数字分卷 ID。
- * 不要将漫画系列标题（详情页路由也可能使用它）带回此处，否则详情页
- * 随后的书架查询会把该标题当作数字 ID 发送。
- */
+/** 阅读页只持有分卷 ID；返回时复用来源页，避免将其误作系列标题。 */
 function returnToDetail(): void {
-  const detailId = manga.value?.id;
-  if (!detailId || !/^\d+$/.test(detailId)) return;
-  void router.push({
-    name: "manga-detail",
-    params: { mangaId: detailId },
-  });
+  if (window.history.state?.back) router.back();
+  else void router.push({ name: "comic" });
 }
 
 function changePage(offset: number): void {
@@ -263,7 +262,7 @@ watch(
 </script>
 <template>
   <article
-    class="book-reader manga-reader"
+    class="book-reader comic-reader"
     :class="[`book-reader--${settings.mode}`]"
     @click="handleReaderClick"
   >
@@ -283,22 +282,22 @@ watch(
       @previous="chapterOffset(-1)"
       @next="chapterOffset(1)"
     >
-      <section ref="pageList" class="manga-reader-pages">
-      <p v-if="!loading && pages.length === 0" class="manga-reader-pending">
+      <section ref="pageList" class="comic-reader-pages">
+      <p v-if="!loading && pages.length === 0" class="comic-reader-pending">
         正在获取章节页码…
       </p>
       <template v-if="settings.mode === 'scroll'">
         <template v-for="(page, index) in pages" :key="index">
           <img
             v-if="page"
-            class="manga-reader-page"
+            class="comic-reader-page"
             :data-page-index="index"
             :src="page"
             :alt="`第 ${index + 1} 页`"
           />
           <div
             v-else
-            class="manga-reader-page manga-reader-page-placeholder"
+            class="comic-reader-page comic-reader-page-placeholder"
             :data-page-index="index"
           >
             加载第 {{ index + 1 }} 页…
@@ -308,14 +307,14 @@ watch(
       <template v-else-if="pages.length">
         <img
           v-if="pages[currentPage]"
-          class="manga-reader-page"
+          class="comic-reader-page"
           :data-page-index="currentPage"
           :src="pages[currentPage]"
           :alt="`第 ${currentPage + 1} 页`"
         />
         <div
           v-else
-          class="manga-reader-page manga-reader-page-placeholder"
+          class="comic-reader-page comic-reader-page-placeholder"
           :data-page-index="currentPage"
         >
           加载第 {{ currentPage + 1 }} 页…
@@ -325,8 +324,8 @@ watch(
     </ReaderBoundarySwitch>
     <ReaderSettingsDrawer
       v-model="settingsVisible"
-      kind="manga"
-      :title="manga?.title || '漫画阅读'"
+      kind="comic"
+      :title="comic?.title || '漫画阅读'"
       :title-click="returnToDetail"
       :previous-disabled="
         !hasPreviousChapter

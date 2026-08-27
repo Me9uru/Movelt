@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { mangaDiscoveryAdapter } from "../../composables/discoveryAdapters";
+import { comicDiscoveryAdapter } from "../../composables/discoveryAdapters";
 import { useDiscovery } from "../../composables/useDiscovery";
 import { useDiscoveryPresentation } from "../../composables/useDiscoveryPresentation";
-import type { MangaSummary } from "../../domain/manga";
+import type { ComicSummary } from "../../domain/comic";
 import DiscoveryView from "../../layout/DiscoveryView.vue";
 import type { BookGridItem } from "../../types/book";
 import type {
@@ -12,14 +12,14 @@ import type {
   DiscoveryTabOption,
 } from "../../types/discovery";
 
-function toBookItem(manga: MangaSummary): BookGridItem<MangaSummary> {
-  return { id: manga.id, title: manga.title, coverUrl: manga.thumbnailUrl, data: manga };
+function toBookItem(comic: ComicSummary): BookGridItem<ComicSummary> {
+  return { id: comic.id, title: comic.title, coverUrl: comic.coverUrl, data: comic };
 }
 
 const router = useRouter();
-const discovery = useDiscovery(mangaDiscoveryAdapter);
+const discovery = useDiscovery(comicDiscoveryAdapter);
 const activeTab = ref<DiscoveryTab>("recommend");
-const mangaTabs: DiscoveryTabOption[] = [
+const comicTabs: DiscoveryTabOption[] = [
   { name: "recommend", label: "精选" },
   { name: "ranking", label: "排行榜" },
 ];
@@ -50,8 +50,8 @@ function handleSearch(page: number): void {
   activeTab.value = "search";
   void discovery.runSearch(page);
 }
-function openManga(manga: MangaSummary): void {
-  void router.push({ name: "manga-detail", params: { mangaId: manga.id } });
+function openComic(comic: ComicSummary): void {
+  void router.push({ name: "comic-detail", params: { comicId: comic.id } });
 }
 
 </script>
@@ -59,7 +59,7 @@ function openManga(manga: MangaSummary): void {
 <template>
   <DiscoveryView
     v-model="activeTab"
-    :tabs="mangaTabs"
+    :tabs="comicTabs"
     :recommend="recommend"
     :ranking="ranking"
     :search="search"
@@ -67,7 +67,7 @@ function openManga(manga: MangaSummary): void {
     @search="handleSearch"
     @update:query="discovery.searchQuery.value = $event"
     @update:search-mode="discovery.searchMode.value = $event"
-    @open="openManga($event.data)"
+    @open="openComic($event.data)"
     @retry="retryDiscovery"
   />
 </template>

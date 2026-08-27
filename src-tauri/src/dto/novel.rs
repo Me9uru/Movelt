@@ -1,3 +1,4 @@
+use crate::dto::common::ReadPosition;
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
@@ -16,56 +17,24 @@ pub(crate) struct NovelSummary {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct Pagination {
-    pub page: i64,
-    pub previous: Option<i64>,
-    pub next: Option<i64>,
-    pub first: i64,
-    pub last: i64,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct DiscoveryList {
-    pub items: Vec<NovelSummary>,
-    pub pagination: Pagination,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct ChapterSummary {
+pub(crate) struct NovelChapterSummary {
     pub id: String,
     pub title: String,
+    pub sequence: i64,
 }
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct Volume {
-    pub title: String,
-    pub chapters: Vec<ChapterSummary>,
-    pub sections: Vec<Volume>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct ReadPosition {
-    pub chapter_id: String,
-    pub position: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct NovelOverview {
-    pub detail: NovelSummary,
-    pub volumes: Vec<Volume>,
+pub(crate) struct NovelDetail {
+    #[serde(flatten)]
+    pub summary: NovelSummary,
+    pub chapters: Vec<NovelChapterSummary>,
     pub read_position: Option<ReadPosition>,
 }
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct ReaderDocument {
-    pub id: String,
-    pub book_id: String,
+pub(crate) struct NovelChapterContent {
     pub chapter_id: String,
     pub server_chapter_id: String,
     pub title: String,

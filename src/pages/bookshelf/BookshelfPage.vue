@@ -3,25 +3,30 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import type { BookshelfEntry } from "../../domain/bookshelf";
 import type { NovelSummary } from "../../domain/novel";
-import type { MangaSummary } from "../../domain/manga";
+import type { ComicSummary } from "../../domain/comic";
 import ContentTabs from "../../layout/ContentTabs.vue";
 import BookCollection from "../../layout/BookCollection.vue";
 import type { BookGridItem } from "../../types/book";
 import { useLibrary } from "../../composables/useLibrary";
-import { listMangaBookshelf } from "../../services/manga";
 import { showError } from "../../utils/error";
 
 const router = useRouter();
-const { books, refreshBooks, searchBooks } = useLibrary();
-const manga = ref<MangaSummary[]>([]);
-const activeKind = ref<"novel" | "manga">("novel");
+const {
+  books,
+  comic,
+  refreshBooks,
+  refreshComicBooks,
+  searchBooks,
+  searchComicBooks,
+} = useLibrary();
+const activeKind = ref<"novel" | "comic">("novel");
 const query = ref("");
 const searchResults = ref<BookshelfEntry[] | null>(null);
-const mangaSearchResults = ref<MangaSummary[] | null>(null);
+const comicSearchResults = ref<ComicSummary[] | null>(null);
 const loading = ref(false);
 const bookshelfLoading = ref(false);
 const visibleBooks = computed(() => searchResults.value ?? books.value);
-const visibleManga = computed(() => mangaSearchResults.value ?? manga.value);
+const visibleComic = computed(() => comicSearchResults.value ?? comic.value);
 const novelGridItems = computed<BookGridItem<NovelSummary>[]>(() =>
   visibleBooks.value.map(({ book }) => ({
     id: `${book.source}:${book.id}`,
@@ -30,29 +35,29 @@ const novelGridItems = computed<BookGridItem<NovelSummary>[]>(() =>
     data: book,
   })),
 );
-const mangaGridItems = computed<BookGridItem<MangaSummary>[]>(() =>
-  visibleManga.value.map((item) => ({
+const comicGridItems = computed<BookGridItem<ComicSummary>[]>(() =>
+  visibleComic.value.map((item) => ({
     id: item.id,
     title: item.title,
-    coverUrl: item.thumbnailUrl,
+    coverUrl: item.coverUrl,
     meta: item.author,
     data: item,
   })),
 );
 const searchActive = computed(
-  () => searchResults.value !== null || mangaSearchResults.value !== null,
+  () => searchResults.value !== null || comicSearchResults.value !== null,
 );
 
-const shelfTabs: { name: "novel" | "manga"; label: string }[] = [
+const shelfTabs: { name: "novel" | "comic"; label: string }[] = [
   { name: "novel", label: "小说" },
-  { name: "manga", label: "漫画" },
+  { name: "comic", label: "漫画" },
 ];
 
 async function load(): Promise<void> {
   bookshelfLoading.value = true;
   try {
     if (activeKind.value === "novel") await refreshBooks();
-    else manga.value = await listMangaBookshelf();
+    else await refreshComicBooks();
   } catch (error) {
     showError(error, "加载书架失败");
   } finally {
@@ -64,13 +69,13 @@ async function search(): Promise<void> {
   const value = query.value.trim();
   if (!value) {
     if (activeKind.value === "novel") searchResults.value = null;
-    else mangaSearchResults.value = null;
+    else comicSearchResults.value = null;
     return;
   }
   loading.value = true;
   try {
     if (activeKind.value === "novel") searchResults.value = await searchBooks(value);
-    else mangaSearchResults.value = await listMangaBookshelf(value);
+    else comicSearchResults.value = searchComicBooks(value);
   } catch (error) {
     showError(error, "搜索书架失败");
   } finally {
@@ -78,11 +83,11 @@ async function search(): Promise<void> {
   }
 }
 
-function changeKind(kind: "novel" | "manga"): void {
+function changeKind(kind: "novel" | "comic"): void {
   activeKind.value = kind;
   query.value = "";
   searchResults.value = null;
-  mangaSearchResults.value = null;
+  comicSearchResults.value = null;
   void load();
 }
 
@@ -93,15 +98,15 @@ function openNovel(novel: NovelSummary): void {
     query: { from: "bookshelf" },
   });
 }
-function openManga(item: MangaSummary): void {
-  void router.push({ name: "manga-detail", params: { mangaId: item.id } });
+function openComic(item: ComicSummary): void {
+  void router.push({ name: "comic-detail", params: { comicId: item.id } });
 }
 
 onMounted(() => void load());
 watch(query, (value) => {
   if (!value.trim()) {
     searchResults.value = null;
-    mangaSearchResults.value = null;
+    comicSearchResults.value = null;
   }
 });
 </script>
@@ -146,10 +151,10 @@ watch(query, (value) => {
     </BookCollection>
     <BookCollection
       v-else
-      :items="mangaGridItems"
+      :items="comicGridItems"
       :loading="bookshelfLoading"
       :disabled="loading || bookshelfLoading"
-      @open="openManga($event.data)"
+      @open="openComic($event.data)"
     >
       <template #empty>
         <div class="bookshelf-empty">

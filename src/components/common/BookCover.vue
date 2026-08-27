@@ -42,6 +42,7 @@ function handleError(): void {
       :src="coverUrl"
       :alt="title"
       :fit="fit"
+      lazy
       @load="handleLoad"
       @error="handleError"
     />

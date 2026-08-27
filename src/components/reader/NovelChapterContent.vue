@@ -7,10 +7,10 @@ import {
   ref,
   watch,
 } from "vue";
-import type { ReaderDocument } from "../../domain/novel";
+import type { NovelChapterContent } from "../../domain/novel";
 
 const props = defineProps<{
-  document: ReaderDocument;
+  document: NovelChapterContent;
   headingClass: string;
 }>();
 
@@ -178,6 +178,7 @@ onBeforeUnmount(() => {
   <var-dialog
     :show="footnoteVisible"
     title="注释"
+    :cancel-button="false"
     confirm-button-text="关闭"
     :dialog-class="
       document.fontUrl

@@ -3,7 +3,7 @@ use crate::error::Result;
 use serde_json::{json, Value};
 
 impl OfficialClient {
-    pub(crate) async fn bookshelf(&self) -> Result<Value> {
+    pub(crate) async fn get_bookshelf(&self) -> Result<Value> {
         self.hub("GetBookShelf", json!({})).await
     }
 
