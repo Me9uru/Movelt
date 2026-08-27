@@ -2,9 +2,9 @@ import { ref } from "vue";
 import type { NovelSummary } from "../domain/novel";
 import type { ComicSummary } from "../domain/comic";
 import {
-  addToBookshelf,
-  listBookshelf,
-  removeFromBookshelf,
+  addToNovelBookshelf,
+  listNovelBookshelf,
+  removeFromNovelBookshelf,
 } from "../services/bookshelf";
 import {
   addToComicBookshelf,
@@ -25,7 +25,7 @@ const removedNovelIds = new Set<string>();
  */
 export function useLibrary() {
   async function refreshBooks(): Promise<void> {
-    books.value = await listBookshelf();
+    books.value = await listNovelBookshelf();
     novelBooksLoaded = true;
     addedNovelIds.clear();
     removedNovelIds.clear();
@@ -37,7 +37,7 @@ export function useLibrary() {
   }
 
   async function addBook(book: NovelSummary): Promise<void> {
-    await addToBookshelf(book);
+    await addToNovelBookshelf(book);
     addedNovelIds.add(book.id);
     removedNovelIds.delete(book.id);
     if (!novelBooksLoaded || books.value.some((entry) => entry.book.id === book.id)) return;
@@ -45,7 +45,7 @@ export function useLibrary() {
   }
 
   async function removeBook(book: Pick<NovelSummary, "source" | "id">): Promise<void> {
-    await removeFromBookshelf(book.source, book.id);
+    await removeFromNovelBookshelf(book.source, book.id);
     addedNovelIds.delete(book.id);
     removedNovelIds.add(book.id);
     if (novelBooksLoaded) {

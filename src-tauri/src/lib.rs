@@ -2,6 +2,7 @@ mod api;
 mod commands;
 mod dto;
 mod error;
+mod mapping;
 
 use tauri::Manager;
 
@@ -33,13 +34,14 @@ pub fn run() {
             commands::novel::get_reader_overview,
             commands::novel::get_reader_document,
             commands::novel::save_read_position,
-            commands::bookshelf::list_bookshelf,
+            commands::bookshelf::list_novel_bookshelf,
+            commands::bookshelf::is_on_novel_bookshelf,
             commands::bookshelf::set_novel_bookshelf,
+            commands::bookshelf::list_comic_bookshelf,
+            commands::bookshelf::is_on_comic_bookshelf,
+            commands::bookshelf::set_comic_bookshelf,
             commands::comic::list_comics,
             commands::comic::search_comics,
-            commands::comic::list_comic_bookshelf,
-            commands::comic::is_on_comic_bookshelf,
-            commands::comic::set_comic_bookshelf,
             commands::comic::get_comic_series,
             commands::comic::get_comic_book,
             commands::comic::get_comic_chapter_pages,

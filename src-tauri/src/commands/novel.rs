@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use tauri::State;
-use url::Url;
 
 use crate::{
     api::{
@@ -10,58 +9,16 @@ use crate::{
     },
     dto::{
         common::{ListKey, Order, PaginatedList, SearchMode},
-        novel::{NovelChapterContent, NovelChapterSummary, NovelDetail, NovelSummary},
+        novel::{NovelChapterContent, NovelDetail, NovelSummary},
     },
     error::{AppError, Result},
+    mapping::novel::{
+        chapter_content, page, reader_detail, summaries as novel_summaries,
+        summary as novel_summary,
+    },
 };
 
-use super::adapter::{
-    array, number, optional_html, optional_string, pagination, parse_id, position, string,
-    validate_page_size,
-};
-
-/// 将官方小说数据映射为应用摘要。
-pub(super) fn novel(value: &serde_json::Value) -> NovelSummary {
-    NovelSummary {
-        source: "lightnovel".into(),
-        id: number(value, "Id").to_string(),
-        title: string(value, "Title"),
-        cover_url: optional_string(value, "Cover"),
-        author: optional_string(value, "Author")
-            .or_else(|| optional_string(value, "Arthur"))
-            .or_else(|| optional_string(value, "UserName")),
-        status: optional_string(value, "LastUpdatedChapter")
-            .or_else(|| optional_string(value, "SeriesTitle")),
-        updated_at: optional_string(value, "LastUpdatedAt"),
-        description: optional_html(value, "Introduction"),
-        tags: value
-            .pointer("/Extra/classification/tags")
-            .and_then(serde_json::Value::as_array)
-            .map(|tags| {
-                tags.iter()
-                    .filter_map(serde_json::Value::as_str)
-                    .map(str::to_owned)
-                    .collect()
-            })
-            .unwrap_or_default(),
-    }
-}
-
-/// 将官方小说分页结果映射为发现页 DTO。
-fn page(value: serde_json::Value) -> Result<PaginatedList<NovelSummary>> {
-    Ok(PaginatedList {
-        items: novel_summaries(&value),
-        pagination: pagination(&value, 1)?,
-    })
-}
-
-fn novel_summaries(value: &serde_json::Value) -> Vec<NovelSummary> {
-    value
-        .get("Data")
-        .and_then(serde_json::Value::as_array)
-        .map(|items| items.iter().map(novel).collect())
-        .unwrap_or_default()
-}
+use super::validation::{parse_id, validate_page_size};
 
 #[tauri::command]
 /// 获取指定排序方式的小说榜单。
@@ -96,7 +53,7 @@ pub(crate) async fn rank_novels(
                 .get_novel_rank(days)
                 .await?
                 .as_array()
-                .map(|items| items.iter().map(novel).collect())
+                .map(|items| items.iter().map(novel_summary).collect())
                 .unwrap_or_default())
         })
         .await
@@ -111,16 +68,11 @@ pub(crate) async fn search_novels(
     page_size: i64,
     mode: SearchMode,
 ) -> Result<PaginatedList<NovelSummary>> {
-    page(
-        client
-            .search_novels(
-                query,
-                page_number.unwrap_or(1),
-                validate_page_size(page_size)?,
-                mode,
-            )
-            .await?,
-    )
+    let page_number = page_number.unwrap_or(1);
+    let response = client
+        .search_novels(query, page_number, validate_page_size(page_size)?, mode)
+        .await?;
+    page(&response, page_number)
 }
 
 #[tauri::command]
@@ -131,41 +83,19 @@ pub(crate) async fn get_reader_overview(
     book_id: String,
 ) -> Result<NovelDetail> {
     let response = client.get_novel_info(parse_id(&book_id)?).await?;
-    let book = response
-        .get("Book")
-        .ok_or_else(|| AppError::protocol("小说详情响应缺少 Book"))?;
-    let mut read_position = position(response.get("ReadPosition"));
-    let chapters = array(book, "Chapter");
-    if let Some(position) = &mut read_position {
-        if let Some(index) = chapters
-            .iter()
-            .position(|chapter| number(chapter, "Id").to_string() == position.chapter_id)
-        {
-            position.chapter_id = (index + 1).to_string();
-        }
-    }
+    let detail = reader_detail(&response)?;
     cache
         .store_cache(
             &cache.novel_chapters,
             book_id.clone(),
-            (1..=chapters.len())
-                .map(|index| index.to_string())
+            detail
+                .chapters
+                .iter()
+                .map(|chapter| chapter.id.clone())
                 .collect(),
         )
         .await;
-    Ok(NovelDetail {
-        summary: novel(book),
-        chapters: chapters
-            .iter()
-            .enumerate()
-            .map(|(index, chapter)| NovelChapterSummary {
-                id: (index + 1).to_string(),
-                title: string(chapter, "Title"),
-                sequence: (index + 1) as i64,
-            })
-            .collect(),
-        read_position,
-    })
+    Ok(detail)
 }
 
 #[tauri::command]
@@ -182,12 +112,11 @@ pub(crate) async fn get_reader_document(
     let chapter_ids = cache
         .load_cache(&cache.novel_chapters, book_id.clone(), async {
             let response = client.get_novel_info(parse_id(&book_id)?).await?;
-            let book = response
-                .get("Book")
-                .ok_or_else(|| AppError::protocol("小说详情响应缺少 Book"))?;
-            Ok((1..=array(book, "Chapter").len())
-                .map(|index| index.to_string())
-                .collect::<Vec<_>>())
+            Ok(reader_detail(&response)?
+                .chapters
+                .into_iter()
+                .map(|chapter| chapter.id)
+                .collect())
         })
         .await?;
     preload_novel_read_ahead(
@@ -217,17 +146,7 @@ async fn load_reader_document(
                 let response = client
                     .get_novel_content(parse_id(book_id)?, parse_id(document_id)?, convert)
                     .await?;
-                let chapter = response
-                    .get("Chapter")
-                    .ok_or_else(|| AppError::protocol("小说章节响应缺少 Chapter"))?;
-                Ok(NovelChapterContent {
-                    chapter_id: document_id.to_string(),
-                    server_chapter_id: number(chapter, "Id").to_string(),
-                    title: string(chapter, "Title"),
-                    html: sanitize_chapter_html(&string(chapter, "Content")),
-                    font_url: chapter_font_url(chapter),
-                    read_position: position(response.get("ReadPosition")),
-                })
+                chapter_content(&response, document_id.to_string())
             },
         )
         .await
@@ -241,13 +160,6 @@ fn parse_convert(convert: Option<String>) -> Result<Option<&'static str>> {
         Some("s2t") => Ok(Some("s2t")),
         Some(_) => Err(AppError::invalid_input("文字转换选项必须是 t2s 或 s2t")),
     }
-}
-
-/// 保留脚注标识，同时清洗不安全的章节 HTML。
-fn sanitize_chapter_html(content: &str) -> String {
-    let mut sanitizer = ammonia::Builder::default();
-    sanitizer.add_generic_attributes(["class", "id"]);
-    sanitizer.clean(content).to_string()
 }
 
 /// 在后台预加载当前章节之后的小说内容。
@@ -267,21 +179,6 @@ fn preload_novel_read_ahead(
     });
 }
 
-/// 读取并校验章节字体地址。
-fn chapter_font_url(chapter: &serde_json::Value) -> Option<String> {
-    let font = optional_string(chapter, "Font")?;
-    if font.starts_with('/') {
-        return Some(format!("https://api.lightnovel.life{font}"));
-    }
-
-    let url = Url::parse(&font).ok()?;
-    let trusted_host = matches!(
-        url.host_str(),
-        Some("api.lightnovel.life" | "cf-api.lightnovel.life" | "img.lightnovel.life")
-    );
-    (url.scheme() == "https" && trusted_host).then_some(font)
-}
-
 #[tauri::command]
 /// 保存小说阅读位置。
 pub(crate) async fn save_read_position(
@@ -293,22 +190,4 @@ pub(crate) async fn save_read_position(
     client
         .save_novel_position(parse_id(&book_id)?, parse_id(&chapter_id)?, xpath)
         .await
-}
-
-#[cfg(test)]
-mod tests {
-    use super::sanitize_chapter_html;
-
-    #[test]
-    fn preserves_official_footnote_markup() {
-        let html = sanitize_chapter_html(
-            r##"<p>正文<a class="duokan-footnote" href="#note-1"><img class="footnote" src="/note.png"></a></p><div id="note-1">注释</div><script>alert(1)</script>"##,
-        );
-
-        assert!(html.contains(r#"class="duokan-footnote""#));
-        assert!(html.contains(r#"class="footnote""#));
-        assert!(html.contains(r#"id="note-1""#));
-        assert!(html.contains(r##"href="#note-1""##));
-        assert!(!html.contains("script"));
-    }
 }
