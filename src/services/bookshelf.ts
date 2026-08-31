@@ -1,13 +1,13 @@
 import { command } from "./bridge";
 import type { NovelSummary } from "../domain/novel";
-import type { BookshelfEntry } from "../domain/bookshelf";
+import type { NovelBookshelfEntry } from "../domain/bookshelf";
 
-export type { BookshelfEntry } from "../domain/bookshelf";
+export type { NovelBookshelfEntry } from "../domain/bookshelf";
 
 export function listNovelBookshelf(query?: string) {
   return query
-    ? command<BookshelfEntry[]>("list_novel_bookshelf", { query })
-    : command<BookshelfEntry[]>("list_novel_bookshelf");
+    ? command<NovelBookshelfEntry[]>("list_novel_bookshelf", { query })
+    : command<NovelBookshelfEntry[]>("list_novel_bookshelf");
 }
 
 export function isOnNovelBookshelf(bookId: string) {

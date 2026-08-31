@@ -6,13 +6,13 @@ use tauri::State;
 
 use crate::{
     api::{cache::AppCache, OfficialClient},
-    dto::{bookshelf::BookshelfEntry, comic::ComicSummary},
+    dto::bookshelf::{ComicBookshelfEntry, NovelBookshelfEntry},
     error::Result,
     mapping::{
         bookshelf::{is_kind, items as shelf_items},
         comic::bookshelf_summary as comic_bookshelf_summary,
         novel::summary as novel_summary,
-        value::{array, number, optional_string},
+        value::{array, number, optional_number, optional_string},
     },
 };
 
@@ -75,7 +75,7 @@ pub(crate) async fn list_novel_bookshelf(
     client: State<'_, OfficialClient>,
     cache: State<'_, AppCache>,
     query: Option<String>,
-) -> Result<Arc<Vec<BookshelfEntry>>> {
+) -> Result<Arc<Vec<NovelBookshelfEntry>>> {
     let query = query.unwrap_or_default().to_lowercase();
     let books = cache
         .load_cache(&cache.novel_bookshelf, (), load_novel_bookshelf(&client))
@@ -93,7 +93,7 @@ pub(crate) async fn list_novel_bookshelf(
     ))
 }
 
-async fn load_novel_bookshelf(client: &OfficialClient) -> Result<Vec<BookshelfEntry>> {
+async fn load_novel_bookshelf(client: &OfficialClient) -> Result<Vec<NovelBookshelfEntry>> {
     let shelf = client.get_bookshelf().await?;
     let items: Vec<_> = shelf_items(&shelf)
         .into_iter()
@@ -111,11 +111,10 @@ async fn load_novel_bookshelf(client: &OfficialClient) -> Result<Vec<BookshelfEn
             books
                 .iter()
                 .find(|book| number(book, "Id") == number(&item, "id"))
-                .map(novel_summary)
-                .map(|book| BookshelfEntry {
+                .map(|book_value| NovelBookshelfEntry {
                     added_at: optional_string(&item, "updateAt").unwrap_or_default(),
-                    book,
-                    progress: None,
+                    book: novel_summary(book_value),
+                    progress: optional_number(book_value, "Progress"),
                 })
         })
         .collect())
@@ -154,7 +153,7 @@ pub(crate) async fn list_comic_bookshelf(
     client: State<'_, OfficialClient>,
     cache: State<'_, AppCache>,
     query: Option<String>,
-) -> Result<Arc<Vec<ComicSummary>>> {
+) -> Result<Arc<Vec<ComicBookshelfEntry>>> {
     let query = query.unwrap_or_default().to_lowercase();
     let comics = cache
         .load_cache(&cache.comic_bookshelf, (), load_comic_bookshelf(&client))
@@ -166,23 +165,36 @@ pub(crate) async fn list_comic_bookshelf(
     Ok(Arc::new(
         comics
             .iter()
-            .filter(|comic| title_matches_query(&comic.title, &query))
+            .filter(|entry| title_matches_query(&entry.comic.title, &query))
             .cloned()
             .collect(),
     ))
 }
 
-async fn load_comic_bookshelf(client: &OfficialClient) -> Result<Vec<ComicSummary>> {
+async fn load_comic_bookshelf(client: &OfficialClient) -> Result<Vec<ComicBookshelfEntry>> {
     let shelf = client.get_bookshelf().await?;
-    let ids = shelf_items(&shelf)
+    let items: Vec<_> = shelf_items(&shelf)
         .into_iter()
         .filter(|item| is_kind(item, "COMIC"))
-        .map(|item| number(&item, "id"))
         .collect();
-    Ok(book_values_for_ids(client, ids, Some("Comic"))
-        .await?
-        .iter()
-        .map(comic_bookshelf_summary)
+    let comics = book_values_for_ids(
+        client,
+        items.iter().map(|item| number(item, "id")).collect(),
+        Some("Comic"),
+    )
+    .await?;
+    Ok(items
+        .into_iter()
+        .filter_map(|item| {
+            comics
+                .iter()
+                .find(|comic| number(comic, "Id") == number(&item, "id"))
+                .map(|comic_value| ComicBookshelfEntry {
+                    comic: comic_bookshelf_summary(comic_value),
+                    added_at: optional_string(&item, "updateAt").unwrap_or_default(),
+                    progress: optional_number(comic_value, "Progress"),
+                })
+        })
         .collect())
 }
 
@@ -199,7 +211,7 @@ pub(crate) async fn is_on_comic_bookshelf(
         .await?;
     Ok(comics
         .iter()
-        .any(|comic| comic.book_id.as_deref() == Some(&comic_id)))
+        .any(|entry| entry.comic.book_id.as_deref() == Some(&comic_id)))
 }
 
 #[tauri::command]

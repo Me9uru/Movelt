@@ -6,6 +6,7 @@ import type {
   ComicSummary,
 } from "../domain/comic";
 import type { DiscoveryList } from "../domain/discovery";
+import type { ComicBookshelfEntry } from "../domain/bookshelf";
 export type ComicOrder = "latest" | "view" | "new";
 export type ComicSearchMode =
   | "fuzzy"
@@ -38,8 +39,8 @@ export function searchComic(
 }
 export function listComicBookshelf(query?: string) {
   return query
-    ? command<ComicSummary[]>("list_comic_bookshelf", { query })
-    : command<ComicSummary[]>("list_comic_bookshelf");
+    ? command<ComicBookshelfEntry[]>("list_comic_bookshelf", { query })
+    : command<ComicBookshelfEntry[]>("list_comic_bookshelf");
 }
 export function isOnComicBookshelf(comicId: string) {
   return command<boolean>("is_on_comic_bookshelf", { comicId });

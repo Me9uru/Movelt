@@ -1,8 +1,8 @@
 [package]
 name = "movel"
-version = "0.1.0"
-description = "Movel desktop reader"
-authors = ["you"]
+version = "0.1.1"
+description = "Movel reader"
+authors = ["Me9uru"]
 edition = "2021"
 
 [workspace]
@@ -25,13 +25,11 @@ tauri-build = { version = "2", features = [] }
 ammonia = "4"
 chrono = { version = "0.4", features = ["clock"] }
 flate2 = "1"
-futures-util = "0.3"
 moka = { version = "0.12", features = ["future"] }
 tauri = { version = "2", features = [] }
 tauri-plugin-dev-invoke = "0.2"
 tauri-plugin-movel-credentials = { path = "credential-store" }
 reqwest = { version = "0.12", default-features = false, features = ["gzip", "json", "rustls-tls"] }
-rmp-serde = "1"
 rmpv = { version = "1", features = ["with-serde"] }
 serde = { version = "1", features = ["derive", "rc"] }
 serde_json = "1"
@@ -40,7 +38,7 @@ thiserror = "2"
 tokio = { version = "1", features = ["net", "sync", "time"] }
 url = "2"
 uuid = { version = "1", features = ["v4"] }
-tokio-tungstenite = { version = "0.26", features = ["rustls-tls-webpki-roots"] }
+signalr-client = { git = "https://github.com/Me9uru/rust_signalr_client.git", rev = "c05a5228e66fcd8990966167e3a63d6bcfc18758", features = ["messagepack"] }
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

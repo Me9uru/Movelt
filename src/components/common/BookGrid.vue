@@ -17,11 +17,20 @@ const emit = defineEmits<{ open: [item: BookGridItem<T>] }>();
       :disabled="disabled"
       @click="emit('open', item)"
     >
-      <BookCover
-        class="book-cover"
-        :cover-url="item.coverUrl"
-        :title="item.title"
-      />
+      <div class="book-cover-frame">
+        <BookCover
+          class="book-cover"
+          :cover-url="item.coverUrl"
+          :title="item.title"
+        />
+        <span
+          v-if="item.coverStatus"
+          class="book-cover-status"
+          :class="`book-cover-status--${item.coverStatus}`"
+        >
+          {{ item.coverStatus === "finished" ? "已看完" : "未看完" }}
+        </span>
+      </div>
       <div class="book-meta">
         <strong>{{ item.title }}</strong>
         <span v-if="item.meta">{{ item.meta }}</span>

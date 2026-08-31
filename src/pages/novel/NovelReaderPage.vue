@@ -17,6 +17,10 @@ import LoadingOverlay from "../../components/common/LoadingOverlay.vue";
 import ErrorState from "../../components/common/ErrorState.vue";
 import { getReaderDocument, getReaderOverview, lightNovelSourceId, saveReadPosition } from "../../services/novel";
 import { getErrorMessage, showError } from "../../utils/error";
+import {
+  createReaderProgressSaver,
+  readReaderProgress,
+} from "../../utils/readerProgress";
 
 const route = useRoute();
 const router = useRouter();
@@ -55,9 +59,15 @@ let hasRestoredPage = false;
 let hasRestoredServerPosition = false;
 let nextChapterRequested = false;
 let previousChapterRequested = false;
+const saveProgress = createReaderProgressSaver("novel", (value) =>
+  showError(value, "保存阅读进度失败"),
+);
 
 async function load(): Promise<void> {
   if (!bookId.value || !chapterId.value) return;
+  // Capture before awaiting: an in-flight cloud save may clear the checkpoint
+  // while the overview request is still returning an older cached position.
+  const checkpoint = readReaderProgress("novel", bookId.value);
   loading.value = true;
   error.value = "";
   readerDocument.value = null;
@@ -65,12 +75,22 @@ async function load(): Promise<void> {
     const overview = await getReaderOverview(lightNovelSourceId, bookId.value);
     chapterIds.value = overview.chapters.map((chapter) => chapter.id);
     resumePosition.value = overview.readPosition;
-    readerDocument.value = await getReaderDocument(
+    const document = await getReaderDocument(
       lightNovelSourceId,
       bookId.value,
       chapterId.value,
       settings.convert,
     );
+    if (
+      checkpoint?.routeChapterId === chapterId.value &&
+      checkpoint.serverChapterId === document.serverChapterId
+    ) {
+      resumePosition.value = {
+        chapterId: document.chapterId,
+        position: checkpoint.position,
+      };
+    }
+    readerDocument.value = document;
   } catch (value) {
     error.value = getErrorMessage(value, "无法加载章节");
     showError(value, "无法加载章节");
@@ -83,8 +103,18 @@ function recordProgress(): void {
   if (!readerDocument.value || !bookId.value) return;
   const xpath = visibleXPath();
   resumePosition.value = { chapterId: chapterId.value, position: xpath };
-  void saveReadPosition(bookId.value, readerDocument.value.serverChapterId, xpath)
-    .catch((value) => showError(value, "保存阅读进度失败"));
+  const currentBookId = bookId.value;
+  const currentRouteChapterId = chapterId.value;
+  const currentServerChapterId = readerDocument.value.serverChapterId;
+  saveProgress(
+    {
+      itemId: currentBookId,
+      routeChapterId: currentRouteChapterId,
+      serverChapterId: currentServerChapterId,
+      position: xpath,
+    },
+    () => saveReadPosition(currentBookId, currentServerChapterId, xpath),
+  );
 }
 
 function changeChapter(offset: number): void {
@@ -99,8 +129,8 @@ function changeChapter(offset: number): void {
   });
 }
 
-function restoreAfterForeground(): void {
-  if (document.visibilityState === "visible" && readerDocument.value && !loading.value) void load();
+function saveBeforeInterruption(): void {
+  if (document.visibilityState === "hidden") recordProgress();
 }
 
 const pageLabel = computed(
@@ -450,7 +480,8 @@ onMounted(() => {
   if (pageViewport.value) resizeObserver.observe(pageViewport.value);
   window.addEventListener("keydown", handleKeydown);
   window.addEventListener("scroll", handleScroll, { passive: true });
-  document.addEventListener("visibilitychange", restoreAfterForeground);
+  document.addEventListener("visibilitychange", saveBeforeInterruption);
+  window.addEventListener("pagehide", recordProgress);
   updatePagination(true);
   restoreScrollProgress();
   if (settings.mode === "scroll") void nextTick(restoreServerPosition);
@@ -459,7 +490,10 @@ onMounted(() => {
 
 watch(chapterId, () => void load());
 watch(() => settings.convert, () => {
-  if (readerDocument.value) void load();
+  if (readerDocument.value) {
+    recordProgress();
+    void load();
+  }
 });
 
 onBeforeUnmount(() => {
@@ -471,7 +505,8 @@ onBeforeUnmount(() => {
   resizeObserver?.disconnect();
   window.removeEventListener("keydown", handleKeydown);
   window.removeEventListener("scroll", handleScroll);
-  document.removeEventListener("visibilitychange", restoreAfterForeground);
+  document.removeEventListener("visibilitychange", saveBeforeInterruption);
+  window.removeEventListener("pagehide", recordProgress);
   if (scrollTimer !== null) window.clearTimeout(scrollTimer);
 });
 </script>

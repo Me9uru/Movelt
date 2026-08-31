@@ -4,6 +4,7 @@ export interface BookGridItem<T> {
   title: string;
   coverUrl: string | null;
   meta?: string | null;
+  coverStatus?: "finished" | "unfinished";
   data: T;
 }
 

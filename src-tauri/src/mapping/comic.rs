@@ -146,7 +146,7 @@ mod tests {
 
     #[test]
     fn maps_bookshelf_summary_with_book_id() {
-        let value = json!({"Id": 42, "Title": "Series title"});
+        let value = json!({"Id": 42, "Title": "Series title", "Progress": 100});
 
         let mapped = bookshelf_summary(&value);
 

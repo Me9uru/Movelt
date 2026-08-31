@@ -20,6 +20,10 @@ import ErrorState from "../../components/common/ErrorState.vue";
 import ReaderSettingsDrawer from "../../components/reader/ReaderSettingsDrawer.vue";
 import ReaderBoundarySwitch from "../../components/reader/ReaderBoundarySwitch.vue";
 import LoadingOverlay from "../../components/common/LoadingOverlay.vue";
+import {
+  createReaderProgressSaver,
+  readReaderProgress,
+} from "../../utils/readerProgress";
 
 const route = useRoute();
 const router = useRouter();
@@ -53,6 +57,10 @@ let saveTimer: number | undefined;
 // 官方数字分卷 ID，而不能在卸载钩子中重新读取路由参数。
 let loadedComicId = "";
 let loadedChapterId = "";
+let loadedRouteChapterId = "";
+const persistProgress = createReaderProgressSaver("comic", (value) =>
+  showError(value, "保存阅读进度失败"),
+);
 
 async function loadPage(index: number): Promise<void> {
   if (pages.value[index]) return;
@@ -78,6 +86,9 @@ async function loadPage(index: number): Promise<void> {
 }
 
 async function load(): Promise<void> {
+  // Keep the checkpoint for this load even if its cloud save completes while
+  // the concurrently fetched detail still contains the previous position.
+  const checkpoint = readReaderProgress("comic", comicId.value);
   loading.value = true;
   error.value = "";
   requestedBatches.clear();
@@ -96,15 +107,19 @@ async function load(): Promise<void> {
     comic.value = detail;
     loadedComicId = detail.id;
     loadedChapterId = list.chapterId;
+    loadedRouteChapterId = chapterId.value;
     pages.value = Array.from(
       { length: list.pageCount },
       (_, index) => list.pageUrls[index] || "",
     );
     const position = list.readPosition ?? detail.readPosition;
     const page =
-      position?.chapterId === chapterId.value
-        ? Number.parseInt(position.position, 10)
-        : 1;
+      checkpoint?.routeChapterId === chapterId.value &&
+      checkpoint.serverChapterId === list.chapterId
+        ? Number.parseInt(checkpoint.position, 10)
+        : position?.chapterId === chapterId.value
+          ? Number.parseInt(position.position, 10)
+          : 1;
     savedPage = Math.min(
       Math.max(Number.isFinite(page) ? page - 1 : 0, 0),
       Math.max(0, pages.value.length - 1),
@@ -132,13 +147,24 @@ function saveProgress(immediate = false): void {
   if (saveTimer !== undefined) window.clearTimeout(saveTimer);
   const save = () => {
     saveTimer = undefined;
-    void saveComicReadPosition(
-      loadedComicId,
-      loadedChapterId,
-      savedPage + 1,
-    ).catch((errorValue) => {
-      showError(errorValue, "保存阅读进度失败");
-    });
+    const currentComicId = loadedComicId;
+    const currentRouteChapterId = loadedRouteChapterId;
+    const currentServerChapterId = loadedChapterId;
+    const page = savedPage + 1;
+    persistProgress(
+      {
+        itemId: currentComicId,
+        routeChapterId: currentRouteChapterId,
+        serverChapterId: currentServerChapterId,
+        position: String(page),
+      },
+      () =>
+        saveComicReadPosition(
+          currentComicId,
+          currentServerChapterId,
+          page,
+        ),
+    );
   };
   if (immediate) save();
   else saveTimer = window.setTimeout(save, 400);
@@ -238,13 +264,28 @@ function handleReaderClick(event: MouseEvent): void {
   settingsVisible.value = true;
 }
 
-onMounted(() => void load());
+function saveCurrentProgress(): void {
+  savedPage = currentPage.value;
+  saveProgress(true);
+}
+
+function saveBeforeInterruption(): void {
+  if (document.visibilityState === "hidden") saveCurrentProgress();
+}
+
+onMounted(() => {
+  document.addEventListener("visibilitychange", saveBeforeInterruption);
+  window.addEventListener("pagehide", saveCurrentProgress);
+  void load();
+});
 
 onBeforeUnmount(() => {
   loadObserver?.disconnect();
   progressObserver?.disconnect();
   savedPage = currentPage.value;
   saveProgress(true);
+  document.removeEventListener("visibilitychange", saveBeforeInterruption);
+  window.removeEventListener("pagehide", saveCurrentProgress);
 });
 
 watch(chapterId, () => void load());

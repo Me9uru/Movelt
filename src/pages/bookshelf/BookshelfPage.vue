@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import type { BookshelfEntry } from "../../domain/bookshelf";
+import type {
+  ComicBookshelfEntry,
+  NovelBookshelfEntry,
+} from "../../domain/bookshelf";
 import type { NovelSummary } from "../../domain/novel";
 import type { ComicSummary } from "../../domain/comic";
 import ContentTabs from "../../layout/ContentTabs.vue";
@@ -21,27 +24,29 @@ const {
 } = useLibrary();
 const activeKind = ref<"novel" | "comic">("novel");
 const query = ref("");
-const searchResults = ref<BookshelfEntry[] | null>(null);
-const comicSearchResults = ref<ComicSummary[] | null>(null);
+const searchResults = ref<NovelBookshelfEntry[] | null>(null);
+const comicSearchResults = ref<ComicBookshelfEntry[] | null>(null);
 const loading = ref(false);
 const bookshelfLoading = ref(false);
 const visibleBooks = computed(() => searchResults.value ?? books.value);
 const visibleComic = computed(() => comicSearchResults.value ?? comic.value);
 const novelGridItems = computed<BookGridItem<NovelSummary>[]>(() =>
-  visibleBooks.value.map(({ book }) => ({
+  visibleBooks.value.map(({ book, progress }) => ({
     id: `${book.source}:${book.id}`,
     title: book.title,
     coverUrl: book.cover_url,
+    coverStatus: progress === 100 ? "finished" : "unfinished",
     data: book,
   })),
 );
 const comicGridItems = computed<BookGridItem<ComicSummary>[]>(() =>
-  visibleComic.value.map((item) => ({
-    id: item.id,
-    title: item.title,
-    coverUrl: item.coverUrl,
-    meta: item.author,
-    data: item,
+  visibleComic.value.map(({ comic, progress }) => ({
+    id: comic.id,
+    title: comic.title,
+    coverUrl: comic.coverUrl,
+    meta: comic.author,
+    coverStatus: progress === 100 ? "finished" : "unfinished",
+    data: comic,
   })),
 );
 const searchActive = computed(

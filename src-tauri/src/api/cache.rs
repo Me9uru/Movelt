@@ -4,7 +4,7 @@ use moka::future::Cache;
 
 use crate::{
     dto::{
-        bookshelf::BookshelfEntry,
+        bookshelf::{ComicBookshelfEntry, NovelBookshelfEntry},
         comic::{ComicChapterPageBatch, ComicSummary},
         common::ListKey,
         novel::{NovelChapterContent, NovelSummary},
@@ -24,8 +24,8 @@ pub(crate) struct AppCache {
     pub(crate) novel_list: Cache<ListKey, Arc<Vec<NovelSummary>>>,
     pub(crate) novel_rank: Cache<i64, Arc<Vec<NovelSummary>>>,
     pub(crate) comic_list: Cache<ListKey, Arc<Vec<ComicSummary>>>,
-    pub(crate) novel_bookshelf: Cache<(), Arc<Vec<BookshelfEntry>>>,
-    pub(crate) comic_bookshelf: Cache<(), Arc<Vec<ComicSummary>>>,
+    pub(crate) novel_bookshelf: Cache<(), Arc<Vec<NovelBookshelfEntry>>>,
+    pub(crate) comic_bookshelf: Cache<(), Arc<Vec<ComicBookshelfEntry>>>,
     pub(crate) novel_pages: Cache<NovelChapterKey, Arc<NovelChapterContent>>,
     pub(crate) novel_chapters: Cache<String, Arc<Vec<String>>>,
     pub(crate) comic_pages: Cache<ComicPageBatchKey, Arc<ComicChapterPageBatch>>,

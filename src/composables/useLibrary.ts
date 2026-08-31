@@ -11,10 +11,13 @@ import {
   listComicBookshelf,
   removeFromComicBookshelf,
 } from "../services/comic";
-import type { BookshelfEntry } from "../domain/bookshelf";
+import type {
+  ComicBookshelfEntry,
+  NovelBookshelfEntry,
+} from "../domain/bookshelf";
 
-const books = ref<BookshelfEntry[]>([]);
-const comic = ref<ComicSummary[]>([]);
+const books = ref<NovelBookshelfEntry[]>([]);
+const comic = ref<ComicBookshelfEntry[]>([]);
 let novelBooksLoaded = false;
 let comicBooksLoaded = false;
 const addedNovelIds = new Set<string>();
@@ -55,23 +58,34 @@ export function useLibrary() {
 
   async function addComicBook(item: ComicSummary): Promise<void> {
     await addToComicBookshelf(item.id);
-    if (!comicBooksLoaded || comic.value.some((comicItem) => comicItem.id === item.id)) return;
-    comic.value.unshift(item);
+    if (
+      !comicBooksLoaded ||
+      comic.value.some((entry) => entry.comic.id === item.id)
+    ) return;
+    comic.value.unshift({
+      comic: item,
+      addedAt: new Date().toISOString(),
+      progress: null,
+    });
   }
 
   async function removeComicBook(comicId: string): Promise<void> {
     await removeFromComicBookshelf(comicId);
-    if (comicBooksLoaded) comic.value = comic.value.filter((item) => item.id !== comicId);
+    if (comicBooksLoaded) {
+      comic.value = comic.value.filter((entry) => entry.comic.id !== comicId);
+    }
   }
 
-  function searchBooks(query: string): BookshelfEntry[] {
+  function searchBooks(query: string): NovelBookshelfEntry[] {
     const normalized = query.toLowerCase();
     return books.value.filter((entry) => entry.book.title.toLowerCase().includes(normalized));
   }
 
-  function searchComicBooks(query: string): ComicSummary[] {
+  function searchComicBooks(query: string): ComicBookshelfEntry[] {
     const normalized = query.toLowerCase();
-    return comic.value.filter((item) => item.title.toLowerCase().includes(normalized));
+    return comic.value.filter((entry) =>
+      entry.comic.title.toLowerCase().includes(normalized),
+    );
   }
 
   return {
