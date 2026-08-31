@@ -50,11 +50,11 @@ watch(
   },
 );
 
-function close() {
+const close = () => {
   emit("update:show", false);
 }
 
-function beginAvatarEdit() {
+const beginAvatarEdit = () => {
   const avatar = props.user?.Avatar ?? "";
   const qqAvatarPrefix = "https://q.qlogo.cn/headimg_dl?spec=100&dst_uin=";
   const qqGroupMatch = avatar.match(/^https:\/\/p\.qlogo\.cn\/gh\/(\d+)\/\1\/100$/);
@@ -72,13 +72,13 @@ function beginAvatarEdit() {
   editingAvatar.value = true;
 }
 
-function changeAvatarSource(source: AvatarSource) {
+const changeAvatarSource = (source: AvatarSource) => {
   if (avatarSource.value === source) return;
   avatarSource.value = source;
   avatarValue.value = "";
 }
 
-function avatarUrl() {
+const avatarUrl = () => {
   const value = avatarValue.value.trim();
   if (avatarSource.value === "qq") {
     if (!/^[1-9]\d{4,}$/.test(value)) throw new Error("请输入正确的 QQ 号");
@@ -94,7 +94,7 @@ function avatarUrl() {
   return url.toString();
 }
 
-async function saveAvatar() {
+const saveAvatar = async () => {
   try {
     saving.value = true;
     const user = await setAvatar(avatarUrl());
@@ -108,7 +108,7 @@ async function saveAvatar() {
   }
 }
 
-function formatDate(value?: string) {
+const formatDate = (value?: string) => {
   if (!value) return undefined;
   const date = new Date(value);
   return Number.isNaN(date.getTime())

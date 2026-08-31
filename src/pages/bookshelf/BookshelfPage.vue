@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
+import { storeToRefs } from "pinia";
 import { useRouter } from "vue-router";
 import type {
   ComicBookshelfEntry,
@@ -7,21 +8,21 @@ import type {
 } from "../../domain/bookshelf";
 import type { NovelSummary } from "../../domain/novel";
 import type { ComicSummary } from "../../domain/comic";
-import ContentTabs from "../../layout/ContentTabs.vue";
+import BookshelfTabs from "../../components/bookshelf/BookshelfTabs.vue";
 import BookCollection from "../../layout/BookCollection.vue";
 import type { BookGridItem } from "../../types/book";
-import { useLibrary } from "../../composables/useLibrary";
+import { useBookshelfStore } from "../../stores/bookshelf";
 import { showError } from "../../utils/error";
 
 const router = useRouter();
+const bookshelf = useBookshelfStore();
+const { books, comic } = storeToRefs(bookshelf);
 const {
-  books,
-  comic,
   refreshBooks,
   refreshComicBooks,
   searchBooks,
   searchComicBooks,
-} = useLibrary();
+} = bookshelf;
 const activeKind = ref<"novel" | "comic">("novel");
 const query = ref("");
 const searchResults = ref<NovelBookshelfEntry[] | null>(null);
@@ -58,7 +59,7 @@ const shelfTabs: { name: "novel" | "comic"; label: string }[] = [
   { name: "comic", label: "漫画" },
 ];
 
-async function load(): Promise<void> {
+const load = async (): Promise<void> => {
   bookshelfLoading.value = true;
   try {
     if (activeKind.value === "novel") await refreshBooks();
@@ -70,7 +71,7 @@ async function load(): Promise<void> {
   }
 }
 
-async function search(): Promise<void> {
+const search = async (): Promise<void> => {
   const value = query.value.trim();
   if (!value) {
     if (activeKind.value === "novel") searchResults.value = null;
@@ -88,7 +89,7 @@ async function search(): Promise<void> {
   }
 }
 
-function changeKind(kind: "novel" | "comic"): void {
+const changeKind = (kind: "novel" | "comic"): void => {
   activeKind.value = kind;
   query.value = "";
   searchResults.value = null;
@@ -96,14 +97,14 @@ function changeKind(kind: "novel" | "comic"): void {
   void load();
 }
 
-function openNovel(novel: NovelSummary): void {
+const openNovel = (novel: NovelSummary): void => {
   void router.push({
     name: "detail",
     params: { bookId: novel.id },
     query: { from: "bookshelf" },
   });
 }
-function openComic(item: ComicSummary): void {
+const openComic = (item: ComicSummary): void => {
   void router.push({ name: "comic-detail", params: { comicId: item.id } });
 }
 
@@ -118,12 +119,11 @@ watch(query, (value) => {
 
 <template>
   <section class="bookshelf-view">
-    <ContentTabs
+    <BookshelfTabs
       :model-value="activeKind"
       :tabs="shelfTabs"
-      search-label="搜索书架"
       :query="query"
-      :search-loading="loading"
+      :loading="loading"
       @update:model-value="changeKind($event)"
       @search="search"
       @clear="search"

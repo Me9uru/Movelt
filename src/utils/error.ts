@@ -3,10 +3,10 @@ import { Dialog, Snackbar } from "@varlet/ui";
 const fallbackMessage = "操作失败，请稍后重试";
 let activeDialogMessage: string | null = null;
 
-export function getErrorMessage(
+export const getErrorMessage = (
   error: unknown,
   fallback = fallbackMessage,
-): string {
+): string => {
   if (typeof error === "string" && error.trim()) return error;
   if (error && typeof error === "object") {
     const value = error as { message?: unknown; code?: unknown };
@@ -18,14 +18,14 @@ export function getErrorMessage(
 }
 
 /** Keeps non-page-specific failures visible to developers without interrupting the UI. */
-export function showError(error: unknown, fallback?: string): void {
+export const showError = (error: unknown, fallback?: string): void => {
   const message = getErrorMessage(error, fallback);
   console.error(message);
   Snackbar.error({ content: message, lockScroll: false });
 }
 
 /** Shows fatal navigation and rendering errors in a centered, dismissible dialog. */
-export function showErrorDialog(error: unknown, fallback?: string): void {
+export const showErrorDialog = (error: unknown, fallback?: string): void => {
   const message = getErrorMessage(error, fallback);
   console.error(message);
   if (activeDialogMessage === message) return;

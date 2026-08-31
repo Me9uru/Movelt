@@ -30,11 +30,11 @@ const redirectTarget = computed(() => {
     : "/novels";
 });
 
-async function finishAuthentication() {
+const finishAuthentication = async () => {
   await router.replace(redirectTarget.value);
 }
 
-async function submitLogin() {
+const submitLogin = async () => {
   if (!credentials.email || !credentials.password) return;
   submitting.value = true;
   try {
@@ -47,7 +47,7 @@ async function submitLogin() {
   }
 }
 
-async function sendRegistrationCode() {
+const sendRegistrationCode = async () => {
   if (!credentials.email) return;
   registerEmailSending.value = true;
   try {
@@ -59,7 +59,7 @@ async function sendRegistrationCode() {
   }
 }
 
-async function submitRegistration() {
+const submitRegistration = async () => {
   if (!registration.userName || !credentials.email || !credentials.password || !registration.code) return;
   if (credentials.password !== registerPasswordConfirmation.value) {
     showError("两次输入的密码不一致");

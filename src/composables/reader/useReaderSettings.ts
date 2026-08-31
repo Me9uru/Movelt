@@ -1,6 +1,6 @@
 import { computed } from "vue";
-import { useReaderSettingsStore } from "../stores/readerSettings";
-import type { ReaderKind } from "../types/reader";
+import { useReaderSettingsStore } from "../../stores/readerSettings";
+import type { ReaderKind } from "../../types/reader";
 
 export type {
   PageTurnDirection,
@@ -10,9 +10,9 @@ export type {
   ReaderMode,
   ReaderSettings,
   ReaderTheme,
-} from "../types/reader";
+} from "../../types/reader";
 
-export function useReaderSettings(kind: ReaderKind) {
+export const useReaderSettings = (kind: ReaderKind) => {
   const store = useReaderSettingsStore();
   const isNovel = kind === "novel";
   return {

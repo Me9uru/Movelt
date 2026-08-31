@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, watch } from "vue";
 import { RouterView, useRoute, useRouter } from "vue-router";
+import AppStartupScreen from "./components/common/AppStartupScreen.vue";
 import MainNavigation from "./layout/MainNavigation.vue";
 import { useAuthStore } from "./stores/auth";
 import type { AppRouteName, LibraryRouteName } from "./types/router";
@@ -17,23 +18,22 @@ const view = computed<AppRouteName>(() => {
     routeName === "comic" ||
     routeName === "comic-detail" ||
     routeName === "comic-reader" ||
-    routeName === "settings" ||
     routeName === "login"
     ? routeName
     : "novels";
 });
 
-function redirectToLogin() {
+const redirectToLogin = () => {
   if (route.name === "login") return;
   void router.replace({ name: "login", query: { redirect: route.fullPath } });
 }
 
-function handleAuthenticationExpired() {
+const handleAuthenticationExpired = () => {
   auth.expire();
   redirectToLogin();
 }
 
-function handleAndroidBack(event: Event) {
+const handleAndroidBack = (event: Event) => {
   if (
     view.value !== "detail" &&
     view.value !== "reader" &&
@@ -54,7 +54,7 @@ function handleAndroidBack(event: Event) {
     });
 }
 
-function navigate(nextView: LibraryRouteName) {
+const navigate = (nextView: LibraryRouteName) => {
   void router.replace({ name: nextView });
 }
 
@@ -93,9 +93,12 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="page-bg">
-    <RouterView v-slot="{ Component }">
-      <component :is="Component" v-if="view === 'login' || auth.user" />
-    </RouterView>
-    <MainNavigation v-if="auth.user" :view="view" @navigate="navigate" />
+    <AppStartupScreen v-if="auth.restoring" />
+    <template v-else>
+      <RouterView v-slot="{ Component }">
+        <component :is="Component" v-if="view === 'login' || auth.user" />
+      </RouterView>
+      <MainNavigation v-if="auth.user" :view="view" @navigate="navigate" />
+    </template>
   </div>
 </template>

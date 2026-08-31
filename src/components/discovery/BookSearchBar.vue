@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { useDiscoveryContext } from "../../composables/discovery/useDiscoveryContext";
 import type { BookSearchMode } from "../../domain/search";
 import type { BookSearchBarProps } from "../../types/discovery";
 
@@ -10,6 +11,7 @@ const searchModes: { value: BookSearchMode; label: string }[] = [
 ];
 
 const props = defineProps<BookSearchBarProps>();
+const discoveryContext = useDiscoveryContext();
 
 const emit = defineEmits<{
   clear: [];
@@ -19,17 +21,15 @@ const emit = defineEmits<{
 }>();
 
 const placeholder = computed(() => {
-  if (props.placeholder) return props.placeholder;
   if (props.searchMode === "author") return "输入作者名称";
   if (props.searchMode === "tags") return "输入标签，多个标签用逗号分隔";
-  return "输入作品名";
+  return `输入${discoveryContext.subjectLabel}名称`;
 });
 
 const ariaLabel = computed(() => {
-  if (props.ariaLabel) return props.ariaLabel;
   if (props.searchMode === "author") return "按作者搜索";
   if (props.searchMode === "tags") return "按标签搜索";
-  return "按作品名搜索";
+  return `按${discoveryContext.subjectLabel}名搜索`;
 });
 </script>
 

@@ -2,15 +2,16 @@
 import { computed } from "vue";
 import BookCollection from "../../layout/BookCollection.vue";
 import BookGrid from "../common/BookGrid.vue";
-import type { BookGridItem } from "../../types/book";
-import type { RecommendDiscoveryProps } from "../../types/discovery";
+import type { RecommendDiscoveryModel } from "../../types/discovery";
+import { useDiscoveryContext } from "../../composables/discovery/useDiscoveryContext";
 
-const props = defineProps<RecommendDiscoveryProps<T>>();
+const props = defineProps<RecommendDiscoveryModel<T>>();
+const discoveryContext = useDiscoveryContext();
 
 const collectionItems = computed(() => props.blocks.flatMap((block) => block.items));
 
 const emit = defineEmits<{
-  open: [item: BookGridItem<T>];
+  open: [item: T];
   retry: [];
 }>();
 </script>
@@ -20,8 +21,8 @@ const emit = defineEmits<{
     :items="collectionItems"
     :loading="loading"
     :error="error"
-    :empty-message="emptyMessage"
-    :error-title="errorTitle"
+    empty-message="暂无推荐内容"
+    error-title="推荐加载失败"
     grid-class="discovery-grid"
     :has-content="blocks.length > 0"
     :content-while-loading="false"
@@ -31,12 +32,14 @@ const emit = defineEmits<{
       <section v-for="block in blocks" :key="block.title" class="discovery-block">
         <div class="section-heading">
           <h2>{{ block.title }}</h2>
-          <var-chip class="count-tag" plain>{{ block.items.length }} 本</var-chip>
+          <var-chip class="count-tag" plain>
+            {{ block.items.length }} {{ discoveryContext.countUnit }}
+          </var-chip>
         </div>
         <BookGrid
           class="discovery-grid"
           :items="block.items"
-          @open="emit('open', $event)"
+          @open="emit('open', $event.data)"
         />
       </section>
     </template>

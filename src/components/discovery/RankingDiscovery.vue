@@ -1,12 +1,13 @@
 <script setup lang="ts" generic="T">
 import BookCollection from "../../layout/BookCollection.vue";
-import type { BookGridItem } from "../../types/book";
-import type { RankingDiscoveryProps } from "../../types/discovery";
+import type { RankingDiscoveryModel } from "../../types/discovery";
+import { useDiscoveryContext } from "../../composables/discovery/useDiscoveryContext";
 
-defineProps<RankingDiscoveryProps<T>>();
+defineProps<RankingDiscoveryModel<T>>();
+const discoveryContext = useDiscoveryContext();
 
 const emit = defineEmits<{
-  open: [item: BookGridItem<T>];
+  open: [item: T];
   retry: [];
   "update:days": [value: number];
 }>();
@@ -17,11 +18,11 @@ const emit = defineEmits<{
     :items="items"
     :loading="loading"
     :error="error"
-    :empty-message="emptyMessage"
-    :error-title="errorTitle"
+    :empty-message="`这个榜单还没有${discoveryContext.subjectLabel}`"
+    error-title="榜单加载失败"
     grid-class="discovery-grid"
     :content-while-loading="false"
-    @open="emit('open', $event)"
+    @open="emit('open', $event.data)"
     @retry="emit('retry')"
   >
     <template #header>

@@ -23,7 +23,7 @@ const visibleItems = computed<BookChapterItem<T>[]>(() => {
   return props.items.slice(start, start + props.pageSize);
 });
 
-function rowNumber(index: number): string {
+const rowNumber = (index: number): string => {
   return String((page.value - 1) * (props.pageSize ?? 1) + index + 1).padStart(
     2,
     "0",

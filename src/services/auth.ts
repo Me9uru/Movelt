@@ -3,30 +3,30 @@ import type { LightNovelUser, LoginInput, RegisterInput } from "../domain/auth";
 
 export type { LightNovelUser, LoginInput, RegisterInput } from "../domain/auth";
 
-export function login(input: LoginInput) {
+export const login = (input: LoginInput) => {
   return command<LightNovelUser>("login", { ...input });
 }
 
-export function register(input: RegisterInput) {
+export const register = (input: RegisterInput) => {
   return command<LightNovelUser>("register", { ...input });
 }
 
-export function sendRegisterEmail(email: string) {
+export const sendRegisterEmail = (email: string) => {
   return command<void>("send_register_email", { email });
 }
 
-export function restoreUser() {
+export const restoreUser = () => {
   return command<LightNovelUser | null>("restore_user");
 }
 
-export function setAvatar(url: string) {
+export const setAvatar = (url: string) => {
   return command<LightNovelUser>("set_avatar", { url });
 }
 
-export function signIn() {
+export const signIn = () => {
   return command<LightNovelUser>("sign_in");
 }
 
-export function logout() {
+export const logout = () => {
   return command<void>("logout");
 }

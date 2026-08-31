@@ -35,13 +35,13 @@ const hasLeadingHeading = computed(() => {
   return /^H[1-6]$/.test(body.firstElementChild?.tagName ?? "");
 });
 
-function updateChapterFont(fontUrl: string | null): void {
+const updateChapterFont = (fontUrl: string | null): void => {
   chapterFontStyle.textContent = fontUrl
     ? `@font-face { font-family: "movel-chapter"; font-display: block; src: url(${JSON.stringify(fontUrl)}); }`
     : "";
 }
 
-function prepareFootnotes(element: HTMLElement): void {
+const prepareFootnotes = (element: HTMLElement): void => {
   element
     .querySelectorAll<HTMLAnchorElement>("a.duokan-footnote")
     .forEach((footnote) => {
@@ -74,7 +74,7 @@ function prepareFootnotes(element: HTMLElement): void {
     });
 }
 
-function observeContent(): void {
+const observeContent = (): void => {
   const element = content.value;
   if (!element) return;
   prepareFootnotes(element);
@@ -87,11 +87,11 @@ function observeContent(): void {
   emit("layout-change");
 }
 
-function handleImageLoad(event: Event): void {
+const handleImageLoad = (event: Event): void => {
   if (event.target instanceof HTMLImageElement) emit("layout-change");
 }
 
-function handleImageClick(event: MouseEvent): void {
+const handleImageClick = (event: MouseEvent): void => {
   const image = event.target;
   if (!(image instanceof HTMLImageElement)) return;
   if (!image.closest(".illus, .illu, .duokan-image-single, .image-preview"))
@@ -101,12 +101,12 @@ function handleImageClick(event: MouseEvent): void {
   emit("preview-visible", true);
 }
 
-function updatePreviewVisible(visible: boolean): void {
+const updatePreviewVisible = (visible: boolean): void => {
   if (!visible) previewImageUrl.value = null;
   emit("preview-visible", visible);
 }
 
-function handleLinkClick(event: MouseEvent): void {
+const handleLinkClick = (event: MouseEvent): void => {
   const target = event.target;
   if (!(target instanceof Element)) return;
   const link = target.closest<HTMLAnchorElement>("a[href]");

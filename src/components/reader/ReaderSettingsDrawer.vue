@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useReaderSettings } from "../../composables/useReaderSettings";
+import { useReaderSettings } from "../../composables/reader/useReaderSettings";
 import type { ReaderSettingsDrawerProps } from "../../types/reader";
 
 const props = defineProps<ReaderSettingsDrawerProps>();

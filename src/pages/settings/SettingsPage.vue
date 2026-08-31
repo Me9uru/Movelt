@@ -12,7 +12,7 @@ const auth = useAuthStore();
 const router = useRouter();
 const profileVisible = ref(false);
 
-function openAccount() {
+const openAccount = () => {
   if (auth.user) {
     profileVisible.value = true;
     return;
@@ -20,11 +20,11 @@ function openAccount() {
   router.push({ name: "login" });
 }
 
-function updateUser(user: LightNovelUser) {
+const updateUser = (user: LightNovelUser) => {
   auth.user = user;
 }
 
-async function logout() {
+const logout = async () => {
   try {
     await auth.logout();
   } catch (error) {
@@ -32,7 +32,7 @@ async function logout() {
   }
 }
 
-async function clearImageCache() {
+const clearImageCache = async () => {
   try {
     await clearWebviewCache();
     Snackbar.success("已清除 WebView 浏览数据");

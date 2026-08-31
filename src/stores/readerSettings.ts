@@ -22,11 +22,11 @@ const defaults: ReaderSettings = {
   convert: "original",
 };
 
-function isReaderTheme(value: unknown): value is ReaderTheme {
+const isReaderTheme = (value: unknown): value is ReaderTheme => {
   return value === "paper" || value === "light" || value === "night";
 }
 
-function loadStoredSettings(kind: ReaderKind): Partial<ReaderSettings> {
+const loadStoredSettings = (kind: ReaderKind): Partial<ReaderSettings> => {
   try {
     return JSON.parse(localStorage.getItem(storageKeys[kind]) ?? "{}") as Partial<ReaderSettings>;
   } catch {
@@ -34,7 +34,7 @@ function loadStoredSettings(kind: ReaderKind): Partial<ReaderSettings> {
   }
 }
 
-function loadTheme(): ReaderTheme {
+const loadTheme = (): ReaderTheme => {
   const savedTheme = localStorage.getItem(themeStorageKey);
   if (isReaderTheme(savedTheme)) return savedTheme;
 
@@ -45,7 +45,7 @@ function loadTheme(): ReaderTheme {
   return isReaderTheme(comicTheme) ? comicTheme : defaults.theme;
 }
 
-function createSettings(kind: ReaderKind, theme: { value: ReaderTheme }): ReaderSettings {
+const createSettings = (kind: ReaderKind, theme: { value: ReaderTheme }): ReaderSettings => {
   const saved = loadStoredSettings(kind);
   const settings = reactive<ReaderSettings>({
     ...defaults,
@@ -74,7 +74,7 @@ function createSettings(kind: ReaderKind, theme: { value: ReaderTheme }): Reader
   return settings;
 }
 
-function createReaderStyle(settings: ReaderSettings) {
+const createReaderStyle = (settings: ReaderSettings) => {
   return computed(() => ({
     "--reader-font-size": `${settings.fontSize}px`,
     "--reader-line-height": String(settings.lineHeight),
@@ -87,7 +87,7 @@ function createReaderStyle(settings: ReaderSettings) {
   }));
 }
 
-function resolveVarletTheme(value: ReaderTheme) {
+const resolveVarletTheme = (value: ReaderTheme) => {
   if (value === "paper") return paperTheme;
   return value === "night" ? Themes.md3Dark : Themes.md3Light;
 }
@@ -105,7 +105,7 @@ export const useReaderSettingsStore = defineStore("reader-settings", () => {
     StyleProvider(resolveVarletTheme(value));
   }, { immediate: true });
 
-  function reset(kind: ReaderKind) {
+  const reset = (kind: ReaderKind) => {
     Object.assign(kind === "novel" ? novelSettings : comicSettings, defaults);
   }
 

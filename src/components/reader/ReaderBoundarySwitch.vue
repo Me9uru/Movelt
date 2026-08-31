@@ -30,7 +30,7 @@ let lastScrollY = 0;
 let wheelDirection = 0;
 let wheelTimer: number | null = null;
 
-function readerBounds(): { top: number; bottom: number } | null {
+const readerBounds = (): { top: number; bottom: number } | null => {
   const reader = boundaryRoot.value?.closest<HTMLElement>(".book-reader");
   if (!reader) return null;
   const top = reader.getBoundingClientRect().top + window.scrollY;
@@ -40,9 +40,9 @@ function readerBounds(): { top: number; bottom: number } | null {
   };
 }
 
-function directionAtBoundary(
+const directionAtBoundary = (
   scrollDirection: number,
-): "previous" | "next" | null {
+): "previous" | "next" | null => {
   const bounds = readerBounds();
   if (!bounds) return null;
   const topDistance = window.scrollY - bounds.top;
@@ -54,20 +54,20 @@ function directionAtBoundary(
   return null;
 }
 
-function clearPending(): void {
+const clearPending = (): void => {
   pendingDirection.value = null;
   pendingTrigger.value = null;
 }
 
-function setPending(
+const setPending = (
   direction: "previous" | "next" | null,
   trigger: "touch" | "wheel",
-): void {
+): void => {
   pendingDirection.value = direction;
   pendingTrigger.value = direction ? trigger : null;
 }
 
-function handleScroll(): void {
+const handleScroll = (): void => {
   const direction = window.scrollY - lastScrollY;
   lastScrollY = window.scrollY;
   if (props.disabled || direction === 0) return;
@@ -78,7 +78,7 @@ function handleScroll(): void {
   }
 }
 
-function handlePointerDown(event: PointerEvent): void {
+const handlePointerDown = (event: PointerEvent): void => {
   // Touch is handled through the native TouchEvent path below. In particular,
   // some Android WebViews deliver incomplete PointerEvent sequences while the
   // page is scrolling.
@@ -92,14 +92,14 @@ function handlePointerDown(event: PointerEvent): void {
   clearPending();
 }
 
-function changedTouch(event: TouchEvent, identifier: number): Touch | null {
+const changedTouch = (event: TouchEvent, identifier: number): Touch | null => {
   return (
     [...event.changedTouches].find((item) => item.identifier === identifier) ??
     null
   );
 }
 
-function handleTouchStart(event: TouchEvent): void {
+const handleTouchStart = (event: TouchEvent): void => {
   if (props.disabled || event.changedTouches.length !== 1) return;
   const start = event.changedTouches[0];
   if (!start) return;
@@ -110,7 +110,7 @@ function handleTouchStart(event: TouchEvent): void {
   clearPending();
 }
 
-function handleTouchMove(event: TouchEvent): void {
+const handleTouchMove = (event: TouchEvent): void => {
   if (!touch || props.disabled) return;
   const current = changedTouch(event, touch.id);
   if (!current) return;
@@ -119,7 +119,7 @@ function handleTouchMove(event: TouchEvent): void {
   setPending(directionAtBoundary(-fingerDistance), "touch");
 }
 
-function completeTouch(event: TouchEvent, cancelled = false): void {
+const completeTouch = (event: TouchEvent, cancelled = false): void => {
   if (!touch || !changedTouch(event, touch.id)) return;
   touch = null;
   const direction = pendingDirection.value;
@@ -130,7 +130,7 @@ function completeTouch(event: TouchEvent, cancelled = false): void {
   if (direction === "next") emit("next");
 }
 
-function handlePointerMove(event: PointerEvent): void {
+const handlePointerMove = (event: PointerEvent): void => {
   if (!pointer || event.pointerId !== pointer.id || props.disabled) return;
   const fingerDistance = event.clientY - pointer.startY;
   if (Math.abs(fingerDistance) < 24) return;
@@ -139,7 +139,7 @@ function handlePointerMove(event: PointerEvent): void {
   setPending(directionAtBoundary(-fingerDistance), "touch");
 }
 
-function handlePointerEnd(event: PointerEvent): void {
+const handlePointerEnd = (event: PointerEvent): void => {
   if (!pointer || event.pointerId !== pointer.id) return;
   pointer = null;
   const direction = pendingDirection.value;
@@ -149,13 +149,13 @@ function handlePointerEnd(event: PointerEvent): void {
   if (direction === "next") emit("next");
 }
 
-function handlePointerCancel(event: PointerEvent): void {
+const handlePointerCancel = (event: PointerEvent): void => {
   if (!pointer || event.pointerId !== pointer.id) return;
   pointer = null;
   clearPending();
 }
 
-function handleWheel(event: WheelEvent): void {
+const handleWheel = (event: WheelEvent): void => {
   if (props.disabled || event.deltaY === 0) return;
   wheelDirection = event.deltaY;
   if (wheelTimer !== null) window.clearTimeout(wheelTimer);

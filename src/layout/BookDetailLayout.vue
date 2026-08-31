@@ -31,7 +31,7 @@ const descriptionExpanded = ref(false);
 const descriptionCanExpand = ref(false);
 let descriptionResizeObserver: ResizeObserver | undefined;
 
-function updateDescriptionExpansion(): void {
+const updateDescriptionExpansion = (): void => {
   const element =
     descriptionElement.value?.querySelector<HTMLElement>(".book-description");
   if (!element || descriptionExpanded.value) return;

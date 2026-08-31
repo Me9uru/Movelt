@@ -3,43 +3,30 @@ import type { DiscoveryList, RecommendBlock } from "../domain/discovery";
 import type { BookSearchMode } from "../domain/search";
 
 export type DiscoveryTab = "recommend" | "ranking" | "search";
-export type DiscoveryPrimaryTab = Exclude<DiscoveryTab, "search">;
 
 export interface DiscoveryTabOption {
-  name: DiscoveryPrimaryTab;
-  label: string;
-}
-
-export interface DiscoveryTabProps<T extends string> {
-  tabs: { name: T; label: string }[];
-  modelValue: T;
-  searchLabel: string;
-  query: string;
-  searchLoading: boolean;
-  searchMode?: BookSearchMode;
-  twoPrimary?: boolean;
-  swipe?: boolean;
+  readonly name: DiscoveryTab;
+  readonly label: string;
 }
 
 export interface BookSearchBarProps {
   modelValue: string;
   loading: boolean;
-  placeholder?: string;
-  ariaLabel?: string;
   searchMode?: BookSearchMode;
 }
 
-export interface DiscoveryViewSearchResult<T> {
+export interface DiscoverySearchResultModel<T> {
   items: BookGridItem<T>[];
   pagination: { page: number; last: number } | null;
 }
 
-export interface RecommendDiscoveryConfig<T> {
-  blocks: DiscoveryRecommendBlock<T>[];
+interface DiscoveryLoadState {
   loading: boolean;
   error: string;
-  emptyMessage?: string;
-  errorTitle?: string;
+}
+
+export interface RecommendDiscoveryModel<T> extends DiscoveryLoadState {
+  blocks: DiscoveryRecommendBlock<T>[];
 }
 
 export interface DiscoveryRecommendBlock<T> {
@@ -47,54 +34,22 @@ export interface DiscoveryRecommendBlock<T> {
   items: BookGridItem<T>[];
 }
 
-export interface RankingDiscoveryConfig<T> {
+export interface RankingDiscoveryModel<T> extends DiscoveryLoadState {
   items: BookGridItem<T>[] | null;
-  loading: boolean;
-  error: string;
-  periods?: { value: number; label: string }[];
+  periods?: readonly DiscoveryRankingPeriod[];
   days?: number;
-  emptyMessage?: string;
-  errorTitle?: string;
 }
 
-export interface SearchDiscoveryConfig<T> {
+export interface SearchDiscoveryModel<T> extends DiscoveryLoadState {
   query: string;
   searchMode?: BookSearchMode;
-  searchLabel?: string;
-  result: DiscoveryViewSearchResult<T> | null;
-  loading: boolean;
-  error: string;
-  promptMessage?: string;
-  emptyMessage?: string;
-  errorTitle?: string;
+  result: DiscoverySearchResultModel<T> | null;
 }
 
-export interface DiscoveryViewProps<T> {
-  tabs: DiscoveryTabOption[];
+export interface DiscoveryLayoutProps {
+  tabs: readonly DiscoveryTabOption[];
   modelValue: DiscoveryTab;
-  recommend: RecommendDiscoveryConfig<T>;
-  ranking: RankingDiscoveryConfig<T>;
-  search: SearchDiscoveryConfig<T>;
-  twoPrimary?: boolean;
   swipe?: boolean;
-}
-
-export interface RecommendDiscoveryProps<T> {
-  blocks: DiscoveryRecommendBlock<T>[];
-  loading: boolean;
-  error: string;
-  emptyMessage: string;
-  errorTitle: string;
-}
-
-export interface RankingDiscoveryProps<T> {
-  items: BookGridItem<T>[] | null;
-  loading: boolean;
-  error: string;
-  emptyMessage: string;
-  errorTitle: string;
-  periods?: DiscoveryRankingPeriod[];
-  days?: number;
 }
 
 export interface DiscoveryRankingPeriod {
@@ -103,6 +58,14 @@ export interface DiscoveryRankingPeriod {
 }
 
 export type DiscoveryRegion = DiscoveryTab;
+
+/** Search-only state retained while navigating between results and a detail page. */
+export interface DiscoverySearchCache<T> {
+  search: DiscoveryList<T> | null;
+  searchQuery: string;
+  searchMode: BookSearchMode;
+  scrollTop: number;
+}
 
 /** Service adapter contract used by the shared discovery state composable. */
 export interface DiscoveryAdapter<T> {

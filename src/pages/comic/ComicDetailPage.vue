@@ -5,7 +5,7 @@ import {
   getComicSeries,
   isOnComicBookshelf,
 } from "../../services/comic";
-import { useLibrary } from "../../composables/useLibrary";
+import { useBookshelfStore } from "../../stores/bookshelf";
 import type {
   ComicBook,
   ComicChapterSummary,
@@ -20,7 +20,7 @@ import LoadingOverlay from "../../components/common/LoadingOverlay.vue";
 
 const route = useRoute();
 const router = useRouter();
-const { addComicBook, removeComicBook } = useLibrary();
+const bookshelf = useBookshelfStore();
 const comic = ref<ComicSeriesDetail | null>(null);
 const loading = ref(true);
 const error = ref("");
@@ -40,10 +40,10 @@ const resumeTarget = computed<ComicChapterTarget | null>(() => {
   return null;
 });
 
-function toChapterItem(
+const toChapterItem = (
   book: ComicBook,
   chapter: ComicChapterSummary,
-): BookChapterItem<ComicChapterTarget> {
+): BookChapterItem<ComicChapterTarget> => {
   return {
     id: chapter.id,
     title: chapter.title || `第 ${chapter.sequence} 话`,
@@ -72,11 +72,11 @@ const firstTarget = computed<ComicChapterTarget | null>(() => {
   return book && chapter ? { bookId: book.id, chapter } : null;
 });
 
-function read(bookId: string, chapterId: string): void {
+const read = (bookId: string, chapterId: string): void => {
   void router.push({ name: "comic-reader", params: { comicId: bookId, chapterId } });
 }
 
-async function load(): Promise<void> {
+const load = async (): Promise<void> => {
   loading.value = true;
   error.value = "";
   try {
@@ -93,22 +93,29 @@ async function load(): Promise<void> {
   }
 }
 onMounted(() => void load());
-function continueReading(): void {
+const continueReading = (): void => {
   const target = resumeTarget.value ?? firstTarget.value;
   if (target) read(target.bookId, target.chapter.id);
 }
-function goBack(): void {
+const goBack = (): void => {
   if (window.history.state?.back) router.back();
-  else void router.replace({ name: "comic" });
+  else void router.replace({
+    name: "comic",
+    query: {
+      tab: route.query.tab,
+      q: route.query.q,
+      mode: route.query.mode,
+    },
+  });
 }
-async function toggleBookshelf(): Promise<void> {
+const toggleBookshelf = async (): Promise<void> => {
   if (!comic.value) return;
   try {
     const book = comic.value.books[0];
     if (!book) return;
     const shelfItem = { ...comic.value, id: book.id };
-    if (onBookshelf.value) await removeComicBook(book.id);
-    else await addComicBook(shelfItem);
+    if (onBookshelf.value) await bookshelf.removeComicBook(book.id);
+    else await bookshelf.addComicBook(shelfItem);
     onBookshelf.value = !onBookshelf.value;
   } catch (value) {
     showError(value, "更新漫画书架失败");

@@ -1,37 +1,23 @@
 import { computed } from "vue";
-import type { BookGridItem } from "../types/book";
+import type { BookGridItem } from "../../types/book";
 import type {
-  RankingDiscoveryConfig,
-  RecommendDiscoveryConfig,
-  SearchDiscoveryConfig,
-} from "../types/discovery";
+  DiscoveryRankingPeriod,
+  RankingDiscoveryModel,
+  RecommendDiscoveryModel,
+  SearchDiscoveryModel,
+} from "../../types/discovery";
 import type { DiscoveryState } from "./useDiscovery";
 
-type RecommendMessages<T> = Pick<
-  RecommendDiscoveryConfig<T>,
-  "emptyMessage" | "errorTitle"
->;
-type RankingMessages<T> = Pick<
-  RankingDiscoveryConfig<T>,
-  "periods" | "emptyMessage" | "errorTitle"
->;
-type SearchMessages<T> = Pick<
-  SearchDiscoveryConfig<T>,
-  "searchLabel" | "promptMessage" | "emptyMessage" | "errorTitle"
->;
-
-interface DiscoveryPresentationOptions<T> {
-  recommend?: RecommendMessages<T>;
-  ranking?: RankingMessages<T>;
-  search?: SearchMessages<T>;
+interface DiscoveryPresentationOptions {
+  rankingPeriods?: readonly DiscoveryRankingPeriod[];
 }
 
-/** Maps shared discovery state into the presentation contracts of DiscoveryView. */
-export function useDiscoveryPresentation<T>(
+/** Maps shared discovery state into the discovery content components' props. */
+export const useDiscoveryPresentation = <T>(
   discovery: DiscoveryState<T>,
   toBookItem: (item: T) => BookGridItem<T>,
-  options: DiscoveryPresentationOptions<T> = {},
-) {
+  options: DiscoveryPresentationOptions = {},
+) => {
   const searchResult = computed(() =>
     discovery.search.value
       ? {
@@ -40,34 +26,32 @@ export function useDiscoveryPresentation<T>(
         }
       : null,
   );
-  const recommend = computed<RecommendDiscoveryConfig<T>>(() => ({
+  const recommend = computed<RecommendDiscoveryModel<T>>(() => ({
     blocks: discovery.recommendations.value.map((block) => ({
       title: block.title,
       items: block.items.map(toBookItem),
     })),
     loading: discovery.loading.value.recommend,
     error: discovery.errors.value.recommend,
-    ...options.recommend,
   }));
-  const ranking = computed<RankingDiscoveryConfig<T>>(() => ({
+  const ranking = computed<RankingDiscoveryModel<T>>(() => ({
     items: discovery.ranking.value?.map(toBookItem) ?? null,
     loading: discovery.loading.value.ranking,
     error: discovery.errors.value.ranking,
-    ...options.ranking,
-    days: options.ranking?.periods
+    periods: options.rankingPeriods,
+    days: options.rankingPeriods
       ? discovery.rankingDays.value
       : undefined,
   }));
-  const search = computed<SearchDiscoveryConfig<T>>(() => ({
+  const search = computed<SearchDiscoveryModel<T>>(() => ({
     query: discovery.searchQuery.value,
     searchMode: discovery.searchMode.value,
     result: searchResult.value,
     loading: discovery.loading.value.search,
     error: discovery.errors.value.search,
-    ...options.search,
   }));
 
-  function retryDiscovery(region: "recommend" | "ranking" | "search"): void {
+  const retryDiscovery = (region: "recommend" | "ranking" | "search"): void => {
     if (region === "recommend") void discovery.loadRecommendations();
     if (region === "ranking") void discovery.loadRanking();
     if (region === "search") {

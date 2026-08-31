@@ -9,7 +9,7 @@ import {
 } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import type { NovelChapterContent as NovelChapterContentDto } from "../../domain/novel";
-import { useReaderSettings } from "../../composables/useReaderSettings";
+import { useReaderSettings } from "../../composables/reader/useReaderSettings";
 import ReaderSettingsDrawer from "../../components/reader/ReaderSettingsDrawer.vue";
 import ReaderBoundarySwitch from "../../components/reader/ReaderBoundarySwitch.vue";
 import NovelChapterContent from "../../components/reader/NovelChapterContent.vue";
@@ -63,7 +63,7 @@ const saveProgress = createReaderProgressSaver("novel", (value) =>
   showError(value, "保存阅读进度失败"),
 );
 
-async function load(): Promise<void> {
+const load = async (): Promise<void> => {
   if (!bookId.value || !chapterId.value) return;
   // Capture before awaiting: an in-flight cloud save may clear the checkpoint
   // while the overview request is still returning an older cached position.
@@ -99,7 +99,7 @@ async function load(): Promise<void> {
   }
 }
 
-function recordProgress(): void {
+const recordProgress = (): void => {
   if (!readerDocument.value || !bookId.value) return;
   const xpath = visibleXPath();
   resumePosition.value = { chapterId: chapterId.value, position: xpath };
@@ -117,7 +117,7 @@ function recordProgress(): void {
   );
 }
 
-function changeChapter(offset: number): void {
+const changeChapter = (offset: number): void => {
   const nextId = chapterIds.value[chapterIndex.value + offset];
   if (!nextId) return;
   recordProgress();
@@ -129,7 +129,7 @@ function changeChapter(offset: number): void {
   });
 }
 
-function saveBeforeInterruption(): void {
+const saveBeforeInterruption = (): void => {
   if (document.visibilityState === "hidden") recordProgress();
 }
 
@@ -137,11 +137,11 @@ const pageLabel = computed(
   () => `${currentPage.value + 1} / ${pageCount.value}`,
 );
 
-function updateSpread() {
+const updateSpread = () => {
   isSpread.value = Boolean(spreadQuery?.matches);
 }
 
-function pageStep(): number {
+const pageStep = (): number => {
   const viewport = pageViewport.value;
   if (!viewport) return 0;
   const viewportStyle = getComputedStyle(viewport);
@@ -152,11 +152,11 @@ function pageStep(): number {
   return Math.max(1, viewport.clientWidth - padding + gap);
 }
 
-function clampLocation(location: number): number {
+const clampLocation = (location: number): number => {
   return Math.min(1, Math.max(0, location));
 }
 
-function performPagination(resetPage: boolean) {
+const performPagination = (resetPage: boolean) => {
   const viewport = pageViewport.value;
   if (!viewport || settings.mode !== "paged") return;
   resizeObserver?.observe(viewport);
@@ -181,7 +181,7 @@ function performPagination(resetPage: boolean) {
   restoreServerPosition();
 }
 
-function updatePagination(resetPage = false) {
+const updatePagination = (resetPage = false) => {
   if (settings.mode !== "paged") return;
   paginationResetPending ||= resetPage;
   const request = ++paginationRequest;
@@ -198,11 +198,11 @@ function updatePagination(resetPage = false) {
   });
 }
 
-function setReaderContent(element: HTMLElement): void {
+const setReaderContent = (element: HTMLElement): void => {
   readerContent.value = element;
 }
 
-function cancelPaginationUpdate() {
+const cancelPaginationUpdate = () => {
   paginationRequest++;
   paginationResetPending = false;
   if (paginationFrame !== null) {
@@ -211,7 +211,7 @@ function cancelPaginationUpdate() {
   }
 }
 
-function goToPage(page: number) {
+const goToPage = (page: number) => {
   const viewport = pageViewport.value;
   if (!viewport) return;
   if (page >= pageCount.value) {
@@ -236,12 +236,12 @@ function goToPage(page: number) {
   recordProgress();
 }
 
-function pageOffsetForSide(side: "left" | "right"): number {
+const pageOffsetForSide = (side: "left" | "right"): number => {
   const leftOffset = settings.pageTurnDirection === "left-next" ? 1 : -1;
   return side === "left" ? leftOffset : -leftOffset;
 }
 
-function scrollMetrics(): { start: number; distance: number } | null {
+const scrollMetrics = (): { start: number; distance: number } | null => {
   const reader = readerRoot.value;
   if (!reader) return null;
   const start = reader.getBoundingClientRect().top + window.scrollY;
@@ -251,7 +251,7 @@ function scrollMetrics(): { start: number; distance: number } | null {
   };
 }
 
-function recordScrollProgress(): number | null {
+const recordScrollProgress = (): number | null => {
   const metrics = scrollMetrics();
   if (!metrics) return null;
   pageLocation = clampLocation(
@@ -261,7 +261,7 @@ function recordScrollProgress(): number | null {
   return pageLocation;
 }
 
-function visibleXPath(): string {
+const visibleXPath = (): string => {
   const root = readerContent.value;
   if (!root) return "//*";
   const nodes = [
@@ -294,7 +294,7 @@ function visibleXPath(): string {
   return `//*${path.length ? `/${path.join("/")}` : ""}`;
 }
 
-function restoreServerPosition() {
+const restoreServerPosition = () => {
   if (hasRestoredServerPosition || chapterEntry.value !== "default") return;
   const position =
     resumePosition.value?.chapterId === readerDocument.value?.chapterId
@@ -328,20 +328,20 @@ function restoreServerPosition() {
   }
 }
 
-function requestNextChapter() {
+const requestNextChapter = () => {
   if (nextChapterRequested || loading.value || !hasNextChapter.value) return;
   nextChapterRequested = true;
   changeChapter(1);
 }
 
-function requestPreviousChapter() {
+const requestPreviousChapter = () => {
   if (previousChapterRequested || loading.value || !hasPreviousChapter.value)
     return;
   previousChapterRequested = true;
   changeChapter(-1);
 }
 
-function handleScroll() {
+const handleScroll = () => {
   if (settings.mode !== "scroll") return;
   if (scrollTimer !== null) window.clearTimeout(scrollTimer);
   scrollTimer = window.setTimeout(() => {
@@ -350,7 +350,7 @@ function handleScroll() {
   }, 120);
 }
 
-function restoreScrollProgress() {
+const restoreScrollProgress = () => {
   if (settings.mode !== "scroll" || hasRestoredScroll) return;
   void nextTick(() => {
     const metrics = scrollMetrics();
@@ -363,7 +363,7 @@ function restoreScrollProgress() {
   });
 }
 
-function handleKeydown(event: KeyboardEvent) {
+const handleKeydown = (event: KeyboardEvent) => {
   if (previewVisible.value) return;
   if (settings.mode !== "paged") return;
   const target = event.target;
@@ -381,12 +381,12 @@ function handleKeydown(event: KeyboardEvent) {
   }
 }
 
-function handlePointerDown(event: PointerEvent) {
+const handlePointerDown = (event: PointerEvent) => {
   if (previewVisible.value) return;
   pointerStartX = event.clientX;
 }
 
-function handlePointerUp(event: PointerEvent) {
+const handlePointerUp = (event: PointerEvent) => {
   if (previewVisible.value) {
     pointerStartX = null;
     return;
@@ -399,7 +399,7 @@ function handlePointerUp(event: PointerEvent) {
   goToPage(currentPage.value + (distance < 0 ? 1 : -1));
 }
 
-function handleReaderClick(event: MouseEvent) {
+const handleReaderClick = (event: MouseEvent) => {
   if (previewVisible.value) return;
   if (performance.now() < suppressReaderClickUntil) return;
 

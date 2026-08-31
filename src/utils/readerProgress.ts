@@ -16,14 +16,14 @@ interface PendingSave {
 
 const storagePrefix = "movel:reader-progress";
 
-function storageKey(kind: ReaderProgressKind, itemId: string): string {
+const storageKey = (kind: ReaderProgressKind, itemId: string): string => {
   return `${storagePrefix}:${kind}:${itemId}`;
 }
 
-export function readReaderProgress(
+export const readReaderProgress = (
   kind: ReaderProgressKind,
   itemId: string,
-): ReaderProgressCheckpoint | null {
+): ReaderProgressCheckpoint | null => {
   try {
     const value = JSON.parse(
       localStorage.getItem(storageKey(kind, itemId)) ?? "null",
@@ -43,10 +43,10 @@ export function readReaderProgress(
   }
 }
 
-function writeReaderProgress(
+const writeReaderProgress = (
   kind: ReaderProgressKind,
   checkpoint: ReaderProgressCheckpoint,
-): string {
+): string => {
   const token = JSON.stringify(checkpoint);
   try {
     localStorage.setItem(storageKey(kind, checkpoint.itemId), token);
@@ -56,11 +56,11 @@ function writeReaderProgress(
   return token;
 }
 
-function clearReaderProgress(
+const clearReaderProgress = (
   kind: ReaderProgressKind,
   checkpoint: ReaderProgressCheckpoint,
   token: string,
-): void {
+): void => {
   try {
     const key = storageKey(kind, checkpoint.itemId);
     if (localStorage.getItem(key) === token) localStorage.removeItem(key);
@@ -74,14 +74,14 @@ function clearReaderProgress(
  * Remote writes are serialized and coalesced so an older request cannot arrive
  * after a newer reading position and move the cloud position backwards.
  */
-export function createReaderProgressSaver(
+export const createReaderProgressSaver = (
   kind: ReaderProgressKind,
   onError: (error: unknown) => void,
-) {
+) => {
   let pending: PendingSave | null = null;
   let saving = false;
 
-  async function drain(): Promise<void> {
+  const drain = async (): Promise<void> => {
     if (saving) return;
     saving = true;
     while (pending) {

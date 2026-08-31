@@ -1,17 +1,40 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { rankingPeriods, useDiscovery } from "../../composables/useDiscovery";
+import RankingDiscovery from "../../components/discovery/RankingDiscovery.vue";
+import RecommendDiscovery from "../../components/discovery/RecommendDiscovery.vue";
+import SearchDiscovery from "../../components/discovery/SearchDiscovery.vue";
+import { discoveryTabs, rankingPeriods } from "../../composables/discovery/config";
+import { useDiscovery } from "../../composables/discovery/useDiscovery";
+import { provideDiscoveryContext } from "../../composables/discovery/useDiscoveryContext";
+import { useDiscoveryTabRoute } from "../../composables/discovery/useDiscoveryTabRoute";
 import type { NovelSummary } from "../../domain/novel";
-import DiscoveryView from "../../layout/DiscoveryView.vue";
+import DiscoveryLayout from "../../layout/DiscoveryLayout.vue";
 import type { BookGridItem } from "../../types/book";
-import type { DiscoveryTab, DiscoveryTabOption } from "../../types/discovery";
-import { novelDiscoveryAdapter } from "../../composables/discoveryAdapters";
-import { useDiscoveryPresentation } from "../../composables/useDiscoveryPresentation";
+import { novelDiscoveryAdapter } from "../../composables/discovery/adapters";
+import { useDiscoveryPresentation } from "../../composables/discovery/useDiscoveryPresentation";
+import { useDiscoveryScroll } from "../../composables/discovery/useDiscoveryScroll";
+import { useDiscoverySearchStore } from "../../stores/discoverySearch";
 
-const discovery = useDiscovery(novelDiscoveryAdapter);
+const route = useRoute();
+const router = useRouter();
+const discoverySearch = useDiscoverySearchStore();
+const discovery = useDiscovery(novelDiscoveryAdapter, discoverySearch.novel);
+provideDiscoveryContext("novel");
 
-function toBookItem(novel: NovelSummary): BookGridItem<NovelSummary> {
+const routeSearchMode = route.query.mode;
+if (!discovery.searchQuery.value && typeof route.query.q === "string") {
+  discovery.searchQuery.value = route.query.q;
+}
+if (
+  routeSearchMode === "title" ||
+  routeSearchMode === "author" ||
+  routeSearchMode === "tags"
+) {
+  discovery.searchMode.value = routeSearchMode;
+}
+
+const toBookItem = (novel: NovelSummary): BookGridItem<NovelSummary> => {
   return {
     id: `${novel.source}:${novel.id}`,
     title: novel.title,
@@ -20,46 +43,47 @@ function toBookItem(novel: NovelSummary): BookGridItem<NovelSummary> {
   };
 }
 
-const route = useRoute();
-const router = useRouter();
-
-const discoveryTabs: DiscoveryTabOption[] = [
-  { name: "recommend", label: "推荐" },
-  { name: "ranking", label: "排行榜" },
-];
-const activeTab = ref<DiscoveryTab>(
-  route.name === "novel-search" ? "search" : "recommend",
-);
+const { activeTab, selectTab } = useDiscoveryTabRoute("novels");
+useDiscoveryScroll(discoverySearch.novel, () => activeTab.value === "search");
 const { recommend, ranking, search, retryDiscovery } = useDiscoveryPresentation(
   discovery,
   toBookItem,
-  { ranking: { periods: rankingPeriods } },
+  { rankingPeriods },
 );
 
-function handleSearch(page: number): void {
-  activeTab.value = "search";
-  if (route.name !== "novel-search") {
-    void router.push({ name: "novel-search" });
-  }
-  void discovery.runSearch(page);
+const handleSearch = async (page: number): Promise<void> => {
+  const query = discovery.searchQuery.value.trim();
+  if (!query) return;
+  await router.replace({
+    name: "novels",
+    query: {
+      ...route.query,
+      tab: "search",
+      q: query,
+      mode: discovery.searchMode.value,
+    },
+  });
+  await discovery.runSearch(page);
 }
 
-function openNovel(novel: NovelSummary): void {
+const openNovel = (novel: NovelSummary): void => {
   void router.push({
     name: "detail",
     params: { bookId: novel.id },
-    query: { from: route.name === "novel-search" ? "novel-search" : "novels" },
+    query: {
+      from: "novels",
+      ...(activeTab.value === "search"
+        ? {
+            tab: "search",
+            q: discovery.searchQuery.value.trim(),
+            mode: discovery.searchMode.value,
+          }
+        : {}),
+    },
   });
 }
 
-function selectDiscoveryTab(tab: DiscoveryTab): void {
-  activeTab.value = tab;
-  if (tab !== "search" && route.name === "novel-search") {
-    void router.replace({ name: "novels" });
-  }
-}
-
-function selectRankingPeriod(days: number) {
+const selectRankingPeriod = (days: number) => {
   if (days === discovery.rankingDays.value) return;
   discovery.rankingDays.value = days;
   void discovery.loadRanking(days);
@@ -72,31 +96,41 @@ watch(activeTab, (tab) => {
   if (tab === "ranking" && !discovery.ranking.value && !discovery.loading.value.ranking && !discovery.errors.value.ranking) {
     void discovery.loadRanking();
   }
+  if (tab === "search" && discovery.searchQuery.value.trim() && !discovery.search.value && !discovery.loading.value.search) {
+    void discovery.runSearch();
+  }
 }, { immediate: true });
 
-watch(
-  () => route.name,
-  (name) => {
-    if (name === "novel-search") activeTab.value = "search";
-  },
-);
 </script>
 
 <template>
-  <DiscoveryView
+  <DiscoveryLayout
     :model-value="activeTab"
     :tabs="discoveryTabs"
-    :recommend="recommend"
-    :ranking="ranking"
-    :search="search"
-    two-primary
     swipe
-    @update:model-value="selectDiscoveryTab"
-    @update:query="discovery.searchQuery.value = $event"
-    @update:search-mode="discovery.searchMode.value = $event"
-    @update:ranking-days="selectRankingPeriod"
-    @search="handleSearch"
-    @open="openNovel($event.data)"
-    @retry="retryDiscovery"
-  />
+    @update:model-value="selectTab"
+  >
+    <RecommendDiscovery
+      v-if="activeTab === 'recommend'"
+      v-bind="recommend"
+      @open="openNovel"
+      @retry="retryDiscovery('recommend')"
+    />
+    <RankingDiscovery
+      v-else-if="activeTab === 'ranking'"
+      v-bind="ranking"
+      @open="openNovel"
+      @retry="retryDiscovery('ranking')"
+      @update:days="selectRankingPeriod"
+    />
+    <SearchDiscovery
+      v-else
+      v-bind="search"
+      @update:query="discovery.searchQuery.value = $event"
+      @update:search-mode="discovery.searchMode.value = $event"
+      @search="handleSearch"
+      @open="openNovel"
+      @retry="retryDiscovery('search')"
+    />
+  </DiscoveryLayout>
 </template>

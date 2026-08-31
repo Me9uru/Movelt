@@ -10,7 +10,7 @@ type WindowWithTauri = Window & {
  * Routes browser debugging invokes through the debug-only localhost bridge.
  * Native Tauri webviews already provide this interface and are left unchanged.
  */
-export function setupDevInvoke(endpoint = "/__tauri_invoke"): void {
+export const setupDevInvoke = (endpoint = "/__tauri_invoke"): void => {
   const browserWindow = window as WindowWithTauri;
   if (browserWindow.__TAURI_INTERNALS__) return;
 

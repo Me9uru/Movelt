@@ -8,14 +8,18 @@ import {
   signIn as signInRequest,
 } from "../services/auth";
 import type { LightNovelUser, LoginInput, RegisterInput } from "../domain/auth";
-import { clearLibraryCache } from "../composables/useLibrary";
+import { useBookshelfStore } from "./bookshelf";
+import { useDiscoverySearchStore } from "./discoverySearch";
 
 export const useAuthStore = defineStore("auth", () => {
+  const bookshelf = useBookshelfStore();
+  const discoverySearch = useDiscoverySearchStore();
   const user = ref<LightNovelUser | null>(null);
-  const restoring = ref(false);
+  // 首次渲染就展示启动占位，直到应用完成持久化登录态恢复。
+  const restoring = ref(true);
   const isAuthenticated = computed(() => user.value !== null);
 
-  async function restore() {
+  const restore = async () => {
     restoring.value = true;
     try {
       user.value = await restoreUser();
@@ -26,21 +30,23 @@ export const useAuthStore = defineStore("auth", () => {
     }
   }
 
-  async function login(input: LoginInput) {
+  const login = async (input: LoginInput) => {
     user.value = await loginRequest(input);
-    clearLibraryCache();
+    bookshelf.clear();
+    discoverySearch.clear();
     void signInIfNeeded();
     return user.value;
   }
 
-  async function register(input: RegisterInput) {
+  const register = async (input: RegisterInput) => {
     user.value = await registerRequest(input);
-    clearLibraryCache();
+    bookshelf.clear();
+    discoverySearch.clear();
     void signInIfNeeded();
     return user.value;
   }
 
-  async function signInIfNeeded() {
+  const signInIfNeeded = async () => {
     if (user.value?.Growth?.TodaySigned !== false) return false;
     try {
       user.value = await signInRequest();
@@ -51,15 +57,17 @@ export const useAuthStore = defineStore("auth", () => {
     }
   }
 
-  async function logout() {
+  const logout = async () => {
     await logoutRequest();
     user.value = null;
-    clearLibraryCache();
+    bookshelf.clear();
+    discoverySearch.clear();
   }
 
-  function expire() {
+  const expire = () => {
     user.value = null;
-    clearLibraryCache();
+    bookshelf.clear();
+    discoverySearch.clear();
   }
 
   return {

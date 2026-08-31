@@ -1,15 +1,13 @@
-import { ref, type Ref } from "vue";
+import { ref, toRef, type Ref } from "vue";
 
-import type { DiscoveryList, RecommendBlock } from "../domain/discovery";
-import type { BookSearchMode } from "../domain/search";
-import type { DiscoveryAdapter, DiscoveryRegion } from "../types/discovery";
-import { getErrorMessage } from "../utils/error";
-
-export const rankingPeriods = [
-  { value: 7, label: "近 7 天" },
-  { value: 30, label: "近 30 天" },
-  { value: 365, label: "近一年" },
-];
+import type { DiscoveryList, RecommendBlock } from "../../domain/discovery";
+import type { BookSearchMode } from "../../domain/search";
+import type {
+  DiscoveryAdapter,
+  DiscoverySearchCache,
+  DiscoveryRegion,
+} from "../../types/discovery";
+import { getErrorMessage } from "../../utils/error";
 
 export interface DiscoveryState<T> {
   recommendations: Ref<RecommendBlock<T>[]>;
@@ -25,21 +23,26 @@ export interface DiscoveryState<T> {
   runSearch: (page?: number) => Promise<void>;
 }
 
-export function useDiscovery<T>(
+export const useDiscovery = <T>(
   adapter: DiscoveryAdapter<T>,
-): DiscoveryState<T> {
+  searchCache?: DiscoverySearchCache<T>,
+): DiscoveryState<T> => {
   // ref 的 UnwrapRef 会递归展开泛型结构，导致 .value 类型与 T 不一致；断言回
   // 原始类型以便向 adapter 透传与增量追加。
   const recommendations = ref<RecommendBlock<T>[]>([]) as Ref<
     RecommendBlock<T>[]
   >;
   const ranking = ref<T[] | null>(null) as Ref<T[] | null>;
-  const search = ref<DiscoveryList<T> | null>(
-    null,
-  ) as Ref<DiscoveryList<T> | null>;
+  const search = searchCache
+    ? toRef(searchCache, "search")
+    : ref<DiscoveryList<T> | null>(null) as Ref<DiscoveryList<T> | null>;
   const rankingDays = ref(7);
-  const searchQuery = ref("");
-  const searchMode = ref<BookSearchMode>("title");
+  const searchQuery = searchCache
+    ? toRef(searchCache, "searchQuery")
+    : ref("");
+  const searchMode = searchCache
+    ? toRef(searchCache, "searchMode")
+    : ref<BookSearchMode>("title");
   const loading = ref<Record<DiscoveryRegion, boolean>>({
     recommend: false,
     ranking: false,
@@ -50,7 +53,7 @@ export function useDiscovery<T>(
     ranking: "",
     search: "",
   });
-  async function run(region: DiscoveryRegion, task: () => Promise<void>) {
+  const run = async (region: DiscoveryRegion, task: () => Promise<void>) => {
     loading.value[region] = true;
     errors.value[region] = "";
     try {
@@ -61,20 +64,20 @@ export function useDiscovery<T>(
       loading.value[region] = false;
     }
   }
-  async function loadRecommendations() {
+  const loadRecommendations = async () => {
     await run("recommend", async () => {
       const result: RecommendBlock<T>[] = [];
       await adapter.loadRecommendations(result);
       recommendations.value.splice(0, recommendations.value.length, ...result);
     });
   }
-  async function loadRanking(days = rankingDays.value) {
+  const loadRanking = async (days = rankingDays.value) => {
     await run("ranking", async () => {
       const result = await adapter.loadRanking(days);
       ranking.value = result;
     });
   }
-  async function runSearch(page = 1) {
+  const runSearch = async (page = 1) => {
     if (!searchQuery.value.trim()) return;
     await run("search", async () => {
       const result = await adapter.search(

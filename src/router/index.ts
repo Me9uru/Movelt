@@ -17,11 +17,6 @@ export const router = createRouter({
       component: () => import("../pages/novel/NovelDiscoveryPage.vue"),
     },
     {
-      path: "/novels/search",
-      name: "novel-search",
-      component: () => import("../pages/novel/NovelDiscoveryPage.vue"),
-    },
-    {
       path: "/bookshelf",
       name: "bookshelf",
       component: () => import("../pages/bookshelf/BookshelfPage.vue"),
@@ -30,11 +25,6 @@ export const router = createRouter({
       path: "/comic",
       name: "comic",
       component: () => import("../pages/comic/ComicDiscoveryPage.vue"),
-    },
-    {
-      path: "/settings",
-      name: "settings",
-      component: () => import("../pages/settings/SettingsPage.vue"),
     },
     {
       path: "/comic/:comicId",

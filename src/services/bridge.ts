@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 
-export async function command<T>(name: string, args?: Record<string, unknown>): Promise<T> {
+export const command = async <T>(name: string, args?: Record<string, unknown>): Promise<T> => {
   try {
     return await invoke<T>(name, args);
   } catch (error) {
@@ -11,7 +11,7 @@ export async function command<T>(name: string, args?: Record<string, unknown>): 
   }
 }
 
-function isAuthenticationExpired(error: unknown): boolean {
+const isAuthenticationExpired = (error: unknown): boolean => {
   if (error && typeof error === "object") {
     return (error as { code?: unknown }).code === "AUTHENTICATION_EXPIRED";
   }

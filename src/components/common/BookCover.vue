@@ -24,11 +24,11 @@ watch(
   },
 );
 
-function handleLoad(): void {
+const handleLoad = (): void => {
   loading.value = false;
 }
 
-function handleError(): void {
+const handleError = (): void => {
   loading.value = false;
   failed.value = true;
 }

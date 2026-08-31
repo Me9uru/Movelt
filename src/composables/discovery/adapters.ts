@@ -1,14 +1,14 @@
-import type { DiscoveryList } from "../domain/discovery";
-import type { ComicSummary } from "../domain/comic";
-import type { NovelSummary } from "../domain/novel";
-import type { BookSearchMode } from "../domain/search";
-import { listComic, searchComic } from "../services/comic";
+import type { DiscoveryList } from "../../domain/discovery";
+import type { ComicSummary } from "../../domain/comic";
+import type { NovelSummary } from "../../domain/novel";
+import type { BookSearchMode } from "../../domain/search";
+import { listComic, searchComic } from "../../services/comic";
 import {
   listNovel,
   rankNovels,
   searchDiscovery,
-} from "../services/novel";
-import type { DiscoveryAdapter } from "../types/discovery";
+} from "../../services/novel";
+import type { DiscoveryAdapter } from "../../types/discovery";
 
 const RECOMMENDATION_PAGE_SIZE = 6;
 const DISCOVERY_PAGE_SIZE = 24;
