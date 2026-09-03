@@ -5,7 +5,7 @@
  * entries, reading positions, and reader payloads live here instead of in
  * transport adapters.
  */
-import type { ReadPosition } from "./readPosition";
+import type { ReadPosition } from "./reader";
 
 export interface NovelSummary {
   source: string;
@@ -39,5 +39,3 @@ export interface NovelChapterContent {
   fontUrl: string | null;
   readPosition: ReadPosition | null;
 }
-
-export type { DiscoveryList, RecommendBlock } from "./discovery";

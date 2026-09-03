@@ -11,7 +11,7 @@ import { provideDiscoveryContext } from "../../composables/discovery/useDiscover
 import { useDiscoveryTabRoute } from "../../composables/discovery/useDiscoveryTabRoute";
 import { useDiscoveryPresentation } from "../../composables/discovery/useDiscoveryPresentation";
 import type { ComicSummary } from "../../domain/comic";
-import DiscoveryLayout from "../../layout/DiscoveryLayout.vue";
+import TabbedPageLayout from "../../layout/TabbedPageLayout.vue";
 import type { BookGridItem } from "../../types/book";
 import { useDiscoveryScroll } from "../../composables/discovery/useDiscoveryScroll";
 import { useDiscoverySearchStore } from "../../stores/discoverySearch";
@@ -86,7 +86,7 @@ const openComic = (comic: ComicSummary): void => {
 </script>
 
 <template>
-  <DiscoveryLayout
+  <TabbedPageLayout
     :model-value="activeTab"
     :tabs="discoveryTabs"
     @update:model-value="selectTab"
@@ -112,5 +112,5 @@ const openComic = (comic: ComicSummary): void => {
       @open="openComic"
       @retry="retryDiscovery('search')"
     />
-  </DiscoveryLayout>
+  </TabbedPageLayout>
 </template>

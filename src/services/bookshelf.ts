@@ -4,10 +4,8 @@ import type { NovelBookshelfEntry } from "../domain/bookshelf";
 
 export type { NovelBookshelfEntry } from "../domain/bookshelf";
 
-export const listNovelBookshelf = (query?: string) => {
-  return query
-    ? command<NovelBookshelfEntry[]>("list_novel_bookshelf", { query })
-    : command<NovelBookshelfEntry[]>("list_novel_bookshelf");
+export const listNovelBookshelf = () => {
+  return command<NovelBookshelfEntry[]>("list_novel_bookshelf");
 }
 
 export const isOnNovelBookshelf = (bookId: string) => {

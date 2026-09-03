@@ -12,7 +12,7 @@ import type {
   ComicSeriesDetail,
 } from "../../domain/comic";
 import { getErrorMessage, showError } from "../../utils/error";
-import BookChapterList from "../../components/detail/BookChapterList.vue";
+import BookChapterList from "../../components/book/BookChapterList.vue";
 import type { BookChapterGroup, BookChapterItem } from "../../types/book";
 import BookDetailLayout from "../../layout/BookDetailLayout.vue";
 import ErrorState from "../../components/common/ErrorState.vue";

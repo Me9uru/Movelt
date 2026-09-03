@@ -7,6 +7,8 @@ export interface RecommendBlock<T> {
   items: T[];
 }
 
+export type BookSearchMode = "title" | "author" | "tags";
+
 export interface DiscoveryList<T> {
   items: T[];
   pagination: {

@@ -17,12 +17,3 @@ export interface ReaderSettings {
   pageTurnDirection: PageTurnDirection;
   convert: ReaderConvert;
 }
-
-/** Props for the shared novel and comic reader settings/navigation drawer. */
-export interface ReaderSettingsDrawerProps {
-  kind: ReaderKind;
-  title: string;
-  titleClick?: () => void;
-  previousDisabled?: boolean;
-  nextDisabled?: boolean;
-}

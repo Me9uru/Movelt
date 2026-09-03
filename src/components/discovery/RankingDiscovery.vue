@@ -2,6 +2,7 @@
 import BookCollection from "../../layout/BookCollection.vue";
 import type { RankingDiscoveryModel } from "../../types/discovery";
 import { useDiscoveryContext } from "../../composables/discovery/useDiscoveryContext";
+import AppTabs from "../common/AppTabs.vue";
 
 defineProps<RankingDiscoveryModel<T>>();
 const discoveryContext = useDiscoveryContext();
@@ -18,7 +19,10 @@ const emit = defineEmits<{
     :items="items"
     :loading="loading"
     :error="error"
-    :empty-message="`这个榜单还没有${discoveryContext.subjectLabel}`"
+    :empty-state="{
+      icon: 'bookmark',
+      title: `这个榜单还没有${discoveryContext.subjectLabel}`,
+    }"
     error-title="榜单加载失败"
     grid-class="discovery-grid"
     :content-while-loading="false"
@@ -26,21 +30,18 @@ const emit = defineEmits<{
     @retry="emit('retry')"
   >
     <template #header>
-      <var-tabs
+      <AppTabs
         v-if="periods?.length"
         class="ranking-period-tabs"
-        :active="String(days)"
-        aria-label="榜单时间范围"
-        @update:active="emit('update:days', Number($event))"
-      >
-        <var-tab
-          v-for="period in periods"
-          :key="period.value"
-          :name="String(period.value)"
-        >
-          {{ period.label }}
-        </var-tab>
-      </var-tabs>
+        variant="secondary"
+        :model-value="String(days)"
+        :tabs="periods.map((period) => ({
+          name: String(period.value),
+          label: period.label,
+        }))"
+        accessibility-label="榜单时间范围"
+        @update:model-value="emit('update:days', Number($event))"
+      />
     </template>
   </BookCollection>
 </template>

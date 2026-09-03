@@ -1,11 +1,14 @@
 import { ref, toRef, type Ref } from "vue";
 
-import type { DiscoveryList, RecommendBlock } from "../../domain/discovery";
-import type { BookSearchMode } from "../../domain/search";
+import type {
+  BookSearchMode,
+  DiscoveryList,
+  RecommendBlock,
+} from "../../domain/discovery";
 import type {
   DiscoveryAdapter,
   DiscoverySearchCache,
-  DiscoveryRegion,
+  DiscoveryTab,
 } from "../../types/discovery";
 import { getErrorMessage } from "../../utils/error";
 
@@ -16,8 +19,8 @@ export interface DiscoveryState<T> {
   rankingDays: Ref<number>;
   searchQuery: Ref<string>;
   searchMode: Ref<BookSearchMode>;
-  loading: Ref<Record<DiscoveryRegion, boolean>>;
-  errors: Ref<Record<DiscoveryRegion, string>>;
+  loading: Ref<Record<DiscoveryTab, boolean>>;
+  errors: Ref<Record<DiscoveryTab, string>>;
   loadRecommendations: () => Promise<void>;
   loadRanking: (days?: number) => Promise<void>;
   runSearch: (page?: number) => Promise<void>;
@@ -43,17 +46,17 @@ export const useDiscovery = <T>(
   const searchMode = searchCache
     ? toRef(searchCache, "searchMode")
     : ref<BookSearchMode>("title");
-  const loading = ref<Record<DiscoveryRegion, boolean>>({
+  const loading = ref<Record<DiscoveryTab, boolean>>({
     recommend: false,
     ranking: false,
     search: false,
   });
-  const errors = ref<Record<DiscoveryRegion, string>>({
+  const errors = ref<Record<DiscoveryTab, string>>({
     recommend: "",
     ranking: "",
     search: "",
   });
-  const run = async (region: DiscoveryRegion, task: () => Promise<void>) => {
+  const run = async (region: DiscoveryTab, task: () => Promise<void>) => {
     loading.value[region] = true;
     errors.value[region] = "";
     try {

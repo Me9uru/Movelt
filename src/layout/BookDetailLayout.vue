@@ -7,8 +7,24 @@ import {
   ref,
   watch,
 } from "vue";
-import BookCover from "../components/common/BookCover.vue";
-import type { BookDetailLayoutProps } from "../types/book";
+import BookCover from "../components/book/BookCover.vue";
+
+interface BookDetailLayoutProps {
+  title: string;
+  coverUrl: string | null;
+  author: string;
+  status?: string | null;
+  tags: string[];
+  description: string | null | undefined;
+  descriptionFallback?: string;
+  onBookshelf: boolean;
+  loading: boolean;
+  resumeChapterId?: string | null;
+  canStartReading?: boolean;
+  stats?: { value?: string | number; label: string }[];
+  sectionTitle: string;
+  sectionSummary: string;
+}
 
 const props = withDefaults(
   defineProps<BookDetailLayoutProps>(),
@@ -86,38 +102,54 @@ onBeforeUnmount(() => descriptionResizeObserver?.disconnect());
             >
           </template>
         </div>
-        <div
-          ref="descriptionElement"
-          class="book-detail-description"
+        <var-card
+          variant="filled"
+          :elevation="false"
+          class="book-detail-description-card"
           :class="{
-            'book-detail-description--expanded': descriptionExpanded,
-            'book-detail-description--no-stats': !hasStats,
+            'book-detail-description-card--expanded': descriptionExpanded,
+            'book-detail-description-card--no-stats': !hasStats,
           }"
+          aria-labelledby="book-detail-description-title"
         >
-          <div
-            class="book-description"
-            v-html="description || descriptionFallback"
-          />
-          <var-button
-            v-if="descriptionCanExpand"
-            text
-            class="description-toggle"
-            :aria-expanded="descriptionExpanded"
-            @click="descriptionExpanded = !descriptionExpanded"
-          >
-            {{ descriptionExpanded ? "收起简介" : "展开全部" }}
-          </var-button>
-        </div>
-        <div v-if="tags.length" class="book-detail-tags">
-          <var-chip v-for="tag in tags" :key="tag" plain>{{ tag }}</var-chip>
+          <template #title="{ slotClass }">
+            <h2
+              id="book-detail-description-title"
+              :class="[slotClass, 'book-detail-description-title']"
+            >
+              简介
+            </h2>
+          </template>
+          <div ref="descriptionElement" class="book-detail-description">
+            <div
+              class="book-description"
+              v-html="description || descriptionFallback"
+            />
+            <var-button
+              v-if="descriptionCanExpand"
+              text
+              class="description-toggle"
+              :aria-expanded="descriptionExpanded"
+              @click="descriptionExpanded = !descriptionExpanded"
+            >
+              {{ descriptionExpanded ? "收起简介" : "展开全部" }}
+            </var-button>
+          </div>
+        </var-card>
+        <div v-if="tags.length" class="book-detail-tags" aria-label="作品标签">
+          <span v-for="tag in tags" :key="tag" class="book-detail-tag">
+            {{ tag }}
+          </span>
         </div>
       </div>
 
       <aside class="book-detail-rail">
         <div class="book-detail-actions">
           <var-button
-            :type="onBookshelf ? 'default' : 'primary'"
+            type="primary"
             size="large"
+            :tonal="onBookshelf"
+            :elevation="false"
             :disabled="loading"
             @click="emit('toggleBookshelf')"
           >
@@ -126,7 +158,9 @@ onBeforeUnmount(() => descriptionResizeObserver?.disconnect());
           </var-button>
           <var-button
             v-if="resumeChapterId"
+            type="primary"
             size="large"
+            tonal
             :disabled="loading"
             @click="emit('continueReading')"
           >
@@ -134,7 +168,9 @@ onBeforeUnmount(() => descriptionResizeObserver?.disconnect());
           </var-button>
           <var-button
             v-else-if="canStartReading"
+            type="primary"
             size="large"
+            tonal
             :disabled="loading"
             @click="emit('continueReading')"
           >

@@ -1,10 +1,10 @@
 import { command } from "./bridge";
 import type {
-  DiscoveryList,
   NovelDetail,
   NovelSummary,
   NovelChapterContent,
 } from "../domain/novel";
+import type { DiscoveryList } from "../domain/discovery";
 export const lightNovelSourceId = "lightnovel";
 
 export type NovelOrder = "latest" | "view" | "new";
@@ -15,7 +15,6 @@ export type NovelSearchMode =
   | "author"
   | "name"
   | "tags";
-export type { BookSearchMode } from "../domain/search";
 
 export const listNovel = (page: number, pageSize: number, order: NovelOrder) => {
   return command<NovelSummary[]>("list_novels", {

@@ -12,7 +12,7 @@ const emit = defineEmits<{ retry: [] }>();
   <div class="content-error-state">
     <var-result type="error" :title="title" :description="message">
       <template #footer>
-        <var-button type="primary" :loading="loading" @click="emit('retry')"
+        <var-button type="primary" :elevation="false" :loading="loading" @click="emit('retry')"
           >重试</var-button
         >
       </template>

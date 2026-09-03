@@ -1,7 +1,9 @@
-import type { DiscoveryList } from "../../domain/discovery";
+import type {
+  BookSearchMode,
+  DiscoveryList,
+} from "../../domain/discovery";
 import type { ComicSummary } from "../../domain/comic";
 import type { NovelSummary } from "../../domain/novel";
-import type { BookSearchMode } from "../../domain/search";
 import { listComic, searchComic } from "../../services/comic";
 import {
   listNovel,

@@ -9,17 +9,23 @@ use crate::{
     dto::bookshelf::{ComicBookshelfEntry, NovelBookshelfEntry},
     error::Result,
     mapping::{
-        bookshelf::{is_kind, items as shelf_items},
+        bookshelf::{
+            is_kind, item_id as shelf_item_id, item_updated_at, items as shelf_items,
+            version as shelf_version,
+        },
         comic::bookshelf_summary as comic_bookshelf_summary,
         novel::summary as novel_summary,
-        value::{array, number, optional_number, optional_string},
+        value::{array, number, optional_number},
     },
 };
 
 use super::validation::parse_id;
 
-fn title_matches_query(title: &str, query: &str) -> bool {
-    query.is_empty() || title.to_lowercase().contains(query)
+fn is_comic_book(value: &Value) -> bool {
+    value
+        .get("Type")
+        .and_then(Value::as_str)
+        .is_some_and(|kind| kind.eq_ignore_ascii_case("Comic"))
 }
 
 /// 按官方接口的批量上限查询书架中的作品。
@@ -51,46 +57,27 @@ pub(super) async fn set_shelf(
     let mut items = shelf_items(&shelf);
     let exists = items
         .iter()
-        .any(|item| number(item, "id") == id && is_kind(item, kind));
+        .any(|item| shelf_item_id(item) == id && is_kind(item, kind));
     if present && !exists {
         items.insert(0, json!({"id": id, "type": kind, "parents": [], "index": 0, "updateAt": Utc::now().to_rfc3339()}));
     }
     if !present {
-        items.retain(|item| number(item, "id") != id || !is_kind(item, kind));
+        items.retain(|item| shelf_item_id(item) != id || !is_kind(item, kind));
     }
     client
-        .save_bookshelf(
-            items,
-            shelf
-                .get("ver")
-                .and_then(Value::as_str)
-                .unwrap_or("20220211"),
-        )
+        .save_bookshelf(items, shelf_version(&shelf).unwrap_or("20220211"))
         .await
 }
 
 #[tauri::command]
-/// 获取小说书架，并支持按标题筛选。
+/// 获取小说书架。
 pub(crate) async fn list_novel_bookshelf(
     client: State<'_, OfficialClient>,
     cache: State<'_, AppCache>,
-    query: Option<String>,
 ) -> Result<Arc<Vec<NovelBookshelfEntry>>> {
-    let query = query.unwrap_or_default().to_lowercase();
-    let books = cache
+    cache
         .load_cache(&cache.novel_bookshelf, (), load_novel_bookshelf(&client))
-        .await?;
-    if query.is_empty() {
-        return Ok(books);
-    }
-
-    Ok(Arc::new(
-        books
-            .iter()
-            .filter(|entry| title_matches_query(&entry.book.title, &query))
-            .cloned()
-            .collect(),
-    ))
+        .await
 }
 
 async fn load_novel_bookshelf(client: &OfficialClient) -> Result<Vec<NovelBookshelfEntry>> {
@@ -99,20 +86,16 @@ async fn load_novel_bookshelf(client: &OfficialClient) -> Result<Vec<NovelBooksh
         .into_iter()
         .filter(|item| is_kind(item, "BOOK"))
         .collect();
-    let books = book_values_for_ids(
-        client,
-        items.iter().map(|item| number(item, "id")).collect(),
-        None,
-    )
-    .await?;
+    let books =
+        book_values_for_ids(client, items.iter().map(shelf_item_id).collect(), None).await?;
     Ok(items
         .into_iter()
         .filter_map(|item| {
             books
                 .iter()
-                .find(|book| number(book, "Id") == number(&item, "id"))
+                .find(|book| number(book, "Id") == shelf_item_id(&item) && !is_comic_book(book))
                 .map(|book_value| NovelBookshelfEntry {
-                    added_at: optional_string(&item, "updateAt").unwrap_or_default(),
+                    added_at: item_updated_at(&item).unwrap_or_default(),
                     book: novel_summary(book_value),
                     progress: optional_number(book_value, "Progress"),
                 })
@@ -152,34 +135,21 @@ pub(crate) async fn set_novel_bookshelf(
 pub(crate) async fn list_comic_bookshelf(
     client: State<'_, OfficialClient>,
     cache: State<'_, AppCache>,
-    query: Option<String>,
 ) -> Result<Arc<Vec<ComicBookshelfEntry>>> {
-    let query = query.unwrap_or_default().to_lowercase();
-    let comics = cache
+    cache
         .load_cache(&cache.comic_bookshelf, (), load_comic_bookshelf(&client))
-        .await?;
-    if query.is_empty() {
-        return Ok(comics);
-    }
-
-    Ok(Arc::new(
-        comics
-            .iter()
-            .filter(|entry| title_matches_query(&entry.comic.title, &query))
-            .cloned()
-            .collect(),
-    ))
+        .await
 }
 
 async fn load_comic_bookshelf(client: &OfficialClient) -> Result<Vec<ComicBookshelfEntry>> {
     let shelf = client.get_bookshelf().await?;
     let items: Vec<_> = shelf_items(&shelf)
         .into_iter()
-        .filter(|item| is_kind(item, "COMIC"))
+        .filter(|item| is_kind(item, "BOOK"))
         .collect();
     let comics = book_values_for_ids(
         client,
-        items.iter().map(|item| number(item, "id")).collect(),
+        items.iter().map(shelf_item_id).collect(),
         Some("Comic"),
     )
     .await?;
@@ -188,10 +158,10 @@ async fn load_comic_bookshelf(client: &OfficialClient) -> Result<Vec<ComicBooksh
         .filter_map(|item| {
             comics
                 .iter()
-                .find(|comic| number(comic, "Id") == number(&item, "id"))
+                .find(|comic| number(comic, "Id") == shelf_item_id(&item))
                 .map(|comic_value| ComicBookshelfEntry {
                     comic: comic_bookshelf_summary(comic_value),
-                    added_at: optional_string(&item, "updateAt").unwrap_or_default(),
+                    added_at: item_updated_at(&item).unwrap_or_default(),
                     progress: optional_number(comic_value, "Progress"),
                 })
         })
@@ -222,19 +192,21 @@ pub(crate) async fn set_comic_bookshelf(
     comic_id: String,
     present: bool,
 ) -> Result<()> {
-    set_shelf(&client, parse_id(&comic_id)?, "COMIC", present).await?;
+    set_shelf(&client, parse_id(&comic_id)?, "BOOK", present).await?;
     cache.invalidate_bookshelves();
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use super::title_matches_query;
+    use serde_json::json;
+
+    use super::is_comic_book;
 
     #[test]
-    fn filters_comic_bookshelf_titles_case_insensitively() {
-        assert!(title_matches_query("My Favorite Comic", "favorite"));
-        assert!(!title_matches_query("My Favorite Comic", "author"));
-        assert!(title_matches_query("My Favorite Comic", ""));
+    fn separates_comics_from_novels_using_official_book_type() {
+        assert!(is_comic_book(&json!({"Id": 1, "Type": "Comic"})));
+        assert!(!is_comic_book(&json!({"Id": 2, "Type": "Novel"})));
+        assert!(!is_comic_book(&json!({"Id": 3})));
     }
 }

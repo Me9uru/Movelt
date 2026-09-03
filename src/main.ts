@@ -1,11 +1,12 @@
 import { createApp } from "vue";
 import { createPinia } from "pinia";
-import { StyleProvider, Themes } from "@varlet/ui";
+import { StyleProvider } from "@varlet/ui";
 import "@varlet/ui/es/style.mjs";
 import "@varlet/touch-emulator";
 import App from "./App.vue";
 import { setupDevInvoke } from "./dev-invoke";
 import { router } from "./router";
+import { lightTheme } from "./themes/app";
 import { showError, showErrorDialog } from "./utils/error";
 import "./styles/theme.css";
 import "./styles/layout.css";
@@ -18,7 +19,7 @@ import "./styles/reader-comic.css";
 if (import.meta.env.DEV) setupDevInvoke();
 
 // Varlet controls are auto-imported on demand. The MD3 palette follows the app theme.
-StyleProvider(Themes.md3Light);
+StyleProvider(lightTheme);
 const app = createApp(App);
 
 app.config.errorHandler = (error, _instance, info) => {

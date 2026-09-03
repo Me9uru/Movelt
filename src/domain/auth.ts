@@ -10,7 +10,7 @@ export interface LightNovelUser {
   Growth?: UserGrowth;
 }
 
-export interface UserGrowth {
+interface UserGrowth {
   Exp: number;
   Coin: number;
   Level: number;

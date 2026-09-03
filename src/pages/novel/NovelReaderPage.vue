@@ -123,7 +123,7 @@ const changeChapter = (offset: number): void => {
   recordProgress();
   chapterEntry.value = offset > 0 ? "next" : "previous";
   void router.replace({
-    name: "reader",
+    name: "novel-reader",
     params: { bookId: bookId.value, chapterId: nextId },
     query: route.query,
   });

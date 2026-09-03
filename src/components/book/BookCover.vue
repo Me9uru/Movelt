@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
-import LoadingOverlay from "./LoadingOverlay.vue";
+import LoadingOverlay from "../common/LoadingOverlay.vue";
 
 const props = withDefaults(
   defineProps<{

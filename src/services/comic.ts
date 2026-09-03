@@ -37,10 +37,8 @@ export const searchComic = (
     mode: searchMode,
   });
 }
-export const listComicBookshelf = (query?: string) => {
-  return query
-    ? command<ComicBookshelfEntry[]>("list_comic_bookshelf", { query })
-    : command<ComicBookshelfEntry[]>("list_comic_bookshelf");
+export const listComicBookshelf = () => {
+  return command<ComicBookshelfEntry[]>("list_comic_bookshelf");
 }
 export const isOnComicBookshelf = (comicId: string) => {
   return command<boolean>("is_on_comic_bookshelf", { comicId });

@@ -1,8 +1,18 @@
 <script setup lang="ts" generic="T extends string">
 import { ref } from "vue";
 import AppSettingsDrawer from "../settings/AppSettingsDrawer.vue";
+import AppTabs from "../common/AppTabs.vue";
 import { useAuthStore } from "../../stores/auth";
-import type { AppSectionHeaderProps } from "../../types/tabs";
+
+interface AppSectionHeaderProps<T extends string> {
+  tabs: readonly {
+    readonly name: T;
+    readonly label: string;
+    readonly icon?: string;
+  }[];
+  modelValue: T;
+  swipe?: boolean;
+}
 
 const props = withDefaults(defineProps<AppSectionHeaderProps<T>>(), {
   swipe: false,
@@ -65,21 +75,17 @@ const handleTouchEnd = (event: TouchEvent): void => {
         <var-icon v-if="!auth.user?.Avatar" name="account-circle" />
       </var-avatar>
     </var-button>
-    <var-tabs
-      :active="modelValue"
+    <AppTabs
+      :model-value="modelValue"
+      :tabs="tabs"
       class="content-tabs"
+      accessibility-label="页面栏目"
       @touchstart.passive="handleTouchStart"
       @touchend.passive="handleTouchEnd"
       @touchcancel="touchStart = null"
-      @update:active="selectTab(String($event))"
-    >
-      <var-tab v-for="tab in tabs" :key="tab.name" :name="tab.name">
-        {{ tab.label }}
-      </var-tab>
-    </var-tabs>
-    <slot name="trailing">
-      <span class="content-tabs-end-spacer" aria-hidden="true"></span>
-    </slot>
+      @update:model-value="selectTab(String($event))"
+    />
+    <span class="content-tabs-end-spacer" aria-hidden="true"></span>
   </div>
 
   <AppSettingsDrawer v-model:show="settingsDrawerVisible" />

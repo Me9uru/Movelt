@@ -4,7 +4,7 @@
   left: 50%;
   z-index: 2001;
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  grid-template-columns: var(--space-6) minmax(0, 1fr) var(--space-6);
   align-items: center;
   gap: 14px;
   width: min(620px, calc(100% - 40px));
@@ -22,7 +22,7 @@
 .reader-chapter-nav .reader-chapter-nav-title {
   overflow: hidden;
   color: var(--color-text-strong);
-  font-family: Georgia, "Source Han Sans CN", "Noto Serif SC", serif;
+  font-family: inherit;
   font-size: 16px;
   font-weight: 500;
   text-align: center;
@@ -131,8 +131,8 @@
 }
 .settings-title strong {
   color: var(--color-text-strong);
-  font-family: Georgia, "Noto Serif SC", serif;
   font-size: 18px;
+  font-weight: 600;
 }
 .settings-panel > label {
   display: flex;
@@ -165,7 +165,7 @@
 
 @media (max-width: 720px) {
   .reader-chapter-nav {
-    grid-template-columns: 36px minmax(0, 1fr) 36px;
+    grid-template-columns: var(--space-6) minmax(0, 1fr) var(--space-6);
     gap: 8px;
     width: calc(100% - 24px);
     min-height: calc(52px + env(safe-area-inset-top));

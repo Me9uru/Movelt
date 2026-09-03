@@ -9,7 +9,7 @@ import { useDiscovery } from "../../composables/discovery/useDiscovery";
 import { provideDiscoveryContext } from "../../composables/discovery/useDiscoveryContext";
 import { useDiscoveryTabRoute } from "../../composables/discovery/useDiscoveryTabRoute";
 import type { NovelSummary } from "../../domain/novel";
-import DiscoveryLayout from "../../layout/DiscoveryLayout.vue";
+import TabbedPageLayout from "../../layout/TabbedPageLayout.vue";
 import type { BookGridItem } from "../../types/book";
 import { novelDiscoveryAdapter } from "../../composables/discovery/adapters";
 import { useDiscoveryPresentation } from "../../composables/discovery/useDiscoveryPresentation";
@@ -68,7 +68,7 @@ const handleSearch = async (page: number): Promise<void> => {
 
 const openNovel = (novel: NovelSummary): void => {
   void router.push({
-    name: "detail",
+    name: "novel-detail",
     params: { bookId: novel.id },
     query: {
       from: "novels",
@@ -104,7 +104,7 @@ watch(activeTab, (tab) => {
 </script>
 
 <template>
-  <DiscoveryLayout
+  <TabbedPageLayout
     :model-value="activeTab"
     :tabs="discoveryTabs"
     swipe
@@ -132,5 +132,5 @@ watch(activeTab, (tab) => {
       @open="openNovel"
       @retry="retryDiscovery('search')"
     />
-  </DiscoveryLayout>
+  </TabbedPageLayout>
 </template>

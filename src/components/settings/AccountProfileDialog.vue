@@ -150,20 +150,20 @@ const formatDate = (value?: string) => {
 
     <section v-else-if="user" class="profile-dialog__content">
       <div class="avatar-source-options" role="radiogroup" aria-label="头像来源">
-        <var-button :type="avatarSource === 'url' ? 'primary' : 'default'" @click="changeAvatarSource('url')">图片 URL</var-button>
-        <var-button :type="avatarSource === 'qq' ? 'primary' : 'default'" @click="changeAvatarSource('qq')">QQ 头像</var-button>
-        <var-button :type="avatarSource === 'qqGroup' ? 'primary' : 'default'" @click="changeAvatarSource('qqGroup')">QQ群头像</var-button>
+        <var-button type="primary" :tonal="avatarSource === 'url'" :outline="avatarSource !== 'url'" :elevation="false" @click="changeAvatarSource('url')">图片 URL</var-button>
+        <var-button type="primary" :tonal="avatarSource === 'qq'" :outline="avatarSource !== 'qq'" :elevation="false" @click="changeAvatarSource('qq')">QQ 头像</var-button>
+        <var-button type="primary" :tonal="avatarSource === 'qqGroup'" :outline="avatarSource !== 'qqGroup'" :elevation="false" @click="changeAvatarSource('qqGroup')">QQ群头像</var-button>
       </div>
       <label class="avatar-input-label">
         {{ avatarSource === "url" ? "图片地址" : avatarSource === "qq" ? "QQ 号" : "QQ群号" }}
-        <var-input v-model="avatarValue" :placeholder="avatarPlaceholder" />
+        <var-input v-model="avatarValue" variant="outlined" :placeholder="avatarPlaceholder" />
       </label>
       <p class="avatar-input-hint">
         {{ avatarSource === "url" ? "图片地址仅支持 HTTPS。" : "使用此功能会公开对应的 QQ 号或 QQ 群号。" }}
       </p>
       <div class="profile-dialog__actions">
         <var-button text :disabled="saving" @click="editingAvatar = false">取消</var-button>
-        <var-button type="primary" :loading="saving" @click="saveAvatar">保存</var-button>
+        <var-button type="primary" :elevation="false" :loading="saving" @click="saveAvatar">保存</var-button>
       </div>
     </section>
   </var-dialog>

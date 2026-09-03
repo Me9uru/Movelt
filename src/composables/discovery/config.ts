@@ -4,9 +4,9 @@ import type {
 } from "../../types/discovery";
 
 export const discoveryTabs = [
-  { name: "recommend", label: "推荐" },
-  { name: "ranking", label: "排行榜" },
-  { name: "search", label: "搜索" },
+  { name: "recommend", label: "推荐", icon: "star" },
+  { name: "ranking", label: "排行榜", icon: "fire" },
+  { name: "search", label: "搜索", icon: "magnify" },
 ] as const satisfies readonly DiscoveryTabOption[];
 
 export const rankingPeriods = [

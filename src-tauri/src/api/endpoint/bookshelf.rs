@@ -4,7 +4,7 @@ use serde_json::{json, Value};
 
 impl OfficialClient {
     pub(crate) async fn get_bookshelf(&self) -> Result<Value> {
-        self.hub("GetBookShelf", json!({})).await
+        self.hub("GetBookShelf", Value::Null).await
     }
 
     pub(crate) async fn save_bookshelf(&self, items: Vec<Value>, version: &str) -> Result<()> {

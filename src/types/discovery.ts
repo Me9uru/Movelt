@@ -1,21 +1,19 @@
 import type { BookGridItem } from "./book";
-import type { DiscoveryList, RecommendBlock } from "../domain/discovery";
-import type { BookSearchMode } from "../domain/search";
+import type {
+  BookSearchMode,
+  DiscoveryList,
+  RecommendBlock,
+} from "../domain/discovery";
 
 export type DiscoveryTab = "recommend" | "ranking" | "search";
 
 export interface DiscoveryTabOption {
   readonly name: DiscoveryTab;
   readonly label: string;
+  readonly icon?: string;
 }
 
-export interface BookSearchBarProps {
-  modelValue: string;
-  loading: boolean;
-  searchMode?: BookSearchMode;
-}
-
-export interface DiscoverySearchResultModel<T> {
+interface DiscoverySearchResultModel<T> {
   items: BookGridItem<T>[];
   pagination: { page: number; last: number } | null;
 }
@@ -29,7 +27,7 @@ export interface RecommendDiscoveryModel<T> extends DiscoveryLoadState {
   blocks: DiscoveryRecommendBlock<T>[];
 }
 
-export interface DiscoveryRecommendBlock<T> {
+interface DiscoveryRecommendBlock<T> {
   title: string;
   items: BookGridItem<T>[];
 }
@@ -46,18 +44,10 @@ export interface SearchDiscoveryModel<T> extends DiscoveryLoadState {
   result: DiscoverySearchResultModel<T> | null;
 }
 
-export interface DiscoveryLayoutProps {
-  tabs: readonly DiscoveryTabOption[];
-  modelValue: DiscoveryTab;
-  swipe?: boolean;
-}
-
 export interface DiscoveryRankingPeriod {
   value: number;
   label: string;
 }
-
-export type DiscoveryRegion = DiscoveryTab;
 
 /** Search-only state retained while navigating between results and a detail page. */
 export interface DiscoverySearchCache<T> {

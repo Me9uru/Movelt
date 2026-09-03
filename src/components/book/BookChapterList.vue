@@ -1,9 +1,16 @@
 <script setup lang="ts" generic="T">
 import { computed, ref } from "vue";
 import type {
+  BookChapterGroup,
   BookChapterItem,
-  BookChapterListProps,
 } from "../../types/book";
+
+interface BookChapterListProps<T> {
+  items?: BookChapterItem<T>[];
+  groups?: BookChapterGroup<T>[];
+  loading?: boolean;
+  pageSize?: number;
+}
 
 const props = withDefaults(
   defineProps<BookChapterListProps<T>>(),
@@ -29,12 +36,28 @@ const rowNumber = (index: number): string => {
     "0",
   );
 }
+
+const openChapter = (item: BookChapterItem<T>): void => {
+  if (!props.loading) emit("open", item);
+};
+
+const handleChapterKeydown = (
+  event: KeyboardEvent,
+  item: BookChapterItem<T>,
+): void => {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  event.preventDefault();
+  openChapter(item);
+};
 </script>
 
 <template>
   <var-collapse
     v-if="groups?.length"
     v-model="activeSections"
+    :divider="false"
+    :elevation="false"
+    :offset="false"
     class="catalogue catalogue-nested"
   >
     <var-collapse-item
@@ -54,34 +77,48 @@ const rowNumber = (index: number): string => {
           >
         </div>
       </template>
-      <BookChapterList
-        :groups="group.groups"
-        :items="group.chapters"
-        :loading="loading"
-        :page-size="pageSize"
-        @open="emit('open', $event)"
-      />
+      <div class="volume-content">
+        <div class="volume-content-label">
+          {{ group.groups?.length ? "分组与章节" : "章节" }}
+        </div>
+        <BookChapterList
+          :groups="group.groups"
+          :items="group.chapters"
+          :loading="loading"
+          :page-size="pageSize"
+          v-memo="[group.groups, group.chapters]"
+          @open="emit('open', $event)"
+        />
+      </div>
     </var-collapse-item>
   </var-collapse>
 
   <div v-if="items?.length" class="chapter-list">
-    <var-button
+    <var-cell
       v-for="(item, index) in visibleItems"
       :key="item.id"
-      text
-      :disabled="loading"
-      @click="emit('open', item)"
+      :title="item.title"
+      :description="item.meta || undefined"
+      :ripple="!loading"
+      role="button"
+      :tabindex="loading ? -1 : 0"
+      :aria-disabled="loading"
+      @click="openChapter(item)"
+      @keydown="handleChapterKeydown($event, item)"
     >
-      <span class="chapter-leading">
+      <template v-if="numbered || item.icon" #icon>
         <span v-if="numbered" class="chapter-number">{{ rowNumber(index) }}</span>
-        <var-icon v-else-if="item.icon" :name="item.icon" />
-      </span>
-      <span class="chapter-title">
-        <strong>{{ item.title }}</strong>
-        <small v-if="item.meta">{{ item.meta }}</small>
-      </span>
-      <var-chip v-if="item.unread" size="small">未读</var-chip>
-    </var-button>
+        <var-icon v-else :name="item.icon" />
+      </template>
+      <template #extra>
+        <span class="chapter-extra">
+          <var-chip v-if="item.unread" type="primary" size="small">
+            未读
+          </var-chip>
+          <var-icon name="chevron-right" aria-hidden="true" />
+        </span>
+      </template>
+    </var-cell>
   </div>
   <div
     v-if="pageSize && items && items.length > pageSize"

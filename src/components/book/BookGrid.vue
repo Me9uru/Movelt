@@ -1,6 +1,11 @@
 <script setup lang="ts" generic="T">
 import BookCover from "./BookCover.vue";
-import type { BookGridItem, BookGridProps } from "../../types/book";
+import type { BookGridItem } from "../../types/book";
+
+interface BookGridProps<T> {
+  items: BookGridItem<T>[];
+  disabled?: boolean;
+}
 
 defineProps<BookGridProps<T>>();
 const emit = defineEmits<{ open: [item: BookGridItem<T>] }>();
@@ -11,6 +16,7 @@ const emit = defineEmits<{ open: [item: BookGridItem<T>] }>();
     <var-button
       v-for="item in items"
       :key="item.id"
+      :elevation="false"
       text
       class="book-card"
       :class="{ 'book-card--disabled': disabled }"

@@ -1,7 +1,7 @@
 <script setup lang="ts" generic="T">
 import { computed } from "vue";
 import BookCollection from "../../layout/BookCollection.vue";
-import BookGrid from "../common/BookGrid.vue";
+import BookGrid from "../book/BookGrid.vue";
 import type { RecommendDiscoveryModel } from "../../types/discovery";
 import { useDiscoveryContext } from "../../composables/discovery/useDiscoveryContext";
 
@@ -21,7 +21,7 @@ const emit = defineEmits<{
     :items="collectionItems"
     :loading="loading"
     :error="error"
-    empty-message="暂无推荐内容"
+    :empty-state="{ icon: 'bookmark', title: '暂无推荐内容' }"
     error-title="推荐加载失败"
     grid-class="discovery-grid"
     :has-content="blocks.length > 0"

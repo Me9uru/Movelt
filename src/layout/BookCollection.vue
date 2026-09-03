@@ -1,15 +1,39 @@
 <script setup lang="ts" generic="T">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import BookGrid from "../components/common/BookGrid.vue";
+import BookGrid from "../components/book/BookGrid.vue";
+import AppEmptyState from "../components/common/AppEmptyState.vue";
 import ErrorState from "../components/common/ErrorState.vue";
 import LoadingOverlay from "../components/common/LoadingOverlay.vue";
-import type { BookCollectionProps, BookGridItem } from "../types/book";
+import type { BookCollectionState, BookGridItem } from "../types/book";
+
+interface BookCollectionProps<T> {
+  items: BookGridItem<T>[] | null;
+  loading: boolean;
+  error?: string;
+  pagination?: { page: number; last: number } | null;
+  disabled?: boolean;
+  promptState?: BookCollectionState;
+  emptyState?: BookCollectionState;
+  errorTitle?: string;
+  gridClass?: string;
+  hasContent?: boolean;
+  contentWhileLoading?: boolean;
+}
 
 // Vue 会将缺省的 Boolean prop 转成 false。这里显式保留 undefined，才能让
 // hasContent 未传入时回退到 items 的实际长度。
 const props = withDefaults(defineProps<BookCollectionProps<T>>(), {
   hasContent: undefined,
 });
+
+const defaultEmptyState: BookCollectionState = {
+  icon: "bookmark",
+  title: "暂无作品",
+};
+const defaultPromptState: BookCollectionState = {
+  icon: "magnify",
+  title: "暂无可展示的作品",
+};
 
 const emit = defineEmits<{
   open: [item: BookGridItem<T>];
@@ -78,13 +102,10 @@ onBeforeUnmount(() => loadMoreObserver?.disconnect());
       <LoadingOverlay inline visible label="正在加载内容" />
     </slot>
     <slot v-else-if="items" name="empty">
-      <var-result type="empty" :description="emptyMessage ?? '暂无作品'" />
+      <AppEmptyState v-bind="emptyState ?? defaultEmptyState" />
     </slot>
     <slot v-else name="prompt">
-      <var-result
-        type="empty"
-        :description="promptMessage ?? '暂无可展示的作品'"
-      />
+      <AppEmptyState v-bind="promptState ?? defaultPromptState" />
     </slot>
     <div
       v-if="items?.length && hasMore"

@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { useReaderSettings } from "../../composables/reader/useReaderSettings";
-import type { ReaderSettingsDrawerProps } from "../../types/reader";
+import type { ReaderKind } from "../../types/reader";
+
+interface ReaderSettingsDrawerProps {
+  kind: ReaderKind;
+  title: string;
+  titleClick?: () => void;
+  previousDisabled?: boolean;
+  nextDisabled?: boolean;
+}
 
 const props = defineProps<ReaderSettingsDrawerProps>();
 
@@ -18,6 +26,8 @@ const { settings, reset } = useReaderSettings(props.kind);
     <Transition name="reader-chapter-nav">
       <nav v-if="visible" class="reader-chapter-nav" aria-label="章节导航">
         <var-button
+          type="primary"
+          tonal
           round
           :disabled="previousDisabled"
           :title="previousDisabled ? '已是第一话' : '上一话'"
@@ -41,6 +51,8 @@ const { settings, reset } = useReaderSettings(props.kind);
           {{ title }}
         </var-button>
         <var-button
+          type="primary"
+          tonal
           round
           :disabled="nextDisabled"
           :title="nextDisabled ? '已是最后一话' : '下一话'"

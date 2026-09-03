@@ -1,7 +1,8 @@
 import { computed, reactive, ref, watch } from "vue";
-import { StyleProvider, Themes } from "@varlet/ui";
+import { StyleProvider } from "@varlet/ui";
 import { defineStore } from "pinia";
 import { paperTheme } from "../themes/paper";
+import { lightTheme, nightTheme } from "../themes/app";
 import type { ReaderKind, ReaderSettings, ReaderTheme } from "../types/reader";
 
 const themeStorageKey = "reader.theme.v1";
@@ -89,7 +90,7 @@ const createReaderStyle = (settings: ReaderSettings) => {
 
 const resolveVarletTheme = (value: ReaderTheme) => {
   if (value === "paper") return paperTheme;
-  return value === "night" ? Themes.md3Dark : Themes.md3Light;
+  return value === "night" ? nightTheme : lightTheme;
 }
 
 export const useReaderSettingsStore = defineStore("reader-settings", () => {

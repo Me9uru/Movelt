@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, watch } from "vue";
 import { RouterView, useRoute, useRouter } from "vue-router";
-import AppStartupScreen from "./components/common/AppStartupScreen.vue";
-import MainNavigation from "./layout/MainNavigation.vue";
+import AppStartupScreen from "./components/app/AppStartupScreen.vue";
+import MainNavigation from "./components/app/MainNavigation.vue";
 import { useAuthStore } from "./stores/auth";
-import type { AppRouteName, LibraryRouteName } from "./types/router";
+import type { AppRouteName, NavigationRouteName } from "./types/router";
 import { showError } from "./utils/error";
 
 const route = useRoute();
@@ -13,8 +13,8 @@ const auth = useAuthStore();
 const view = computed<AppRouteName>(() => {
   const routeName = route.name;
   return routeName === "bookshelf" ||
-    routeName === "detail" ||
-    routeName === "reader" ||
+    routeName === "novel-detail" ||
+    routeName === "novel-reader" ||
     routeName === "comic" ||
     routeName === "comic-detail" ||
     routeName === "comic-reader" ||
@@ -35,26 +35,33 @@ const handleAuthenticationExpired = () => {
 
 const handleAndroidBack = (event: Event) => {
   if (
-    view.value !== "detail" &&
-    view.value !== "reader" &&
-    view.value !== "comic-detail"
+    view.value !== "novel-detail" &&
+    view.value !== "novel-reader" &&
+    view.value !== "comic-detail" &&
+    view.value !== "comic-reader"
   )
     return;
   event.preventDefault();
   if (window.history.state?.back) router.back();
-  else if (view.value === "reader" && typeof route.params.bookId === "string") {
+  else if (
+    view.value === "novel-reader" &&
+    typeof route.params.bookId === "string"
+  ) {
     void router.replace({
-      name: "detail",
+      name: "novel-detail",
       params: { bookId: route.params.bookId },
       query: route.query,
     });
   } else
     void router.replace({
-      name: view.value === "comic-detail" ? "comic" : "novels",
+      name:
+        view.value === "comic-detail" || view.value === "comic-reader"
+          ? "comic"
+          : "novels",
     });
 }
 
-const navigate = (nextView: LibraryRouteName) => {
+const navigate = (nextView: NavigationRouteName) => {
   void router.replace({ name: nextView });
 }
 

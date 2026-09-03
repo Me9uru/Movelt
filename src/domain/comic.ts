@@ -5,7 +5,7 @@
  * entries, reading positions, and reader payloads live here instead of in
  * transport adapters.
  */
-import type { ReadPosition } from "./readPosition";
+import type { ReadPosition } from "./reader";
 
 export interface ComicSummary {
   id: string;

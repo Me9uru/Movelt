@@ -1,4 +1,5 @@
 import { Themes } from "@varlet/ui";
+import { materialComponentTheme } from "./app";
 
 /**
  * A warm, paper-like MD3 palette. It extends Varlet's MD3 light theme so every
@@ -7,6 +8,7 @@ import { Themes } from "@varlet/ui";
  */
 export const paperTheme = {
   ...Themes.md3Light,
+  ...materialComponentTheme,
   "--color-scheme": "light",
   "--hsl-body": "42, 36%, 94%",
   "--hsl-text": "36, 10%, 20%",

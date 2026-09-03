@@ -1,10 +1,8 @@
-export type LibraryRouteName = "novels" | "bookshelf" | "comic";
+export type NavigationRouteName = "novels" | "bookshelf" | "comic";
 export type AppRouteName =
-  | LibraryRouteName
+  | NavigationRouteName
   | "login"
-  | "detail"
-  | "reader"
+  | "novel-detail"
+  | "novel-reader"
   | "comic-detail"
   | "comic-reader";
-
-export type ReturnRouteName = LibraryRouteName;

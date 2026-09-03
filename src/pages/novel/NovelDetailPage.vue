@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import type { NovelChapterSummary, NovelDetail } from "../../domain/novel";
-import BookChapterList from "../../components/detail/BookChapterList.vue";
+import BookChapterList from "../../components/book/BookChapterList.vue";
 import type { BookChapterItem } from "../../types/book";
 import BookDetailLayout from "../../layout/BookDetailLayout.vue";
 import LoadingOverlay from "../../components/common/LoadingOverlay.vue";
@@ -68,7 +68,7 @@ const goBack = (): void => {
 const openChapter = (chapterId: string): void => {
   if (!detail.value) return;
   void router.push({
-    name: "reader",
+    name: "novel-reader",
     params: { bookId: detail.value.id, chapterId },
     query: route.query,
   });
