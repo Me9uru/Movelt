@@ -1,0 +1,3 @@
+allowBuilds:
+  # Vite requires esbuild's platform-specific installer during pnpm install.
+  esbuild: true
