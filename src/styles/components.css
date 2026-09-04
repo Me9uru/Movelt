@@ -659,6 +659,7 @@
 .book-detail-description .book-description {
   display: -webkit-box;
   overflow: hidden;
+  overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 10;
 }
@@ -701,6 +702,7 @@
 }
 .book-detail-copy h1 {
   margin: 0 0 var(--space-2);
+  overflow-wrap: anywhere;
   color: var(--color-text-strong);
   font-family: inherit;
   font-size: clamp(30px, 4vw, 42px);

@@ -84,7 +84,13 @@
 }
 
 .detail-view {
+  min-width: 0;
   padding: var(--space-5) 0 var(--space-8);
+}
+.book-detail-view,
+.catalogue-section {
+  min-width: 0;
+  max-width: 100%;
 }
 .catalogue-section {
   margin-top: calc(var(--space-6) + var(--space-5));
@@ -134,10 +140,14 @@
 }
 .catalogue-nested {
   display: grid;
+  min-width: 0;
+  max-width: 100%;
   gap: var(--space-2);
   margin: var(--space-3);
 }
 .catalogue-nested > .catalogue-section-item {
+  min-width: 0;
+  max-width: 100%;
   margin: 0;
   overflow: hidden;
   border: 1px solid var(--color-border);
@@ -193,6 +203,8 @@
   font-weight: 500;
 }
 .volume-content {
+  min-width: 0;
+  max-width: 100%;
   padding: var(--space-2) var(--space-3) var(--space-3);
   background: var(--color-surface-container-low);
 }
@@ -215,6 +227,8 @@
 .chapter-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
+  max-width: 100%;
   margin: var(--space-2) var(--space-3) var(--space-3);
   overflow: hidden;
   border: 1px solid var(--color-border);
@@ -222,6 +236,8 @@
   background: var(--color-surface-container-low);
 }
 .chapter-list .var-cell {
+  min-width: 0;
+  overflow: hidden;
   border-bottom: 1px solid var(--color-border);
 }
 .chapter-list .var-cell:nth-child(odd) {

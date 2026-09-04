@@ -1,9 +1,17 @@
 <script setup lang="ts" generic="T">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import {
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  useSlots,
+  watch,
+} from "vue";
 import BookGrid from "../components/book/BookGrid.vue";
 import AppEmptyState from "../components/common/AppEmptyState.vue";
 import ErrorState from "../components/common/ErrorState.vue";
 import LoadingOverlay from "../components/common/LoadingOverlay.vue";
+import { useProgressiveRender } from "../composables/useProgressiveRender";
 import type { BookCollectionState, BookGridItem } from "../types/book";
 
 interface BookCollectionProps<T> {
@@ -25,6 +33,7 @@ interface BookCollectionProps<T> {
 const props = withDefaults(defineProps<BookCollectionProps<T>>(), {
   hasContent: undefined,
 });
+const slots = useSlots();
 
 const defaultEmptyState: BookCollectionState = {
   icon: "bookmark",
@@ -52,6 +61,21 @@ const hasContent = computed(
 );
 const shouldShowContent = computed(
   () => hasContent.value && ((props.contentWhileLoading ?? true) || !props.loading),
+);
+const progressiveKeys = computed(
+  () => props.items?.map((item) => item.id) ?? [],
+);
+const progressiveEnabled = (): boolean => !slots.content;
+const {
+  visibleCount,
+  setSentinel: setProgressiveSentinel,
+  hasMore: hasMoreToRender,
+} = useProgressiveRender(
+  () => progressiveKeys.value,
+  progressiveEnabled,
+);
+const renderedItems = computed(() =>
+  props.items?.slice(0, visibleCount.value) ?? null,
 );
 
 onMounted(() => {
@@ -93,7 +117,7 @@ onBeforeUnmount(() => loadMoreObserver?.disconnect());
     <slot v-else-if="shouldShowContent" name="content" :items="items">
       <BookGrid
         :class="gridClass"
-        :items="items!"
+        :items="renderedItems!"
         :disabled="disabled || loading"
         @open="emit('open', $event)"
       />
@@ -108,7 +132,13 @@ onBeforeUnmount(() => loadMoreObserver?.disconnect());
       <AppEmptyState v-bind="promptState ?? defaultPromptState" />
     </slot>
     <div
-      v-if="items?.length && hasMore"
+      v-if="shouldShowContent && hasMoreToRender"
+      :ref="setProgressiveSentinel"
+      class="book-collection__load-more"
+      aria-hidden="true"
+    />
+    <div
+      v-if="items?.length && hasMore && !hasMoreToRender"
       ref="loadMoreSentinel"
       class="book-collection__load-more"
     >
