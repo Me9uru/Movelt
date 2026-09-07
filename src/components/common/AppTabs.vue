@@ -75,7 +75,10 @@ const handleKeydown = (
     class="app-tabs"
     :class="[
       `app-tabs--${variant}`,
-      { 'app-tabs--stretch': stretch },
+      {
+        'app-tabs--stretch': stretch,
+        'app-tabs--with-icons': tabs.some((tab) => tab.icon),
+      },
     ]"
     :active="modelValue"
     :indicator-size="variant === 'primary' ? 3 : 2"

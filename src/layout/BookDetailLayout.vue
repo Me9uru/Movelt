@@ -5,8 +5,10 @@ import {
   onBeforeUnmount,
   onMounted,
   ref,
+  useId,
   watch,
 } from "vue";
+import AppEmptyState from "../components/common/AppEmptyState.vue";
 import BookCover from "../components/book/BookCover.vue";
 
 interface BookDetailLayoutProps {
@@ -21,6 +23,7 @@ interface BookDetailLayoutProps {
   loading: boolean;
   resumeChapterId?: string | null;
   canStartReading?: boolean;
+  hasChapters?: boolean;
   stats?: { value?: string | number; label: string }[];
   sectionTitle: string;
   sectionSummary: string;
@@ -31,6 +34,7 @@ const props = withDefaults(
   {
     descriptionFallback: "暂无简介。",
     canStartReading: false,
+    hasChapters: true,
     stats: () => [],
   },
 );
@@ -40,6 +44,8 @@ const emit = defineEmits<{
   continueReading: [];
 }>();
 
+const descriptionId = useId();
+const catalogueId = useId();
 const hasStats = computed(() => props.stats.length > 0);
 
 const descriptionElement = ref<HTMLElement | null>(null);
@@ -102,6 +108,8 @@ onBeforeUnmount(() => descriptionResizeObserver?.disconnect());
             >
           </template>
         </div>
+      </div>
+      <div class="book-detail-description-block">
         <var-card
           variant="filled"
           :elevation="false"
@@ -110,11 +118,11 @@ onBeforeUnmount(() => descriptionResizeObserver?.disconnect());
             'book-detail-description-card--expanded': descriptionExpanded,
             'book-detail-description-card--no-stats': !hasStats,
           }"
-          aria-labelledby="book-detail-description-title"
+          :aria-labelledby="`${descriptionId}-title`"
         >
           <template #title="{ slotClass }">
             <h2
-              id="book-detail-description-title"
+              :id="`${descriptionId}-title`"
               :class="[slotClass, 'book-detail-description-title']"
             >
               简介
@@ -122,6 +130,7 @@ onBeforeUnmount(() => descriptionResizeObserver?.disconnect());
           </template>
           <div ref="descriptionElement" class="book-detail-description">
             <div
+              :id="descriptionId"
               class="book-description"
               v-html="description || descriptionFallback"
             />
@@ -130,6 +139,7 @@ onBeforeUnmount(() => descriptionResizeObserver?.disconnect());
               text
               class="description-toggle"
               :aria-expanded="descriptionExpanded"
+              :aria-controls="descriptionId"
               @click="descriptionExpanded = !descriptionExpanded"
             >
               {{ descriptionExpanded ? "收起简介" : "展开全部" }}
@@ -146,45 +156,41 @@ onBeforeUnmount(() => descriptionResizeObserver?.disconnect());
       <aside class="book-detail-rail">
         <div class="book-detail-actions">
           <var-button
+            v-if="resumeChapterId || canStartReading"
+            type="primary"
+            size="large"
+            :elevation="false"
+            :disabled="loading"
+            @click="emit('continueReading')"
+          >
+            <var-icon name="play-circle-outline" aria-hidden="true" />
+            {{ resumeChapterId ? "继续阅读" : "开始阅读" }}
+          </var-button>
+          <var-button
             type="primary"
             size="large"
             :tonal="onBookshelf"
+            :outline="!onBookshelf"
+            :text="!onBookshelf"
             :elevation="false"
             :disabled="loading"
+            :aria-pressed="onBookshelf"
+            :aria-label="onBookshelf ? '从书架移除' : '加入书架'"
             @click="emit('toggleBookshelf')"
           >
-            <var-icon :name="onBookshelf ? 'check' : 'star'" />
+            <var-icon :name="onBookshelf ? 'check' : 'bookmark-outline'" aria-hidden="true" />
             {{ onBookshelf ? "已加入书架" : "加入书架" }}
-          </var-button>
-          <var-button
-            v-if="resumeChapterId"
-            type="primary"
-            size="large"
-            tonal
-            :disabled="loading"
-            @click="emit('continueReading')"
-          >
-            <var-icon name="play" />继续阅读
-          </var-button>
-          <var-button
-            v-else-if="canStartReading"
-            type="primary"
-            size="large"
-            tonal
-            :disabled="loading"
-            @click="emit('continueReading')"
-          >
-            <var-icon name="play" />开始阅读
           </var-button>
         </div>
       </aside>
     </article>
-    <section class="catalogue-section">
+    <section class="catalogue-section" :aria-labelledby="catalogueId">
       <div class="catalogue-heading">
-        <h2>{{ sectionTitle }}</h2>
+        <h2 :id="catalogueId">{{ sectionTitle }}</h2>
         <p>{{ sectionSummary }}</p>
       </div>
-      <slot />
+      <slot v-if="hasChapters" />
+      <AppEmptyState v-else icon="notebook" title="暂无章节" description="作品更新后，章节将在这里显示。" />
     </section>
   </section>
 </template>

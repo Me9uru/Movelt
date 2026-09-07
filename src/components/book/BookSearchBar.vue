@@ -76,7 +76,8 @@ const updateSearchMode = (value: BookSearchMode): void => {
         v-if="showSubmit"
         class="book-search-submit"
         type="primary"
-        tonal
+        icon-container
+        round
         :elevation="false"
         native-type="submit"
         :loading="loading"

@@ -18,21 +18,37 @@ const navigate = (view: string | number): void => {
 </script>
 
 <template>
-  <var-bottom-navigation
-    v-if="shouldShow"
-    class="view-dock"
-    :active="props.view"
-    fixed
-    variant
-    aria-label="主栏目"
-    @update:active="navigate"
-  >
-    <var-bottom-navigation-item
-      v-for="item in navItems"
-      :key="item.name"
-      :name="item.name"
-      :icon="item.icon"
-      :label="item.label"
-    />
-  </var-bottom-navigation>
+  <nav v-if="shouldShow" class="main-navigation" aria-label="主栏目">
+    <var-bottom-navigation
+      class="view-dock"
+      :active="props.view"
+      fixed
+      variant
+      @update:active="navigate"
+    >
+      <var-bottom-navigation-item
+        v-for="item in navItems"
+        :key="item.name"
+        :name="item.name"
+        :icon="item.icon"
+        :label="item.label"
+        :aria-current="item.name === view ? 'page' : undefined"
+      />
+    </var-bottom-navigation>
+    <var-rail-navigation
+      class="view-rail"
+      :active="view"
+      ripple
+      @update:active="navigate"
+    >
+      <var-rail-navigation-item
+        v-for="item in navItems"
+        :key="item.name"
+        :name="item.name"
+        :icon="item.icon"
+        :label="item.label"
+        :aria-current="item.name === view ? 'page' : undefined"
+      />
+    </var-rail-navigation>
+  </nav>
 </template>

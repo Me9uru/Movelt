@@ -24,6 +24,7 @@ const bookshelf = useBookshelfStore();
 const comic = ref<ComicSeriesDetail | null>(null);
 const loading = ref(true);
 const error = ref("");
+const updatingBookshelf = ref(false);
 const comicId = computed(() => String(route.params.comicId));
 const onBookshelf = ref(false);
 interface ComicChapterTarget {
@@ -47,7 +48,6 @@ const toChapterItem = (
   return {
     id: chapter.id,
     title: chapter.title || `第 ${chapter.sequence} 话`,
-    icon: "book-open-variant",
     meta: chapter.pageCount > 0 ? `${chapter.pageCount} 页` : undefined,
     data: { bookId: book.id, chapter },
   };
@@ -109,7 +109,8 @@ const goBack = (): void => {
   });
 }
 const toggleBookshelf = async (): Promise<void> => {
-  if (!comic.value) return;
+  if (!comic.value || updatingBookshelf.value) return;
+  updatingBookshelf.value = true;
   try {
     const book = comic.value.books[0];
     if (!book) return;
@@ -119,19 +120,21 @@ const toggleBookshelf = async (): Promise<void> => {
     onBookshelf.value = !onBookshelf.value;
   } catch (value) {
     showError(value, "更新漫画书架失败");
+  } finally {
+    updatingBookshelf.value = false;
   }
 }
 </script>
 <template>
-  <div>
+  <div class="book-detail-page">
     <header class="topbar book-detail-topbar">
       <div class="topbar-inner detail-topbar">
-        <var-button text @click="goBack"><var-icon name="arrow-left" />返回漫画</var-button>
+        <var-button text size="large" :elevation="false" @click="goBack"><var-icon name="arrow-left" />返回漫画</var-button>
       </div>
     </header>
     <section class="detail-view">
       <LoadingOverlay v-if="loading" inline visible label="正在加载漫画详情" />
-      <ErrorState v-if="error" title="漫画详情加载失败" :message="error" :loading="loading" @retry="load" />
+      <ErrorState v-else-if="error" title="漫画详情加载失败" :message="error" :loading="loading" @retry="load" />
   <BookDetailLayout
     v-else-if="comic"
     :title="comic?.title ?? ''"
@@ -141,9 +144,10 @@ const toggleBookshelf = async (): Promise<void> => {
     :tags="comic?.genre ?? []"
     :description="comic?.description"
     :on-bookshelf="onBookshelf"
-    :loading="loading"
+    :loading="loading || updatingBookshelf"
     :resume-chapter-id="resumeTarget?.chapter.id"
     :can-start-reading="Boolean(firstTarget)"
+    :has-chapters="chapterCount > 0"
     :stats="[
       { value: comic.books.length, label: '卷' },
       { value: chapterCount, label: '话' },
@@ -155,6 +159,7 @@ const toggleBookshelf = async (): Promise<void> => {
   >
     <BookChapterList
       :groups="chapterGroups"
+      :loading="loading || updatingBookshelf"
       @open="read($event.data.bookId, $event.data.chapter.id)"
     />
   </BookDetailLayout>

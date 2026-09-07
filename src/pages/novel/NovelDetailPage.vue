@@ -113,10 +113,10 @@ const chapterItems = computed(() => chapters.value.map(toChapterItem));
 </script>
 
 <template>
-  <div>
+  <div class="book-detail-page">
     <header class="topbar book-detail-topbar">
       <div class="topbar-inner detail-topbar">
-        <var-button text @click="goBack"
+        <var-button text size="large" :elevation="false" @click="goBack"
           ><var-icon name="arrow-left" />{{ backLabel }}</var-button
         >
       </div>
@@ -147,6 +147,8 @@ const chapterItems = computed(() => chapters.value.map(toChapterItem));
         :on-bookshelf="onBookshelf"
         :loading="loading"
         :resume-chapter-id="resumeChapterId"
+        :can-start-reading="chapterCount > 0"
+        :has-chapters="chapterCount > 0"
         :stats="stats"
         section-title="作品目录"
         :section-summary="`共 ${chapterCount} 话`"

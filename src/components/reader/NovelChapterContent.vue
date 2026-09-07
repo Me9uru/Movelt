@@ -63,6 +63,14 @@ const prepareFootnotes = (element: HTMLElement): void => {
           image.replaceWith(document.createTextNode("*"));
         });
       footnote.setAttribute("aria-label", "查看注释");
+      footnote.setAttribute("role", "button");
+      footnote.tabIndex = 0;
+      footnote.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        event.stopPropagation();
+        footnote.click();
+      });
       footnote.title = note.textContent?.trim() || "查看注释";
       footnote.addEventListener("click", (event) => {
         event.preventDefault();

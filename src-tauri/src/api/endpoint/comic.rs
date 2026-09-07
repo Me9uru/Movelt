@@ -31,16 +31,13 @@ impl OfficialClient {
     }
 
     pub(crate) async fn get_comic_info(&self, id: i64) -> Result<Value> {
-        self.hub("GetComicInfo", json!({ "Id": id })).await
+        self.hub("GetBookInfo", json!({ "Id": id })).await
     }
 
-    /// 获取漫画系列及其分卷；系列标题不是数字书籍 ID。
-    pub(crate) async fn get_comic_series_info(&self, series_title: &str) -> Result<Value> {
-        self.hub(
-            "GetComicSeriesInfo",
-            json!({ "SeriesTitle": series_title, "Order": Order::Latest.hub_order() }),
-        )
-        .await
+    /// 通过系列名定位代表分卷，再由统一详情中的 Series 获取完整系列。
+    pub(crate) async fn find_comic_series_book(&self, series_title: &str) -> Result<Value> {
+        self.hub("GetBooksBySeries", comic_series_payload(series_title))
+            .await
     }
 
     pub(crate) async fn get_comic_content(&self, chapter_id: i64, skip: i64) -> Result<Value> {
@@ -58,5 +55,24 @@ impl OfficialClient {
         page: i64,
     ) -> Result<()> {
         super::save_read_position(self, comic_id, chapter_id, page.to_string()).await
+    }
+}
+
+fn comic_series_payload(series_title: &str) -> Value {
+    json!({ "SeriesName": series_title, "Type": "Comic", "Page": 1, "Size": 1, "Order": "latest" })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn locates_series_with_explicit_comic_type() {
+        assert_eq!(
+            comic_series_payload("系列"),
+            json!({
+                "SeriesName": "系列", "Type": "Comic", "Page": 1, "Size": 1, "Order": "latest"
+            })
+        );
     }
 }

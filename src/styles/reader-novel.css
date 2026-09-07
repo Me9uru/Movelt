@@ -1,8 +1,13 @@
 /* Novel reader content. The shared .book-reader base lives in reader.css;
-   :not(.comic-reader) keeps these novel-only rules off the comic reader. */
+   :not(.comic-reader) keeps these novel-only rules off the comic reader.
+   Book typography, semantic source colours and em-based spacing preserve the
+   publisher's content and user reading preferences, rather than MD3 UI type. */
 .book-reader:not(.comic-reader) {
-  padding: var(--space-3) max(var(--layout-gutter), calc(50vw - 580px))
-    var(--space-8);
+  padding: calc(var(--space-8) + var(--space-4) + env(safe-area-inset-top))
+    max(var(--layout-gutter), env(safe-area-inset-right), calc(50vw - 580px))
+    max(var(--space-8), env(safe-area-inset-bottom))
+    max(var(--layout-gutter), env(safe-area-inset-left), calc(50vw - 580px));
+  color: var(--reader-text);
   font-family: var(--reader-font-family);
 }
 .reader-body {
@@ -23,11 +28,15 @@
 }
 .reader-heading h1 {
   margin: 0;
-  font-size: clamp(30px, 5vw, 42px);
+  font: var(--type-headline-large);
 }
 .reader-content {
   padding: 0;
   font-family: var(--reader-font-family);
+  font-size: var(--reader-font-size);
+  line-height: var(--reader-line-height);
+  letter-spacing: var(--reader-letter-spacing);
+  overflow-wrap: anywhere;
 }
 .reader-content :is(p, div, span, li, blockquote, h1, h2, h3, h4, h5, h6) {
   font-family: var(--reader-font-family);
@@ -91,7 +100,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: var(--space-1);
   flex-wrap: wrap;
   break-inside: avoid;
 }
@@ -99,8 +108,7 @@
   display: block;
   margin: var(--space-5) auto;
   cursor: zoom-in;
-  box-shadow: 0 0 3px color-mix(in srgb, #000 55%, transparent);
-  border: 1px solid var(--reader-border);
+  box-shadow: none;
 }
 .reader-content :is(.illus, .illu, .duokan-image-single) img.no-preview {
   cursor: default;
@@ -120,10 +128,13 @@
   cursor: help;
   font-family: inherit;
   font-weight: 700;
-  text-decoration: none;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }
 .reader-footnote-dialog {
-  width: min(440px, calc(100vw - var(--space-6)));
+  width: min(440px, calc(100vw - (var(--space-3) * 2)));
+  border-radius: var(--radius-panel);
+  background: var(--color-surface-container-high);
 }
 .reader-footnote-dialog .var-dialog__message {
   max-height: min(50dvh, 360px);
@@ -332,7 +343,7 @@
 /* Paged reading machinery (novel only). */
 .book-reader--paged:not(.comic-reader) {
   flex-direction: column;
-  padding-bottom: var(--space-3);
+  padding-bottom: max(var(--space-2), env(safe-area-inset-bottom));
 }
 .paged-reader {
   display: grid;
@@ -347,7 +358,6 @@
   min-height: 0;
   padding: var(--space-6) var(--space-7);
   overflow: hidden;
-  outline: none;
   column-count: 1;
   column-gap: var(--space-8);
   column-fill: auto;
@@ -355,7 +365,7 @@
 }
 .paged-reader--spread .page-viewport {
   column-count: 2;
-  column-gap: 72px;
+  column-gap: var(--space-8);
 }
 .paged-heading {
   margin-bottom: var(--space-5);
@@ -364,7 +374,7 @@
 }
 .paged-heading h1 {
   margin: 0;
-  font-size: clamp(26px, 4vw, 38px);
+  font: var(--type-headline-small);
 }
 .page-viewport .chapter-image,
 .page-viewport .reader-content img {
@@ -373,40 +383,24 @@
 .page-viewport .chapter-end {
   margin-top: var(--space-5);
   color: var(--reader-muted);
-  font-size: 13px;
+  font: var(--type-label-large);
   text-align: center;
   break-inside: avoid;
 }
-.page-controls {
-  position: relative;
-  display: flex;
-  flex: none;
-  align-items: center;
-  height: 56px;
-  color: var(--reader-muted);
-  font-size: 12px;
-}
-.page-controls .page-status {
-  position: absolute;
-  left: 50%;
-  min-width: 88px;
-  text-align: center;
-  transform: translateX(-50%);
-}
-
 @media (max-width: 720px) {
   .book-reader:not(.comic-reader) {
-    min-height: 100dvh;
-    padding: var(--space-2) var(--layout-gutter-compact) var(--space-7);
+    padding: calc(var(--space-8) + var(--space-3) + env(safe-area-inset-top))
+      max(var(--layout-gutter-compact), env(safe-area-inset-right))
+      max(var(--space-7), env(safe-area-inset-bottom)) max(var(--layout-gutter-compact), env(safe-area-inset-left));
   }
   .reader-heading {
     margin-bottom: var(--space-5);
   }
   .book-reader--paged:not(.comic-reader) {
-    padding-bottom: 8px;
+    padding-bottom: max(var(--space-2), env(safe-area-inset-bottom));
   }
   .paged-reader {
-    grid-template-rows: minmax(0, 1fr) 50px;
+    grid-template-rows: minmax(0, 1fr) 56px;
   }
   .page-viewport {
     padding: var(--space-4) var(--space-3);
@@ -416,9 +410,6 @@
     margin-bottom: var(--space-4);
   }
   .paged-heading h1 {
-    font-size: 25px;
-  }
-  .page-controls {
-    height: 50px;
+    font: var(--type-headline-small);
   }
 }

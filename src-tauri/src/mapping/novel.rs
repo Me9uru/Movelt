@@ -55,17 +55,15 @@ pub(crate) fn summaries(value: &Value) -> Vec<NovelSummary> {
 
 /// 将官方小说详情响应映射为阅读器概览。
 pub(crate) fn reader_detail(value: &Value) -> Result<NovelDetail> {
-    let book = value
-        .get("Book")
-        .ok_or_else(|| AppError::protocol("小说详情响应缺少 Book"))?;
-    let chapters = array(book, "Chapter");
+    let (book, mut chapters) = super::book::detail(value, "Novel")?;
+    chapters.sort_by_key(|chapter| chapter.sort_num);
     let mut read_position = read_position(value.get("ReadPosition"));
     if let Some(position) = &mut read_position {
-        if let Some(index) = chapters
+        if let Some(chapter) = chapters
             .iter()
-            .position(|chapter| number(chapter, "Id").to_string() == position.chapter_id)
+            .find(|chapter| chapter.id.to_string() == position.chapter_id)
         {
-            position.chapter_id = (index + 1).to_string();
+            position.chapter_id = chapter.sort_num.to_string();
         }
     }
 
@@ -73,11 +71,10 @@ pub(crate) fn reader_detail(value: &Value) -> Result<NovelDetail> {
         summary: summary(book),
         chapters: chapters
             .iter()
-            .enumerate()
-            .map(|(index, chapter)| NovelChapterSummary {
-                id: (index + 1).to_string(),
-                title: string(chapter, "Title"),
-                sequence: (index + 1) as i64,
+            .map(|chapter| NovelChapterSummary {
+                id: chapter.sort_num.to_string(),
+                title: chapter.title.clone(),
+                sequence: chapter.sort_num,
             })
             .collect(),
         read_position,
@@ -124,7 +121,44 @@ fn chapter_font_url(chapter: &Value) -> Option<String> {
 mod tests {
     use serde_json::json;
 
-    use super::{sanitize_chapter_html, summary};
+    use super::{reader_detail, sanitize_chapter_html, summary};
+
+    #[test]
+    fn maps_unified_chapters_and_resume_position_by_sort_num() {
+        let value = json!({
+            "Book": {"Id": 42, "Type": "Novel", "Title": "小说", "Author": "作者",
+                "Chapters": [
+                    {"Id": 102, "SortNum": 5, "Title": "后章", "PageCount": 0},
+                    {"Id": 101, "SortNum": 2, "Title": "前章", "PageCount": 0}
+                ]},
+            "SeriesTitle": "系列", "Series": [],
+            "ReadPosition": {"ChapterId": 102, "Position": "/p[3]"}
+        });
+        let detail = reader_detail(&value).unwrap();
+        assert_eq!(
+            detail
+                .chapters
+                .iter()
+                .map(|c| c.id.as_str())
+                .collect::<Vec<_>>(),
+            ["2", "5"]
+        );
+        assert_eq!(detail.chapters[1].sequence, 5);
+        assert_eq!(detail.read_position.unwrap().chapter_id, "5");
+        assert_eq!(detail.summary.author.as_deref(), Some("作者"));
+    }
+
+    #[test]
+    fn rejects_wrong_domain_and_missing_new_catalogue() {
+        assert!(reader_detail(&json!({"Book": {"Type": "Comic", "Chapters": []}})).is_err());
+        assert!(reader_detail(&json!({"Book": {"Type": "Novel", "Chapter": []}})).is_err());
+        assert!(
+            reader_detail(&json!({"Book": {"Type": "Novel", "Chapters": [
+                {"Id": 1, "SortNum": 0, "Title": "错误", "PageCount": 0}
+            ]}}))
+            .is_err()
+        );
+    }
 
     #[test]
     fn maps_summary_with_official_field_fallbacks() {

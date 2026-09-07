@@ -1,3 +1,4 @@
+mod book;
 pub(crate) mod bookshelf;
 pub(crate) mod comic;
 pub(crate) mod common;

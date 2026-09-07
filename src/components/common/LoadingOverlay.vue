@@ -8,7 +8,7 @@ defineProps<{
 </script>
 
 <template>
-  <Teleport to="body" :disabled="inline">
+  <Teleport to="body" :disabled="inline || contained">
     <Transition name="loading-fade">
       <div
         v-if="visible"
@@ -21,16 +21,7 @@ defineProps<{
         aria-live="polite"
         :aria-label="label"
       >
-        <svg
-          class="loading-overlay__icon"
-          viewBox="-10 -10 50 50"
-          aria-hidden="true"
-        >
-          <path
-            class="path"
-            d="M 30 15 L 28 17 M 25.61 25.61 A 15 15, 0, 0, 1, 15 30 A 15 15, 0, 1, 1, 27.99 7.5 L 15 15"
-          />
-        </svg>
+        <var-loading type="circle" :radius="20" aria-hidden="true" />
       </div>
     </Transition>
   </Teleport>

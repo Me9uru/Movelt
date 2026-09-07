@@ -37,11 +37,12 @@ onBeforeUnmount(() => {
       <var-button
         class="app-settings-drawer__close"
         text
+        :elevation="false"
         round
         aria-label="关闭设置"
         @click="emit('update:show', false)"
       >
-        <var-icon name="close" />
+        <var-icon name="window-close" />
       </var-button>
     </header>
     <SettingsPage />

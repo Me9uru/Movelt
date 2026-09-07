@@ -13,7 +13,10 @@ use crate::{
     },
     error::{AppError, Result},
     mapping::{
-        comic::{book_detail, page_batch, series_detail, summary as comic_summary},
+        comic::{
+            book_detail, page_batch, positive_book_id, series_book_ids, series_detail,
+            summary as comic_summary,
+        },
         common::pagination,
     },
 };
@@ -70,8 +73,25 @@ pub(crate) async fn get_comic_series(
     cache: State<'_, AppCache>,
     series_title: String,
 ) -> Result<ComicSeriesDetail> {
-    let response = client.get_comic_series_info(&series_title).await?;
-    let detail = series_detail(&response, series_title)?;
+    if series_title.trim().is_empty() {
+        return Err(AppError::invalid_input("漫画系列标题不能为空"));
+    }
+    let list = client.find_comic_series_book(&series_title).await?;
+    let first = array(&list, "Data")
+        .first()
+        .ok_or_else(|| AppError::protocol("漫画系列不含可阅读分卷"))?;
+    let first_id = positive_book_id(first)?;
+    let response = client.get_comic_info(first_id).await?;
+    let mut books = Vec::new();
+    for id in series_book_ids(&response)? {
+        let book = if id == first_id {
+            book_detail(&response)?
+        } else {
+            book_detail(&client.get_comic_info(id).await?)?
+        };
+        books.push(book);
+    }
+    let detail = series_detail(&response, series_title, books)?;
     for comic_book in &detail.books {
         cache
             .store_cache(

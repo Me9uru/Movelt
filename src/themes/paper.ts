@@ -32,7 +32,8 @@ export const paperTheme = {
   "--hsl-surface-container-high": "38, 24%, 89%",
   "--hsl-surface-container-highest": "35, 18%, 85%",
   "--hsl-inverse-surface": "35, 8%, 24%",
-  "--hsl-outline": "34, 14%, 72%",
+  "--hsl-outline": "34, 10%, 46%",
+  "--hsl-outline-variant": "34, 14%, 78%",
   "--hsl-on-surface-variant": "34, 10%, 34%",
   "--popup-overlay-background-color": "rgb(52 45 36 / 52%)",
 } as const;

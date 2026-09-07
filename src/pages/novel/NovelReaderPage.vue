@@ -10,6 +10,7 @@ import {
 import { useRoute, useRouter } from "vue-router";
 import type { NovelChapterContent as NovelChapterContentDto } from "../../domain/novel";
 import { useReaderSettings } from "../../composables/reader/useReaderSettings";
+import ReaderToolbar from "../../components/reader/ReaderToolbar.vue";
 import ReaderSettingsDrawer from "../../components/reader/ReaderSettingsDrawer.vue";
 import ReaderBoundarySwitch from "../../components/reader/ReaderBoundarySwitch.vue";
 import NovelChapterContent from "../../components/reader/NovelChapterContent.vue";
@@ -17,10 +18,7 @@ import LoadingOverlay from "../../components/common/LoadingOverlay.vue";
 import ErrorState from "../../components/common/ErrorState.vue";
 import { getReaderDocument, getReaderOverview, lightNovelSourceId, saveReadPosition } from "../../services/novel";
 import { getErrorMessage, showError } from "../../utils/error";
-import {
-  createReaderProgressSaver,
-  readReaderProgress,
-} from "../../utils/readerProgress";
+import { createReaderProgressSaver } from "../../utils/readerProgress";
 
 const route = useRoute();
 const router = useRouter();
@@ -65,9 +63,6 @@ const saveProgress = createReaderProgressSaver("novel", (value) =>
 
 const load = async (): Promise<void> => {
   if (!bookId.value || !chapterId.value) return;
-  // Capture before awaiting: an in-flight cloud save may clear the checkpoint
-  // while the overview request is still returning an older cached position.
-  const checkpoint = readReaderProgress("novel", bookId.value);
   loading.value = true;
   error.value = "";
   readerDocument.value = null;
@@ -81,15 +76,6 @@ const load = async (): Promise<void> => {
       chapterId.value,
       settings.convert,
     );
-    if (
-      checkpoint?.routeChapterId === chapterId.value &&
-      checkpoint.serverChapterId === document.serverChapterId
-    ) {
-      resumePosition.value = {
-        chapterId: document.chapterId,
-        position: checkpoint.position,
-      };
-    }
     readerDocument.value = document;
   } catch (value) {
     error.value = getErrorMessage(value, "无法加载章节");
@@ -104,15 +90,9 @@ const recordProgress = (): void => {
   const xpath = visibleXPath();
   resumePosition.value = { chapterId: chapterId.value, position: xpath };
   const currentBookId = bookId.value;
-  const currentRouteChapterId = chapterId.value;
   const currentServerChapterId = readerDocument.value.serverChapterId;
   saveProgress(
-    {
-      itemId: currentBookId,
-      routeChapterId: currentRouteChapterId,
-      serverChapterId: currentServerChapterId,
-      position: xpath,
-    },
+    currentBookId,
     () => saveReadPosition(currentBookId, currentServerChapterId, xpath),
   );
 }
@@ -364,20 +344,20 @@ const restoreScrollProgress = () => {
 }
 
 const handleKeydown = (event: KeyboardEvent) => {
-  if (previewVisible.value) return;
+  if (previewVisible.value || settingsVisible.value) return;
   if (settings.mode !== "paged") return;
   const target = event.target;
   if (
     target instanceof HTMLElement &&
-    target.closest("input, button, [contenteditable='true']")
+    target.closest("input, button, [role='button'], [role='slider'], [role='radio'], [role='dialog'], [contenteditable='true']")
   )
     return;
   if (event.key === "ArrowLeft") {
     event.preventDefault();
-    goToPage(currentPage.value - 1);
+    goToPage(currentPage.value + pageOffsetForSide("left"));
   } else if (event.key === "ArrowRight" || event.key === " ") {
     event.preventDefault();
-    goToPage(currentPage.value + 1);
+    goToPage(currentPage.value + (event.key === " " ? 1 : pageOffsetForSide("right")));
   }
 }
 
@@ -512,6 +492,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+  <ReaderToolbar
+    :title="readerDocument?.title || '小说阅读'"
+    :settings-disabled="loading || !readerDocument"
+    @back="router.push({ name: 'novel-detail', params: { bookId }, query: route.query })"
+    @settings="settingsVisible = true"
+  />
   <LoadingOverlay v-if="loading && !readerDocument" inline visible label="正在加载章节" />
   <ErrorState v-else-if="error" title="章节加载失败" :message="error" :loading="loading" @retry="load" />
   <article
@@ -571,9 +557,9 @@ onBeforeUnmount(() => {
       </div>
 
       <nav class="page-controls" aria-label="分页状态与章节导航">
-        <span class="page-status"
-          >{{ isSpread ? "双页" : "单页" }} · {{ pageLabel }}</span
-        >
+        <var-button text round :elevation="false" aria-label="上一页" :disabled="loading || (currentPage === 0 && !hasPreviousChapter)" @click="goToPage(currentPage - 1)"><var-icon name="chevron-left" /></var-button>
+        <span class="page-status" role="status">{{ isSpread ? "双页" : "单页" }} · {{ pageLabel }}</span>
+        <var-button text round :elevation="false" aria-label="下一页" :disabled="loading || (currentPage >= pageCount - 1 && !hasNextChapter)" @click="goToPage(currentPage + 1)"><var-icon name="chevron-right" /></var-button>
       </nav>
     </div>
 
