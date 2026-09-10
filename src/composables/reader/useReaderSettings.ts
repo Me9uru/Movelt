@@ -1,6 +1,6 @@
-import { computed } from "vue";
+import { computed, toRef, type ComputedRef, type Ref } from "vue";
 import { useReaderSettingsStore } from "../../stores/readerSettings";
-import type { ReaderKind } from "../../types/reader";
+import type { ComicReaderSettings, ReaderKind, NovelReaderSettings, ReaderTheme } from "../../types/reader";
 
 export type {
   PageTurnDirection,
@@ -8,16 +8,26 @@ export type {
   ReaderFont,
   ReaderKind,
   ReaderMode,
-  ReaderSettings,
+  NovelReaderSettings,
   ReaderTheme,
 } from "../../types/reader";
 
-export const useReaderSettings = (kind: ReaderKind) => {
+interface SettingsResult<T> {
+  settings: T;
+  theme: Ref<ReaderTheme>;
+  reset: () => void;
+}
+
+export function useReaderSettings(kind: "novel"): SettingsResult<NovelReaderSettings> & { style: ComputedRef<Record<string, string>>; };
+export function useReaderSettings(kind: "comic"): SettingsResult<ComicReaderSettings>;
+export function useReaderSettings(kind: ReaderKind): SettingsResult<ComicReaderSettings>;
+export function useReaderSettings(kind: ReaderKind): SettingsResult<ComicReaderSettings> & { style?: ComputedRef<Record<string, string>>; } {
   const store = useReaderSettingsStore();
   const isNovel = kind === "novel";
   return {
     settings: isNovel ? store.novelSettings : store.comicSettings,
-    style: computed(() => (isNovel ? store.novelStyle : store.comicStyle)),
+    theme: toRef(store, "theme"),
+    ...(isNovel ? { style: computed(() => store.novelStyle) } : {}),
     reset: () => store.reset(kind),
   };
 }

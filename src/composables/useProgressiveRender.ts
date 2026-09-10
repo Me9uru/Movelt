@@ -1,5 +1,6 @@
 import {
   computed,
+  nextTick,
   onBeforeUnmount,
   onMounted,
   ref,
@@ -17,7 +18,7 @@ interface ProgressiveRenderState {
   hasMore: ComputedRef<boolean>;
 }
 
-/** Mounts list content in scroll-driven batches without changing API pagination. */
+/** Mounts list content in viewport-sized batches without changing API pagination. */
 export const useProgressiveRender = (
   itemKeys: () => readonly string[],
   enabled: () => boolean = () => true,
@@ -30,10 +31,42 @@ export const useProgressiveRender = (
   );
   let lastBatchScrollTop = 0;
   let scrollFrame: number | undefined;
+  let fillFrame: number | undefined;
+  let disposed = false;
+
+  const appendBatch = (): void => {
+    visibleCount.value = Math.min(
+      visibleCount.value + batchSize,
+      itemKeys().length,
+    );
+  };
+
+  const fillViewportIfNeeded = (): void => {
+    fillFrame = undefined;
+    if (!hasMore.value || !sentinel.value) return;
+    if (
+      sentinel.value.getBoundingClientRect().top >
+      window.innerHeight + LOAD_AHEAD_PX
+    ) {
+      return;
+    }
+
+    appendBatch();
+    void nextTick(() => {
+      if (disposed) return;
+      fillFrame = window.requestAnimationFrame(fillViewportIfNeeded);
+    });
+  };
+
+  const scheduleViewportFill = (): void => {
+    if (fillFrame != null) return;
+    fillFrame = window.requestAnimationFrame(fillViewportIfNeeded);
+  };
 
   const reset = (): void => {
     visibleCount.value = batchSize;
     lastBatchScrollTop = window.scrollY;
+    void nextTick(scheduleViewportFill);
   };
 
   const appendBatchIfNeeded = (): void => {
@@ -53,11 +86,9 @@ export const useProgressiveRender = (
       return;
     }
 
-    visibleCount.value = Math.min(
-      visibleCount.value + batchSize,
-      itemKeys().length,
-    );
+    appendBatch();
     lastBatchScrollTop = scrollTop;
+    scheduleViewportFill();
   };
 
   const handleScroll = (): void => {
@@ -67,6 +98,7 @@ export const useProgressiveRender = (
 
   const setSentinel = (element: unknown): void => {
     sentinel.value = element instanceof HTMLElement ? element : null;
+    if (sentinel.value) scheduleViewportFill();
   };
 
   watch(
@@ -86,8 +118,10 @@ export const useProgressiveRender = (
   });
 
   onBeforeUnmount(() => {
+    disposed = true;
     window.removeEventListener("scroll", handleScroll);
     if (scrollFrame != null) window.cancelAnimationFrame(scrollFrame);
+    if (fillFrame != null) window.cancelAnimationFrame(fillFrame);
   });
 
   return { visibleCount, setSentinel, hasMore };

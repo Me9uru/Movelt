@@ -1,6 +1,6 @@
 <script setup lang="ts" generic="T">
 import { computed } from "vue";
-import BookCollection from "../../layout/BookCollection.vue";
+import BookCollection from "../book/BookCollection.vue";
 import type { BookCollectionState, BookGridItem } from "../../types/book";
 
 interface BookshelfCollectionProps<T> {

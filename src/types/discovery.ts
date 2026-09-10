@@ -15,7 +15,7 @@ export interface DiscoveryTabOption {
 
 interface DiscoverySearchResultModel<T> {
   items: BookGridItem<T>[];
-  pagination: { page: number; last: number } | null;
+  pagination: { page: number; last: number; } | null;
 }
 
 interface DiscoveryLoadState {
@@ -51,6 +51,7 @@ export interface DiscoveryRankingPeriod {
 
 /** Search-only state retained while navigating between results and a detail page. */
 export interface DiscoverySearchCache<T> {
+  submitted: { query: string; mode: BookSearchMode; } | null;
   search: DiscoveryList<T> | null;
   searchQuery: string;
   searchMode: BookSearchMode;
@@ -59,7 +60,7 @@ export interface DiscoverySearchCache<T> {
 
 /** Service adapter contract used by the shared discovery state composable. */
 export interface DiscoveryAdapter<T> {
-  loadRecommendations(target: RecommendBlock<T>[]): Promise<void>;
+  loadRecommendations(): Promise<RecommendBlock<T>[]>;
   loadRanking(days: number): Promise<T[]>;
   search(
     query: string,

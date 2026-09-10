@@ -10,6 +10,7 @@ import TabbedPageLayout from "../../layout/TabbedPageLayout.vue";
 import type { BookGridItem } from "../../types/book";
 import { useBookshelfStore } from "../../stores/bookshelf";
 import { showError } from "../../utils/error";
+import { toNovelGridItem, toComicGridItem } from "../../utils/bookPresentation";
 
 const router = useRouter();
 const bookshelf = useBookshelfStore();
@@ -35,24 +36,19 @@ const visibleComic = computed(() =>
 );
 const novelGridItems = computed<BookGridItem<NovelSummary>[]>(() =>
   visibleBooks.value.map(({ book, progress }) => ({
-    id: `${book.source}:${book.id}`,
-    title: book.title,
-    coverUrl: book.cover_url,
+    ...toNovelGridItem(book),
     coverStatus: progress === 100 ? "finished" : "unfinished",
-    data: book,
   })),
 );
 const comicGridItems = computed<BookGridItem<ComicSummary>[]>(() =>
   visibleComic.value.map(({ comic, progress }) => ({
-    id: comic.id,
-    title: comic.title,
-    coverUrl: comic.coverUrl,
+    ...toComicGridItem(comic),
+    id: comic.bookId ?? comic.id,
     meta: comic.author,
     coverStatus: progress === 100 ? "finished" : "unfinished",
-    data: comic,
   })),
 );
-const shelfTabs: { name: BookshelfKind; label: string }[] = [
+const shelfTabs: { name: BookshelfKind; label: string; }[] = [
   { name: "novel", label: "小说" },
   { name: "comic", label: "漫画" },
 ];

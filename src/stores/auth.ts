@@ -6,6 +6,7 @@ import {
   register as registerRequest,
   restoreUser,
   signIn as signInRequest,
+  setAvatar,
 } from "../services/auth";
 import type { LightNovelUser, LoginInput, RegisterInput } from "../domain/auth";
 import { useBookshelfStore } from "./bookshelf";
@@ -28,7 +29,7 @@ export const useAuthStore = defineStore("auth", () => {
     } finally {
       restoring.value = false;
     }
-  }
+  };
 
   const login = async (input: LoginInput) => {
     user.value = await loginRequest(input);
@@ -36,7 +37,7 @@ export const useAuthStore = defineStore("auth", () => {
     discoverySearch.clear();
     void signInIfNeeded();
     return user.value;
-  }
+  };
 
   const register = async (input: RegisterInput) => {
     user.value = await registerRequest(input);
@@ -44,7 +45,7 @@ export const useAuthStore = defineStore("auth", () => {
     discoverySearch.clear();
     void signInIfNeeded();
     return user.value;
-  }
+  };
 
   const signInIfNeeded = async () => {
     if (user.value?.Growth?.TodaySigned !== false) return false;
@@ -55,20 +56,26 @@ export const useAuthStore = defineStore("auth", () => {
       // 自动签到不应妨碍登录或恢复会话；下次启动时会再次尝试。
       return false;
     }
-  }
+  };
+
+  const updateAvatar = async (url: string): Promise<void> => {
+    const owner = user.value?.Id;
+    const updated = await setAvatar(url);
+    if (owner !== undefined && user.value?.Id === owner) user.value = updated;
+  };
 
   const logout = async () => {
     await logoutRequest();
     user.value = null;
     bookshelf.clear();
     discoverySearch.clear();
-  }
+  };
 
   const expire = () => {
     user.value = null;
     bookshelf.clear();
     discoverySearch.clear();
-  }
+  };
 
   return {
     user,
@@ -78,6 +85,7 @@ export const useAuthStore = defineStore("auth", () => {
     login,
     register,
     signInIfNeeded,
+    updateAvatar,
     logout,
     expire,
   };

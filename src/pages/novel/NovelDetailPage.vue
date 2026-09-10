@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import type { NovelChapterSummary, NovelDetail } from "../../domain/novel";
 import BookChapterList from "../../components/book/BookChapterList.vue";
@@ -8,15 +8,20 @@ import BookDetailLayout from "../../layout/BookDetailLayout.vue";
 import LoadingOverlay from "../../components/common/LoadingOverlay.vue";
 import ErrorState from "../../components/common/ErrorState.vue";
 import { useBookshelfStore } from "../../stores/bookshelf";
-import { getReaderOverview, lightNovelSourceId } from "../../services/novel";
+import { getReaderOverview } from "../../services/novel";
 import { getErrorMessage, showError } from "../../utils/error";
 
+import { createLatestRequest } from "../../utils/latestRequest";
+
+const requests = createLatestRequest();
+onBeforeUnmount(requests.invalidate);
 const route = useRoute();
 const router = useRouter();
 const bookshelf = useBookshelfStore();
 const detail = ref<NovelDetail | null>(null);
-const chapters = ref<NovelChapterSummary[]>([]);
-const resumeChapterId = ref<string | null>(null);
+const chapters = computed(() => detail.value?.chapters ?? []);
+const resumeChapterId = computed(() => detail.value?.readPosition?.chapterId ?? null);
+const updatingBookshelf = ref(false);
 const loading = ref(true);
 const error = ref("");
 const bookId = computed(() =>
@@ -31,23 +36,28 @@ const backLabel = computed(
 );
 
 const onBookshelf = computed(() =>
-  detail.value ? bookshelf.isOnBookshelf(detail.value) : false,
+  detail.value ? bookshelf.isOnBookshelf(detail.value) : null,
 );
 
 const load = async (): Promise<void> => {
   if (!bookId.value) return;
+  const isCurrent = requests.start();
+  const id = bookId.value;
   loading.value = true;
+  detail.value = null;
   error.value = "";
   try {
-    const overview = await getReaderOverview(lightNovelSourceId, bookId.value);
-    detail.value = overview;
-    chapters.value = overview.chapters;
-    resumeChapterId.value = overview.readPosition?.chapterId ?? null;
+    const [overview] = await Promise.all([
+      getReaderOverview(id),
+      bookshelf.ensureNovelMembership(id),
+    ]);
+    if (isCurrent()) detail.value = overview;
   } catch (value) {
+    if (!isCurrent()) return;
     error.value = getErrorMessage(value, "无法加载作品详情");
     showError(value, "无法加载作品详情");
   } finally {
-    loading.value = false;
+    if (isCurrent()) loading.value = false;
   }
 };
 
@@ -57,10 +67,10 @@ const goBack = (): void => {
     name: from.value,
     query: from.value === "novels"
       ? {
-          tab: route.query.tab,
-          q: route.query.q,
-          mode: route.query.mode,
-        }
+        tab: route.query.tab,
+        q: route.query.q,
+        mode: route.query.mode,
+      }
       : {},
   });
 };
@@ -80,20 +90,19 @@ const continueReading = (): void => {
 };
 
 const toggleBookshelf = async (): Promise<void> => {
-  if (!detail.value) return;
-  loading.value = true;
+  if (!detail.value || updatingBookshelf.value || onBookshelf.value === null) return;
+  updatingBookshelf.value = true;
   try {
     if (onBookshelf.value) await bookshelf.removeBook(detail.value);
     else await bookshelf.addBook(detail.value);
   } catch (value) {
     showError(value, "更新书架失败");
   } finally {
-    loading.value = false;
+    updatingBookshelf.value = false;
   }
 };
 
-onMounted(() => void load());
-watch(bookId, () => void load());
+watch(bookId, () => void load(), { immediate: true });
 
 const chapterCount = computed(() => chapters.value.length);
 const stats = computed(() => [
@@ -144,8 +153,8 @@ const chapterItems = computed(() => chapters.value.map(toChapterItem));
         :tags="detail.tags"
         :description="detail.description"
         description-fallback="暂无作品简介。"
-        :on-bookshelf="onBookshelf"
-        :loading="loading"
+        :on-bookshelf="onBookshelf === true"
+        :loading="loading || updatingBookshelf || onBookshelf === null"
         :resume-chapter-id="resumeChapterId"
         :can-start-reading="chapterCount > 0"
         :has-chapters="chapterCount > 0"

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { useDiscoveryContext } from "../../composables/discovery/useDiscoveryContext";
 import type { BookSearchMode } from "../../domain/discovery";
 
 interface BookSearchBarProps {
@@ -11,7 +10,7 @@ interface BookSearchBarProps {
   subjectLabel?: string;
 }
 
-const searchModes: { value: BookSearchMode; label: string }[] = [
+const searchModes: { value: BookSearchMode; label: string; }[] = [
   { value: "title", label: "作品名" },
   { value: "author", label: "作者" },
   { value: "tags", label: "标签" },
@@ -19,8 +18,8 @@ const searchModes: { value: BookSearchMode; label: string }[] = [
 
 const props = withDefaults(defineProps<BookSearchBarProps>(), {
   showSubmit: true,
+  subjectLabel: "作品",
 });
-const discoveryContext = useDiscoveryContext();
 
 const emit = defineEmits<{
   clear: [];
@@ -32,13 +31,13 @@ const emit = defineEmits<{
 const placeholder = computed(() => {
   if (props.searchMode === "author") return "输入作者名称";
   if (props.searchMode === "tags") return "输入标签，多个标签用逗号分隔";
-  return `输入${props.subjectLabel ?? discoveryContext.subjectLabel}名称`;
+  return `输入${props.subjectLabel}名称`;
 });
 
 const ariaLabel = computed(() => {
   if (props.searchMode === "author") return "按作者搜索";
   if (props.searchMode === "tags") return "按标签搜索";
-  return `按${props.subjectLabel ?? discoveryContext.subjectLabel}名搜索`;
+  return `按${props.subjectLabel}名搜索`;
 });
 
 const updateSearchMode = (value: BookSearchMode): void => {

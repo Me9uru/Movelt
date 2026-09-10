@@ -21,9 +21,9 @@ export const useDiscoveryPresentation = <T>(
   const searchResult = computed(() =>
     discovery.search.value
       ? {
-          items: discovery.search.value.items.map(toBookItem),
-          pagination: discovery.search.value.pagination,
-        }
+        items: discovery.search.value.items.map(toBookItem),
+        pagination: discovery.search.value.pagination,
+      }
       : null,
   );
   const recommend = computed<RecommendDiscoveryModel<T>>(() => ({
@@ -52,12 +52,8 @@ export const useDiscoveryPresentation = <T>(
   }));
 
   const retryDiscovery = (region: "recommend" | "ranking" | "search"): void => {
-    if (region === "recommend") void discovery.loadRecommendations();
-    if (region === "ranking") void discovery.loadRanking();
-    if (region === "search") {
-      void discovery.runSearch(searchResult.value?.pagination?.page || 1);
-    }
-  }
+    void discovery.retry(region);
+  };
 
   return { recommend, ranking, search, retryDiscovery };
-}
+};

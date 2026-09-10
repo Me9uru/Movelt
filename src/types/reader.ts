@@ -6,14 +6,18 @@ export type ReaderConvert = "original" | "t2s" | "s2t";
 export type ReaderKind = "novel" | "comic";
 
 export interface ReaderSettings {
+  mode: ReaderMode;
+  pageTurnDirection: PageTurnDirection;
+}
+
+export type ComicReaderSettings = ReaderSettings;
+
+export interface NovelReaderSettings extends ReaderSettings {
   fontSize: number;
   lineHeight: number;
   letterSpacing: number;
   paragraphSpacing: number;
   contentWidth: number;
   font: ReaderFont;
-  theme: ReaderTheme;
-  mode: ReaderMode;
-  pageTurnDirection: PageTurnDirection;
   convert: ReaderConvert;
 }

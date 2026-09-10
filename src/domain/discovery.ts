@@ -8,6 +8,8 @@ export interface RecommendBlock<T> {
 }
 
 export type BookSearchMode = "title" | "author" | "tags";
+export type BookOrder = "latest" | "view" | "new";
+export type BookSearchRequestMode = BookSearchMode | "fuzzy" | "exact" | "name";
 
 export interface DiscoveryList<T> {
   items: T[];

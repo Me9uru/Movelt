@@ -1,90 +1,34 @@
 <script setup lang="ts">
-import { watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRouter } from "vue-router";
 import RankingDiscovery from "../../components/discovery/RankingDiscovery.vue";
 import RecommendDiscovery from "../../components/discovery/RecommendDiscovery.vue";
 import SearchDiscovery from "../../components/discovery/SearchDiscovery.vue";
-import { comicDiscoveryAdapter } from "../../composables/discovery/adapters";
 import { discoveryTabs } from "../../composables/discovery/config";
-import { useDiscovery } from "../../composables/discovery/useDiscovery";
-import { provideDiscoveryContext } from "../../composables/discovery/useDiscoveryContext";
-import { useDiscoveryTabRoute } from "../../composables/discovery/useDiscoveryTabRoute";
+import { useDiscoveryPage } from "../../composables/discovery/useDiscoveryPage";
+import { comicDiscoveryAdapter } from "../../composables/discovery/adapters";
 import { useDiscoveryPresentation } from "../../composables/discovery/useDiscoveryPresentation";
+import { useDiscoverySearchStore } from "../../stores/discoverySearch";
+import { toComicGridItem } from "../../utils/bookPresentation";
 import type { ComicSummary } from "../../domain/comic";
 import TabbedPageLayout from "../../layout/TabbedPageLayout.vue";
-import type { BookGridItem } from "../../types/book";
-import { useDiscoveryScroll } from "../../composables/discovery/useDiscoveryScroll";
-import { useDiscoverySearchStore } from "../../stores/discoverySearch";
 
-const toBookItem = (comic: ComicSummary): BookGridItem<ComicSummary> => {
-  return { id: comic.id, title: comic.title, coverUrl: comic.coverUrl, data: comic };
-}
-
-const route = useRoute();
 const router = useRouter();
-const discoverySearch = useDiscoverySearchStore();
-const discovery = useDiscovery(comicDiscoveryAdapter, discoverySearch.comic);
-provideDiscoveryContext("comic");
-const routeSearchMode = route.query.mode;
-if (!discovery.searchQuery.value && typeof route.query.q === "string") {
-  discovery.searchQuery.value = route.query.q;
-}
-if (
-  routeSearchMode === "title" ||
-  routeSearchMode === "author" ||
-  routeSearchMode === "tags"
-) {
-  discovery.searchMode.value = routeSearchMode;
-}
-const { activeTab, selectTab } = useDiscoveryTabRoute("comic");
-useDiscoveryScroll(discoverySearch.comic, () => activeTab.value === "search");
+const cache = useDiscoverySearchStore();
+const { discovery, activeTab, selectTab, handleSearch, detailQuery } =
+  useDiscoveryPage("comic", comicDiscoveryAdapter, cache.comic);
 const { recommend, ranking, search, retryDiscovery } = useDiscoveryPresentation(
-  discovery,
-  toBookItem,
+  discovery, toComicGridItem,
 );
 
-watch(activeTab, (tab) => {
-  if (tab === "recommend" && discovery.recommendations.value.length === 0) {
-    void discovery.loadRecommendations();
-  }
-  if (tab === "ranking" && !discovery.ranking.value) {
-    void discovery.loadRanking();
-  }
-  if (tab === "search" && discovery.searchQuery.value.trim() && !discovery.search.value && !discovery.loading.value.search) {
-    void discovery.runSearch();
-  }
-}, { immediate: true });
-
-const handleSearch = async (page: number): Promise<void> => {
-  const query = discovery.searchQuery.value.trim();
-  if (!query) return;
-  await router.replace({
-    name: "comic",
-    query: {
-      ...route.query,
-      tab: "search",
-      q: query,
-      mode: discovery.searchMode.value,
-    },
-  });
-  await discovery.runSearch(page);
-}
-const openComic = (comic: ComicSummary): void => {
+const openComic = (item: ComicSummary): void => {
   void router.push({
     name: "comic-detail",
-    params: { comicId: comic.id },
-    query: activeTab.value === "search"
-      ? {
-          tab: "search",
-          q: discovery.searchQuery.value.trim(),
-          mode: discovery.searchMode.value,
-        }
-      : {},
+    params: { comicId: item.id },
+    query: detailQuery(),
   });
-}
+};
 
 </script>
-
 <template>
   <TabbedPageLayout
     :model-value="activeTab"

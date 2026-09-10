@@ -1,6 +1,6 @@
 <script setup lang="ts" generic="T">
 import { computed } from "vue";
-import BookCollection from "../../layout/BookCollection.vue";
+import BookCollection from "../book/BookCollection.vue";
 import BookGrid from "../book/BookGrid.vue";
 import type { RecommendDiscoveryModel } from "../../types/discovery";
 import { useDiscoveryContext } from "../../composables/discovery/useDiscoveryContext";

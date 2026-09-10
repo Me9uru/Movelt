@@ -1,4 +1,4 @@
-export type ReaderProgressKind = "novel" | "comic";
+import type { ReaderKind } from "../types/reader";
 
 interface PendingSave {
   persist: () => Promise<void>;
@@ -23,9 +23,9 @@ try {
   // Progress saving still works when WebView storage is unavailable.
 }
 
-const queueKey = (kind: ReaderProgressKind, itemId: string): string => {
+const queueKey = (kind: ReaderKind, itemId: string): string => {
   return `${kind}:${itemId}`;
-}
+};
 
 /**
  * Serializes and coalesces remote progress writes for one item. Queues live at
@@ -33,7 +33,7 @@ const queueKey = (kind: ReaderProgressKind, itemId: string): string => {
  * a newly mounted reader writes a newer position for the same item.
  */
 export const createReaderProgressSaver = (
-  kind: ReaderProgressKind,
+  kind: ReaderKind,
   onError: (error: unknown) => void,
 ) => {
   return (itemId: string, persist: () => Promise<void>): void => {
@@ -58,4 +58,4 @@ export const createReaderProgressSaver = (
       if (!queue.pending) saveQueues.delete(key);
     })();
   };
-}
+};

@@ -16,17 +16,17 @@ const RECOMMENDATION_PAGE_SIZE = 6;
 const DISCOVERY_PAGE_SIZE = 24;
 
 export const novelDiscoveryAdapter: DiscoveryAdapter<NovelSummary> = {
-  async loadRecommendations(target) {
+  async loadRecommendations() {
     const [latest, popular, newest] = await Promise.all([
       listNovel(1, RECOMMENDATION_PAGE_SIZE, "latest"),
       listNovel(1, RECOMMENDATION_PAGE_SIZE, "view"),
       listNovel(1, RECOMMENDATION_PAGE_SIZE, "new"),
     ]);
-    target.push(
+    return [
       { title: "最近更新", items: latest },
       { title: "热门作品", items: popular },
       { title: "新入库", items: newest },
-    );
+    ];
   },
   async loadRanking(days) {
     return rankNovels(days);
@@ -43,7 +43,7 @@ export const novelDiscoveryAdapter: DiscoveryAdapter<NovelSummary> = {
 };
 
 export const comicDiscoveryAdapter: DiscoveryAdapter<ComicSummary> = {
-  async loadRecommendations(target) {
+  async loadRecommendations() {
     const [latest, popular, newest] = await Promise.allSettled([
       listComic(1, RECOMMENDATION_PAGE_SIZE, "latest"),
       listComic(1, RECOMMENDATION_PAGE_SIZE, "view"),
@@ -52,13 +52,14 @@ export const comicDiscoveryAdapter: DiscoveryAdapter<ComicSummary> = {
 
     if (latest.status === "rejected") throw latest.reason;
 
-    target.push({ title: "最近更新", items: latest.value });
+    const target = [{ title: "最近更新", items: latest.value }];
     if (popular.status === "fulfilled") {
       target.push({ title: "热门作品", items: popular.value });
     }
     if (newest.status === "fulfilled") {
       target.push({ title: "新入库", items: newest.value });
     }
+    return target;
   },
   async loadRanking() {
     return listComic(1, DISCOVERY_PAGE_SIZE, "view");

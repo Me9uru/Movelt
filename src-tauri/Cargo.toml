@@ -1,6 +1,6 @@
 [package]
 name = "movel"
-version = "0.1.6"
+version = "0.1.7"
 description = "Movel reader"
 authors = ["Me9uru"]
 edition = "2021"

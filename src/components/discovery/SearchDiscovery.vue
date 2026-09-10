@@ -1,6 +1,6 @@
 <script setup lang="ts" generic="T">
 import { computed } from "vue";
-import BookCollection from "../../layout/BookCollection.vue";
+import BookCollection from "../book/BookCollection.vue";
 import type { BookSearchMode } from "../../domain/discovery";
 import type { SearchDiscoveryModel } from "../../types/discovery";
 import type { BookCollectionState } from "../../types/book";
@@ -35,6 +35,7 @@ const emit = defineEmits<{
     class="discovery-search discovery-search-page"
     :model-value="query"
     :search-mode="searchMode"
+    :subject-label="discoveryContext.subjectLabel"
     :loading="loading"
     @update:model-value="emit('update:query', $event)"
     @update:search-mode="emit('update:searchMode', $event)"

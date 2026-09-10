@@ -7,18 +7,18 @@ import {
   useSlots,
   watch,
 } from "vue";
-import BookGrid from "../components/book/BookGrid.vue";
-import AppEmptyState from "../components/common/AppEmptyState.vue";
-import ErrorState from "../components/common/ErrorState.vue";
-import LoadingOverlay from "../components/common/LoadingOverlay.vue";
-import { useProgressiveRender } from "../composables/useProgressiveRender";
-import type { BookCollectionState, BookGridItem } from "../types/book";
+import BookGrid from "./BookGrid.vue";
+import AppEmptyState from "../common/AppEmptyState.vue";
+import ErrorState from "../common/ErrorState.vue";
+import LoadingOverlay from "../common/LoadingOverlay.vue";
+import { useProgressiveRender } from "../../composables/useProgressiveRender";
+import type { BookCollectionState, BookGridItem } from "../../types/book";
 
 interface BookCollectionProps<T> {
   items: BookGridItem<T>[] | null;
   loading: boolean;
   error?: string;
-  pagination?: { page: number; last: number } | null;
+  pagination?: { page: number; last: number; } | null;
   disabled?: boolean;
   promptState?: BookCollectionState;
   emptyState?: BookCollectionState;
@@ -94,6 +94,7 @@ onMounted(() => {
     },
     { rootMargin: "400px 0px" },
   );
+  if (loadMoreSentinel.value) loadMoreObserver.observe(loadMoreSentinel.value);
 });
 
 watch(loadMoreSentinel, (element) => {

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted } from "vue";
-import SettingsPage from "../../pages/settings/SettingsPage.vue";
+import AppSettingsContent from "./AppSettingsContent.vue";
 
-const props = defineProps<{ show: boolean }>();
+const props = defineProps<{ show: boolean; }>();
 
 const emit = defineEmits<{
   "update:show": [value: boolean];
@@ -45,6 +45,6 @@ onBeforeUnmount(() => {
         <var-icon name="window-close" />
       </var-button>
     </header>
-    <SettingsPage />
+    <AppSettingsContent />
   </var-popup>
 </template>

@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="T">
-import BookCollection from "../../layout/BookCollection.vue";
+import BookCollection from "../book/BookCollection.vue";
 import type { RankingDiscoveryModel } from "../../types/discovery";
 import { useDiscoveryContext } from "../../composables/discovery/useDiscoveryContext";
 import AppTabs from "../common/AppTabs.vue";

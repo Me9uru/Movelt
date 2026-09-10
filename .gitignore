@@ -3,6 +3,11 @@ node_modules/
 /dist/
 /dist-ssr/
 
+# Local tests and documentation
+/test/
+/tests/
+/docs/
+
 # Local environment configuration
 .env
 .env.*

@@ -5,6 +5,7 @@ import type { NovelSummary } from "../domain/novel";
 import type { DiscoverySearchCache } from "../types/discovery";
 
 const createCache = <T>(): DiscoverySearchCache<T> => ({
+  submitted: null,
   search: null,
   searchQuery: "",
   searchMode: "title",

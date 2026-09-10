@@ -5,18 +5,10 @@ import type {
   ComicChapterPageBatch,
   ComicSummary,
 } from "../domain/comic";
-import type { DiscoveryList } from "../domain/discovery";
+import type { BookOrder, BookSearchRequestMode, DiscoveryList } from "../domain/discovery";
 import type { ComicBookshelfEntry } from "../domain/bookshelf";
-export type ComicOrder = "latest" | "view" | "new";
-export type ComicSearchMode =
-  | "fuzzy"
-  | "exact"
-  | "title"
-  | "author"
-  | "name"
-  | "tags";
 
-export const listComic = (page: number, pageSize: number, order: ComicOrder) => {
+export const listComic = (page: number, pageSize: number, order: BookOrder) => {
   return command<ComicSummary[]>("list_comics", {
     pageNumber: page,
     pageSize,
@@ -28,7 +20,7 @@ export const searchComic = (
   query: string,
   page: number,
   pageSize: number,
-  searchMode: ComicSearchMode,
+  searchMode: BookSearchRequestMode,
 ) => {
   return command<DiscoveryList<ComicSummary>>("search_comics", {
     query,

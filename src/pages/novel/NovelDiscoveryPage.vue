@@ -1,108 +1,40 @@
 <script setup lang="ts">
-import { watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRouter } from "vue-router";
 import RankingDiscovery from "../../components/discovery/RankingDiscovery.vue";
 import RecommendDiscovery from "../../components/discovery/RecommendDiscovery.vue";
 import SearchDiscovery from "../../components/discovery/SearchDiscovery.vue";
 import { discoveryTabs, rankingPeriods } from "../../composables/discovery/config";
-import { useDiscovery } from "../../composables/discovery/useDiscovery";
-import { provideDiscoveryContext } from "../../composables/discovery/useDiscoveryContext";
-import { useDiscoveryTabRoute } from "../../composables/discovery/useDiscoveryTabRoute";
-import type { NovelSummary } from "../../domain/novel";
-import TabbedPageLayout from "../../layout/TabbedPageLayout.vue";
-import type { BookGridItem } from "../../types/book";
+import { useDiscoveryPage } from "../../composables/discovery/useDiscoveryPage";
 import { novelDiscoveryAdapter } from "../../composables/discovery/adapters";
 import { useDiscoveryPresentation } from "../../composables/discovery/useDiscoveryPresentation";
-import { useDiscoveryScroll } from "../../composables/discovery/useDiscoveryScroll";
 import { useDiscoverySearchStore } from "../../stores/discoverySearch";
+import { toNovelGridItem } from "../../utils/bookPresentation";
+import type { NovelSummary } from "../../domain/novel";
+import TabbedPageLayout from "../../layout/TabbedPageLayout.vue";
 
-const route = useRoute();
 const router = useRouter();
-const discoverySearch = useDiscoverySearchStore();
-const discovery = useDiscovery(novelDiscoveryAdapter, discoverySearch.novel);
-provideDiscoveryContext("novel");
-
-const routeSearchMode = route.query.mode;
-if (!discovery.searchQuery.value && typeof route.query.q === "string") {
-  discovery.searchQuery.value = route.query.q;
-}
-if (
-  routeSearchMode === "title" ||
-  routeSearchMode === "author" ||
-  routeSearchMode === "tags"
-) {
-  discovery.searchMode.value = routeSearchMode;
-}
-
-const toBookItem = (novel: NovelSummary): BookGridItem<NovelSummary> => {
-  return {
-    id: `${novel.source}:${novel.id}`,
-    title: novel.title,
-    coverUrl: novel.cover_url,
-    data: novel,
-  };
-}
-
-const { activeTab, selectTab } = useDiscoveryTabRoute("novels");
-useDiscoveryScroll(discoverySearch.novel, () => activeTab.value === "search");
+const cache = useDiscoverySearchStore();
+const { discovery, activeTab, selectTab, handleSearch, detailQuery } =
+  useDiscoveryPage("novel", novelDiscoveryAdapter, cache.novel);
 const { recommend, ranking, search, retryDiscovery } = useDiscoveryPresentation(
-  discovery,
-  toBookItem,
-  { rankingPeriods },
+  discovery, toNovelGridItem, { rankingPeriods },
 );
 
-const handleSearch = async (page: number): Promise<void> => {
-  const query = discovery.searchQuery.value.trim();
-  if (!query) return;
-  await router.replace({
-    name: "novels",
-    query: {
-      ...route.query,
-      tab: "search",
-      q: query,
-      mode: discovery.searchMode.value,
-    },
-  });
-  await discovery.runSearch(page);
-}
-
-const openNovel = (novel: NovelSummary): void => {
+const openNovel = (item: NovelSummary): void => {
   void router.push({
     name: "novel-detail",
-    params: { bookId: novel.id },
-    query: {
-      from: "novels",
-      ...(activeTab.value === "search"
-        ? {
-            tab: "search",
-            q: discovery.searchQuery.value.trim(),
-            mode: discovery.searchMode.value,
-          }
-        : {}),
-    },
+    params: { bookId: item.id },
+    query: detailQuery(),
   });
-}
+};
 
-const selectRankingPeriod = (days: number) => {
+const selectRankingPeriod = (days: number): void => {
   if (days === discovery.rankingDays.value) return;
   discovery.rankingDays.value = days;
   void discovery.loadRanking(days);
-}
-
-watch(activeTab, (tab) => {
-  if (tab === "recommend" && discovery.recommendations.value.length === 0 && !discovery.loading.value.recommend && !discovery.errors.value.recommend) {
-    void discovery.loadRecommendations();
-  }
-  if (tab === "ranking" && !discovery.ranking.value && !discovery.loading.value.ranking && !discovery.errors.value.ranking) {
-    void discovery.loadRanking();
-  }
-  if (tab === "search" && discovery.searchQuery.value.trim() && !discovery.search.value && !discovery.loading.value.search) {
-    void discovery.runSearch();
-  }
-}, { immediate: true });
+};
 
 </script>
-
 <template>
   <TabbedPageLayout
     :model-value="activeTab"
