@@ -3,14 +3,14 @@ use serde_json::Value;
 
 use crate::error::{AppError, Result};
 
-use super::client::{OfficialClient, API_BASE};
+use super::client::OfficialClient;
 
 impl OfficialClient {
     /// 发送 HTTP 请求并解包官方响应。
     pub(in crate::api) async fn http_envelope(&self, path: &str, payload: Value) -> Result<Value> {
         let response = self
             .http
-            .post(format!("{API_BASE}{path}"))
+            .post(format!("{}{path}", self.http_base))
             .header("x-id", &self.device_id)
             .header(header::ACCEPT, "application/json")
             .json(&payload)

@@ -61,8 +61,9 @@ impl AppCache {
         V: Send + Sync + 'static,
         F: Future<Output = Result<V>>,
     {
-        cache
-            .try_get_with(key, async { init.await.map(Arc::new) })
+        // Moka's coalescing state must not inflate every command future on the
+        // Android IPC thread. Allocation/polling happens after the command is spawned.
+        Box::pin(cache.try_get_with(key, async { Box::pin(init).await.map(Arc::new) }))
             .await
             .map_err(|error| (*error).clone())
     }
@@ -74,18 +75,6 @@ impl AppCache {
         V: Send + Sync + 'static,
     {
         cache.insert(key, Arc::new(value)).await;
-    }
-
-    /// 清空应用内全部官方数据缓存。
-    pub(crate) fn clear_cache(&self) {
-        self.invalidate_bookshelves();
-        self.novel_list.invalidate_all();
-        self.novel_rank.invalidate_all();
-        self.comic_list.invalidate_all();
-        self.novel_pages.invalidate_all();
-        self.novel_chapters.invalidate_all();
-        self.comic_pages.invalidate_all();
-        self.comic_chapters.invalidate_all();
     }
 
     pub(crate) fn invalidate_bookshelves(&self) {

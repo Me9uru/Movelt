@@ -18,18 +18,19 @@ use crate::{
     },
 };
 
-use super::validation::{parse_id, validate_page_size};
+use super::validation::{parse_id, validate_page_number, validate_page_size};
 
 #[tauri::command]
 /// 获取指定排序方式的小说榜单。
 pub(crate) async fn list_novels(
     client: State<'_, OfficialClient>,
-    cache: State<'_, AppCache>,
     order: Order,
     page_number: Option<i64>,
     page_size: i64,
 ) -> Result<Arc<Vec<NovelSummary>>> {
-    let page_number = page_number.unwrap_or(1);
+    let client = client.scoped().await;
+    let cache = client.cache();
+    let page_number = validate_page_number(page_number.unwrap_or(1))?;
     let page_size = validate_page_size(page_size)?;
     let key = ListKey::new(order, page_number, page_size);
     cache
@@ -44,9 +45,10 @@ pub(crate) async fn list_novels(
 /// 获取指定天数范围的小说排行。
 pub(crate) async fn rank_novels(
     client: State<'_, OfficialClient>,
-    cache: State<'_, AppCache>,
     days: i64,
 ) -> Result<Arc<Vec<NovelSummary>>> {
+    let client = client.scoped().await;
+    let cache = client.cache();
     cache
         .load_cache(&cache.novel_rank, days, async {
             Ok(client
@@ -68,7 +70,8 @@ pub(crate) async fn search_novels(
     page_size: i64,
     mode: SearchMode,
 ) -> Result<PaginatedList<NovelSummary>> {
-    let page_number = page_number.unwrap_or(1);
+    let client = client.scoped().await;
+    let page_number = validate_page_number(page_number.unwrap_or(1))?;
     let response = client
         .search_novels(query, page_number, validate_page_size(page_size)?, mode)
         .await?;
@@ -79,9 +82,10 @@ pub(crate) async fn search_novels(
 /// 获取小说阅读器概览。
 pub(crate) async fn get_reader_overview(
     client: State<'_, OfficialClient>,
-    cache: State<'_, AppCache>,
     book_id: String,
 ) -> Result<NovelDetail> {
+    let client = client.scoped().await;
+    let cache = client.cache();
     let response = client.get_novel_info(parse_id(&book_id)?).await?;
     let detail = reader_detail(&response)?;
     cache
@@ -102,13 +106,14 @@ pub(crate) async fn get_reader_overview(
 /// 获取小说章节内容并按需预加载后续章节。
 pub(crate) async fn get_reader_document(
     client: State<'_, OfficialClient>,
-    cache: State<'_, AppCache>,
     book_id: String,
     document_id: String,
     convert: Option<String>,
 ) -> Result<Arc<NovelChapterContent>> {
+    let client = client.scoped().await;
+    let cache = client.cache();
     let convert = parse_convert(convert)?;
-    let document = load_reader_document(&client, &cache, &book_id, &document_id, convert).await?;
+    let document = load_reader_document(&client, cache, &book_id, &document_id, convert).await?;
     let chapter_ids = cache
         .load_cache(&cache.novel_chapters, book_id.clone(), async {
             let response = client.get_novel_info(parse_id(&book_id)?).await?;
@@ -120,8 +125,8 @@ pub(crate) async fn get_reader_document(
         })
         .await?;
     preload_novel_read_ahead(
-        client.inner().clone(),
-        cache.inner().clone(),
+        client.clone(),
+        cache.clone(),
         book_id,
         chapter_ids,
         document_id,
@@ -187,6 +192,7 @@ pub(crate) async fn save_read_position(
     chapter_id: String,
     xpath: String,
 ) -> Result<()> {
+    let client = client.scoped().await;
     client
         .save_novel_position(parse_id(&book_id)?, parse_id(&chapter_id)?, xpath)
         .await

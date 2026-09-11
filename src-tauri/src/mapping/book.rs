@@ -21,6 +21,8 @@ pub(super) fn detail<'a>(value: &'a Value, kind: &str) -> Result<(&'a Value, Vec
     if book.get("Type").and_then(Value::as_str) != Some(kind) {
         return Err(AppError::protocol("详情 Book.Type 与请求的作品类型不符"));
     }
+    super::value::required_id(book, "Id")?;
+    super::value::required_string(book, "Title")?;
     let chapters: Vec<Chapter> = serde_json::from_value(
         book.get("Chapters")
             .cloned()

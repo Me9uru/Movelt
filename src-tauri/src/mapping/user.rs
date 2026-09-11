@@ -3,14 +3,14 @@ use serde_json::Value;
 use crate::{
     dto::user::{Growth, User},
     error::Result,
-    mapping::value::{number, optional_number, optional_string, string},
+    mapping::value::{number, optional_number, optional_string, required_id, required_string},
 };
 
 /// 将官方用户数据映射为应用 DTO。
 pub(crate) fn user(value: Value) -> Result<User> {
     Ok(User {
-        id: number(&value, "Id"),
-        user_name: string(&value, "UserName"),
+        id: required_id(&value, "Id")?,
+        user_name: required_string(&value, "UserName")?,
         avatar: optional_string(&value, "Avatar"),
         email: optional_string(&value, "Email"),
         invite_code: optional_string(&value, "InviteCode"),
@@ -45,6 +45,18 @@ mod tests {
     use serde_json::json;
 
     use super::user;
+
+    #[test]
+    fn rejects_missing_or_invalid_identity() {
+        for value in [
+            json!(null),
+            json!({}),
+            json!({"Id": 0, "UserName": "读者"}),
+            json!({"Id": 42}),
+        ] {
+            assert!(user(value).is_err());
+        }
+    }
 
     #[test]
     fn maps_full_user_profile() {

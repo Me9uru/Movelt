@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use serde_json::Value;
 
 use crate::{
@@ -7,7 +8,7 @@ use crate::{
     error::{AppError, Result},
     mapping::{
         common::read_position,
-        value::{array, number, optional_html, optional_string, string},
+        value::{number, optional_html, optional_string, string},
     },
 };
 
@@ -122,23 +123,29 @@ pub(crate) fn page_batch(
     value: &Value,
     start_index: i64,
 ) -> Result<ComicChapterPageBatch> {
-    let chapter = value
-        .get("Chapter")
-        .ok_or_else(|| AppError::protocol("漫画页面响应缺少 Chapter"))?;
+    #[derive(Deserialize)]
+    #[serde(rename_all = "PascalCase")]
+    struct ChapterPages {
+        images: Vec<String>,
+        total: i64,
+    }
+    let chapter: ChapterPages = serde_json::from_value(
+        value
+            .get("Chapter")
+            .cloned()
+            .ok_or_else(|| AppError::protocol("漫画页面响应缺少 Chapter"))?,
+    )
+    .map_err(|_| AppError::protocol("漫画页面 Images/Total 格式无效"))?;
+    if chapter.total < 0 || chapter.images.iter().any(|url| url.is_empty()) {
+        return Err(AppError::protocol("漫画页面数量或图片地址无效"));
+    }
     Ok(ComicChapterPageBatch {
         chapter_id,
         start_index,
-        page_urls: page_urls(chapter),
-        page_count: number(chapter, "Total"),
+        page_urls: chapter.images,
+        page_count: chapter.total,
         read_position: read_position(value.get("ReadPosition")),
     })
-}
-
-fn page_urls(chapter: &Value) -> Vec<String> {
-    array(chapter, "Images")
-        .iter()
-        .filter_map(|image| image.as_str().map(str::to_owned))
-        .collect()
 }
 
 #[cfg(test)]
@@ -212,5 +219,17 @@ mod tests {
         let mapped = page_batch("42".into(), &value, 0).expect("page batch");
 
         assert_eq!(mapped.page_urls, ["https://images.example/1.webp"]);
+    }
+
+    #[test]
+    fn rejects_malformed_page_batches_instead_of_dropping_images() {
+        for chapter in [
+            json!(null),
+            json!({}),
+            json!({"Images": [null], "Total": 1}),
+            json!({"Images": [], "Total": -1}),
+        ] {
+            assert!(page_batch("42".into(), &json!({"Chapter": chapter}), 0).is_err());
+        }
     }
 }

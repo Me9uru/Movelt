@@ -8,31 +8,33 @@ use serde_json::{json, Value};
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
-use crate::error::{AppError, Result};
+use crate::{
+    api::cache::AppCache,
+    error::{AppError, Result},
+};
 use tauri_plugin_movel_credentials::CredentialStore;
 
-use super::hub::HubSession;
+use super::{
+    credentials::Credentials,
+    session::{Session, SessionContext},
+};
 
 pub(in crate::api) const API_BASE: &str = "https://api.lightnovel.life";
 pub(in crate::api) const REFRESH_ACCOUNT: &str = "lightnovel-refresh-token";
 const DEVICE_ACCOUNT: &str = "lightnovel-device-id";
 const SESSION_TOKEN_TTL: Duration = Duration::from_secs(30);
 
-#[derive(Default)]
-pub(in crate::api) struct Session {
-    token: String,
-    expires_at: Option<Instant>,
-    refresh_token: Option<String>,
-}
-
 #[derive(Clone)]
 pub(crate) struct OfficialClient {
     pub(in crate::api) http: Client,
-    pub(in crate::api) session: Arc<Mutex<Session>>,
+    pub(super) session: Arc<Mutex<Session>>,
     refresh_lock: Arc<Mutex<()>>,
-    pub(in crate::api) hub_session: Arc<Mutex<HubSession>>,
-    credentials: CredentialStore<tauri::Wry>,
+    pub(super) context: Arc<SessionContext>,
+    credentials: Arc<dyn Credentials>,
     pub(in crate::api) device_id: String,
+    pub(super) http_base: String,
+    #[cfg(test)]
+    pub(super) test_hub: Option<super::tests::TestHub>,
 }
 
 impl OfficialClient {
@@ -51,33 +53,79 @@ impl OfficialClient {
             .flatten()
             .unwrap_or_else(|| Uuid::new_v4().to_string());
         let _ = credentials.set(DEVICE_ACCOUNT, &device_id);
-        Ok(Self {
+        Ok(Self::with_credentials(
             http,
-            session: Arc::new(Mutex::new(Session::default())),
+            Arc::new(credentials),
+            device_id,
+        ))
+    }
+
+    pub(super) fn with_credentials(
+        http: Client,
+        credentials: Arc<dyn Credentials>,
+        device_id: String,
+    ) -> Self {
+        let session = Session::default();
+        Self {
+            http,
+            // 管理态只用于创建快照，不持有任何账号的连接或缓存。
+            context: Arc::default(),
+            session: Arc::new(Mutex::new(session)),
             refresh_lock: Arc::new(Mutex::new(())),
-            hub_session: Arc::new(Mutex::new(HubSession::default())),
             credentials,
             device_id,
-        })
+            http_base: API_BASE.into(),
+            #[cfg(test)]
+            test_hub: None,
+        }
+    }
+
+    /// 命令入口捕获身份；后续调用和预加载必须沿用这个快照。
+    pub(crate) async fn scoped(&self) -> Self {
+        let mut client = self.clone();
+        client.context = self.session.lock().await.context.clone();
+        client
+    }
+
+    pub(crate) fn cache(&self) -> &AppCache {
+        &self.context.cache
+    }
+
+    pub(crate) async fn lock_bookshelf(&self) -> Result<tokio::sync::MutexGuard<'_, ()>> {
+        let guard = self.context.bookshelf.lock().await;
+        self.ensure_current().await?;
+        Ok(guard)
+    }
+
+    pub(super) async fn ensure_current(&self) -> Result<()> {
+        self.session.lock().await.check(&self.context)
     }
 
     /// 调用 SignalR 方法；遇到连接或认证问题时自动恢复后重试。
     pub(in crate::api) async fn hub(&self, method: &str, payload: Value) -> Result<Value> {
-        match self.hub_once(method, payload.clone()).await {
-            Err(error) if error.is_transport() => {
-                self.invalidate_hub().await;
-                self.hub_once(method, payload).await
+        // Keep transport state out of every caller's inline future. Tauri constructs
+        // command futures on Android's small JavaBridge stack before spawning them.
+        match Box::pin(self.hub_once(method, payload.clone())).await {
+            // 写请求丢失响应时可能已在服务器提交，不能盲目重放。
+            Err(error)
+                if error.is_transport()
+                    && (method.starts_with("Get") || method == "SearchComicSeries") =>
+            {
+                Box::pin(self.hub_once(method, payload)).await
             }
-            Err(error) if is_authentication_failure(&error) => {
-                self.invalidate_access_token().await;
+            Err(error)
+                if matches!(error, AppError::Upstream { .. })
+                    && is_authentication_failure(&error) =>
+            {
+                self.invalidate_access_token().await?;
                 self.invalidate_hub().await;
                 if self.token().await?.is_empty() {
                     return Err(AppError::AuthenticationExpired);
                 }
 
-                match self.hub_once(method, payload).await {
+                match Box::pin(self.hub_once(method, payload)).await {
                     Err(error) if is_authentication_failure(&error) => {
-                        self.clear_credentials().await;
+                        self.clear_credentials().await?;
                         Err(AppError::AuthenticationExpired)
                     }
                     result => result,
@@ -88,42 +136,48 @@ impl OfficialClient {
     }
 
     /// 保存登录令牌及刷新凭据，并重置现有 Hub 连接。
-    pub(in crate::api) async fn save_login(&self, value: &Value) -> Result<()> {
+    pub(in crate::api) async fn save_login(&self, value: &Value) -> Result<Self> {
         let token = value
             .get("Token")
             .and_then(Value::as_str)
+            .filter(|token| !token.is_empty())
             .ok_or_else(|| AppError::protocol("登录响应缺少 Token"))?;
         let refresh = value
             .get("RefreshToken")
             .and_then(Value::as_str)
+            .filter(|token| !token.is_empty())
             .ok_or_else(|| AppError::protocol("登录响应缺少 RefreshToken"))?;
-        *self.session.lock().await = Session {
-            token: token.into(),
-            expires_at: Some(Instant::now() + SESSION_TOKEN_TTL),
-            refresh_token: Some(refresh.into()),
-        };
+        let mut session = self.session.lock().await;
+        session.check(&self.context)?;
+        session.reset();
+        session.token = token.into();
+        session.expires_at = Some(Instant::now() + SESSION_TOKEN_TTL);
+        session.refresh_token = Some(refresh.into());
         // 密钥环不可用时仅保留内存会话。
-        let _ = self.set_credential(REFRESH_ACCOUNT, refresh);
-        self.invalidate_hub().await;
-        Ok(())
+        let _ = self.credentials.set(REFRESH_ACCOUNT, refresh);
+        let mut client = self.clone();
+        client.context = session.context.clone();
+        Ok(client)
     }
 
     /// 返回有效访问令牌，必要时使用刷新令牌换取新令牌。
     pub(in crate::api) async fn token(&self) -> Result<String> {
-        if let Some(token) = self.cached_token().await {
+        if let Some(token) = self.cached_token().await? {
             return Ok(token);
         }
         let _refresh_lock = self.refresh_lock.lock().await;
-        if let Some(token) = self.cached_token().await {
+        if let Some(token) = self.cached_token().await? {
             return Ok(token);
         }
-        let refresh = self
-            .session
-            .lock()
-            .await
-            .refresh_token
-            .clone()
-            .or_else(|| self.get_credential(REFRESH_ACCOUNT).ok().flatten());
+        let refresh = {
+            let session = self.session.lock().await;
+            session.check(&self.context)?;
+            match &session.refresh_token {
+                Some(refresh) => Some(refresh.clone()),
+                None if session.restore_from_store => self.credentials.get(REFRESH_ACCOUNT)?,
+                None => None,
+            }
+        };
         let Some(refresh) = refresh else {
             return Ok(String::new());
         };
@@ -131,21 +185,23 @@ impl OfficialClient {
         let response = self
             .http_envelope("/api/user/refresh_token", json!({ "token": refresh }))
             .await;
+        self.ensure_current().await?;
         match response {
             Ok(value) => {
                 let token = value
                     .as_str()
+                    .filter(|token| !token.is_empty())
                     .ok_or_else(|| AppError::protocol("刷新响应不是 Token 字符串"))?
                     .to_owned();
-                *self.session.lock().await = Session {
-                    token: token.clone(),
-                    expires_at: Some(Instant::now() + SESSION_TOKEN_TTL),
-                    refresh_token: Some(refresh_for_session),
-                };
+                let mut session = self.session.lock().await;
+                session.check(&self.context)?;
+                session.token = token.clone();
+                session.expires_at = Some(Instant::now() + SESSION_TOKEN_TTL);
+                session.refresh_token = Some(refresh_for_session);
                 Ok(token)
             }
             Err(error) if is_authentication_failure(&error) => {
-                self.clear_credentials().await;
+                self.clear_credentials().await?;
                 Err(AppError::AuthenticationExpired)
             }
             Err(error) => Err(error),
@@ -153,46 +209,30 @@ impl OfficialClient {
     }
 
     /// 清空内存中的访问令牌。
-    async fn invalidate_access_token(&self) {
-        *self.session.lock().await = Session::default();
+    pub(super) async fn invalidate_access_token(&self) -> Result<()> {
+        let mut session = self.session.lock().await;
+        session.check(&self.context)?;
+        session.invalidate_access_token();
+        Ok(())
     }
 
     /// 读取尚未过期的内存访问令牌。
-    async fn cached_token(&self) -> Option<String> {
+    async fn cached_token(&self) -> Result<Option<String>> {
         let session = self.session.lock().await;
-        session
+        session.check(&self.context)?;
+        Ok(session
             .expires_at
             .filter(|expires| *expires > Instant::now())
-            .map(|_| session.token.clone())
+            .map(|_| session.token.clone()))
     }
 
     /// 清除内存会话、Hub 连接和持久化刷新凭据。
-    async fn clear_credentials(&self) {
-        self.invalidate_access_token().await;
-        self.invalidate_hub().await;
-        // 删除失效凭据失败不应掩盖认证结果。
-        let _ = self.delete_credential(REFRESH_ACCOUNT);
-    }
-
-    /// 从系统凭据存储读取指定账户的值。
-    fn get_credential(&self, account: &str) -> Result<Option<String>> {
-        self.credentials
-            .get(account)
-            .map_err(|error| AppError::Credentials(error.to_string()))
-    }
-
-    /// 向系统凭据存储写入指定账户的值。
-    fn set_credential(&self, account: &str, value: &str) -> Result<()> {
-        self.credentials
-            .set(account, value)
-            .map_err(|error| AppError::Credentials(error.to_string()))
-    }
-
-    /// 从系统凭据存储删除指定账户的值。
-    pub(in crate::api) fn delete_credential(&self, account: &str) -> Result<()> {
-        self.credentials
-            .delete(account)
-            .map_err(|error| AppError::Credentials(error.to_string()))
+    pub(in crate::api) async fn clear_credentials(&self) -> Result<()> {
+        let mut session = self.session.lock().await;
+        session.check(&self.context)?;
+        // 即使系统删除失败，也立即隔离旧连接、缓存并禁止再次恢复旧凭据。
+        session.reset();
+        self.credentials.delete(REFRESH_ACCOUNT)
     }
 }
 

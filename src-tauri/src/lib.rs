@@ -17,7 +17,6 @@ pub fn run() {
             let client = api::OfficialClient::new(app.credential_store().clone())
                 .expect("failed to initialize official API client");
             app.manage(client);
-            app.manage(api::cache::AppCache::default());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

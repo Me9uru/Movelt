@@ -15,6 +15,8 @@ pub(crate) enum AppError {
     Credentials(String),
     #[error("登录已失效，请重新登录")]
     AuthenticationExpired,
+    #[error("会话已切换，请重试当前操作")]
+    SessionChanged,
     #[error("应用内部错误，请稍后重试")]
     Internal { detail: String },
 }
@@ -61,6 +63,7 @@ impl Serialize for AppError {
             Self::InvalidInput { .. } => "INVALID_INPUT",
             Self::Credentials(_) => "CREDENTIALS_ERROR",
             Self::AuthenticationExpired => "AUTHENTICATION_EXPIRED",
+            Self::SessionChanged => "SESSION_CHANGED",
             Self::Internal { .. } => "INTERNAL_ERROR",
         };
         ErrorResponse {

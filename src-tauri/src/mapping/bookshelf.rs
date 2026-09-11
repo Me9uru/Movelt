@@ -1,22 +1,20 @@
 use serde_json::Value;
 
-use crate::mapping::value::array;
+use crate::error::{AppError, Result};
 
 fn field<'a>(value: &'a Value, lower: &str, upper: &str) -> Option<&'a Value> {
     value.get(lower).or_else(|| value.get(upper))
 }
 
 /// 读取官方书架中的原始条目。
-pub(crate) fn items(value: &Value) -> Vec<Value> {
+pub(crate) fn items(value: &Value) -> Result<Vec<Value>> {
     if let Some(items) = value.as_array() {
-        return items.clone();
+        return Ok(items.clone());
     }
-    let items = array(value, "data");
-    if items.is_empty() {
-        array(value, "Data").to_vec()
-    } else {
-        items.to_vec()
-    }
+    field(value, "data", "Data")
+        .and_then(Value::as_array)
+        .cloned()
+        .ok_or_else(|| AppError::protocol("书架响应缺少有效 data/Data 数组"))
 }
 
 /// 读取书架条目的作品 ID，兼容新旧字段大小写和数字字符串。
@@ -66,8 +64,8 @@ mod tests {
             "Ver": "20220211"
         });
 
-        assert_eq!(items(&documented)[0]["id"], 1);
-        let current_item = &items(&current)[0];
+        assert_eq!(items(&documented).unwrap()[0]["id"], 1);
+        let current_item = &items(&current).unwrap()[0];
         assert_eq!(item_id(current_item), 2);
         assert!(is_kind(current_item, "BOOK"));
         assert_eq!(
@@ -80,10 +78,26 @@ mod tests {
     #[test]
     fn reads_legacy_root_array_and_numeric_item_types() {
         let shelf = json!([{"Id": 3, "Type": 0}]);
-        let item = &items(&shelf)[0];
+        let item = &items(&shelf).unwrap()[0];
 
         assert_eq!(item_id(item), 3);
         assert!(is_kind(item, "BOOK"));
         assert!(!is_kind(item, "FOLDER"));
+    }
+
+    #[test]
+    fn distinguishes_empty_shelves_from_malformed_responses() {
+        for value in [json!([]), json!({"data": []}), json!({"Data": []})] {
+            assert!(items(&value).unwrap().is_empty());
+        }
+        for value in [
+            json!(null),
+            json!({}),
+            json!({"data": null}),
+            json!({"data": {}}),
+            json!({"data": false, "Data": []}),
+        ] {
+            assert!(items(&value).is_err());
+        }
     }
 }

@@ -2344,11 +2344,12 @@ dependencies = [
 
 [[package]]
 name = "movel"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "ammonia",
  "chrono",
  "flate2",
+ "futures-util",
  "moka",
  "reqwest 0.12.28",
  "rmpv",

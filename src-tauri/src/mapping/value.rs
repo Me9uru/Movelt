@@ -1,5 +1,22 @@
 use serde_json::Value;
 
+use crate::error::{AppError, Result};
+
+/// 必填标识不能使用零值掩盖协议错误，仍兼容官方数字字符串。
+pub(crate) fn required_id(value: &Value, key: &str) -> Result<i64> {
+    optional_number(value, key)
+        .filter(|id| *id > 0)
+        .ok_or_else(|| AppError::protocol(format!("响应缺少有效 {key}")))
+}
+
+pub(crate) fn required_string(value: &Value, key: &str) -> Result<String> {
+    value
+        .get(key)
+        .and_then(Value::as_str)
+        .map(str::to_owned)
+        .ok_or_else(|| AppError::protocol(format!("响应缺少字符串 {key}")))
+}
+
 /// 读取字符串字段，缺失时返回空字符串。
 pub(crate) fn string(value: &Value, key: &str) -> String {
     value

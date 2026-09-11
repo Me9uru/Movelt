@@ -5,9 +5,7 @@ use url::Url;
 
 use crate::error::{AppError, Result};
 
-use super::super::connection::{
-    decode_envelope, transport, OfficialClient, Session, API_BASE, REFRESH_ACCOUNT,
-};
+use super::super::connection::{decode_envelope, transport, OfficialClient, API_BASE};
 
 impl OfficialClient {
     pub(crate) async fn login(&self, email: String, password: String) -> Result<Value> {
@@ -18,8 +16,10 @@ impl OfficialClient {
                 json!({ "email": email, "password": password }),
             )
             .await?;
-        self.save_login(&value).await?;
-        self.hub("GetMyInfo", json!({})).await
+        self.save_login(&value)
+            .await?
+            .hub("GetMyInfo", json!({}))
+            .await
     }
 
     pub(crate) async fn register(
@@ -43,8 +43,10 @@ impl OfficialClient {
                 }),
             )
             .await?;
-        self.save_login(&value).await?;
-        self.hub("GetMyInfo", json!({})).await
+        self.save_login(&value)
+            .await?
+            .hub("GetMyInfo", json!({}))
+            .await
     }
 
     pub(crate) async fn send_register_email(&self, email: String) -> Result<()> {
@@ -67,8 +69,11 @@ impl OfficialClient {
     }
 
     pub(crate) async fn restore_user(&self) -> Result<Option<Value>> {
-        if self.token().await?.is_empty() {
-            return Ok(None);
+        match self.token().await {
+            Ok(token) if token.is_empty() => return Ok(None),
+            Err(AppError::AuthenticationExpired) => return Ok(None),
+            Err(error) => return Err(error),
+            Ok(_) => {}
         }
         match self.hub("GetMyInfo", json!({})).await {
             Ok(user) => Ok(Some(user)),
@@ -88,9 +93,6 @@ impl OfficialClient {
     }
 
     pub(crate) async fn logout(&self) -> Result<()> {
-        *self.session.lock().await = Session::default();
-        self.invalidate_hub().await;
-        let _ = self.delete_credential(REFRESH_ACCOUNT);
-        Ok(())
+        self.clear_credentials().await
     }
 }

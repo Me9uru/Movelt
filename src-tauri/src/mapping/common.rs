@@ -28,6 +28,9 @@ pub(crate) fn pagination(value: &Value, default_page: i64) -> Result<Pagination>
         .and_then(Value::as_i64)
         .unwrap_or(default_page);
     let last = raw.get("TotalPages").and_then(Value::as_i64).unwrap_or(1);
+    if page < 1 || page == i64::MAX || last < 0 {
+        return Err(AppError::protocol("分页响应的页码范围无效"));
+    }
 
     Ok(Pagination {
         page,

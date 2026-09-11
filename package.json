@@ -1,13 +1,14 @@
 {
   "name": "movel",
   "private": true,
-  "version": "0.1.7",
+  "version": "0.1.8",
   "type": "module",
   "scripts": {
     "dev": "node scripts/sync-android-entry.mjs && vite",
     "build": "node scripts/sync-android-entry.mjs && vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "version:android": "node scripts/set-android-version.mjs",
+    "android:dev": "node scripts/android-dev.mjs",
     "tauri": "tauri"
   },
   "dependencies": {

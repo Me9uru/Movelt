@@ -36,9 +36,12 @@ const handleError = (): void => {
 
 <template>
   <div class="book-cover-root">
+    <!-- 保留布局坐标，让懒加载只请求进入视口的封面。 -->
     <var-image
       v-if="coverUrl"
-      v-show="!loading && !failed"
+      :key="coverUrl"
+      v-show="!failed"
+      :style="{ opacity: loading ? 0 : 1 }"
       :src="coverUrl"
       :alt="title"
       :fit="fit"

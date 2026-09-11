@@ -1,4 +1,4 @@
-use std::io::Read;
+use std::{future::Future, io::Read, time::Duration};
 
 use rmpv::Value as MessagePackValue;
 use serde_json::{json, Value};
@@ -10,35 +10,82 @@ use super::client::{OfficialClient, API_BASE};
 
 const HUB_DOMAIN: &str = "api.lightnovel.life";
 const HUB_PATH: &str = "hub/api";
+const HUB_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[derive(Default)]
 pub(in crate::api) struct HubSession {
     client: Option<SignalRClient>,
+    revision: u64,
+}
+
+impl Drop for HubSession {
+    fn drop(&mut self) {
+        if let Some(client) = self.client.take() {
+            tauri::async_runtime::spawn_blocking(move || drop(client));
+        }
+    }
 }
 
 impl OfficialClient {
     /// 在现有或新建的 SignalR 连接上执行一次调用。
     pub(in crate::api) async fn hub_once(&self, method: &str, payload: Value) -> Result<Value> {
-        let mut hub_session = self.hub_session.lock().await;
-        if hub_session.client.is_none() {
-            let token = self.token().await?;
-            hub_session.client = Some(self.connect_hub(token).await?);
+        #[cfg(test)]
+        if let Some(hub) = &self.test_hub {
+            self.ensure_current().await?;
+            let result = with_timeout(hub(method.to_owned(), payload)).await;
+            self.ensure_current().await?;
+            return result;
         }
+        let (mut client, revision) = with_timeout(self.connected_client()).await?;
+        self.ensure_current().await?;
+        let result = with_timeout(async {
+            client
+                .invoke_with_args::<MessagePackValue, _>(method.to_owned(), |arguments| {
+                    arguments.argument(payload.clone());
+                    arguments.argument(json!({ "UseGzip": true }));
+                })
+                .await
+                .map_err(AppError::transport)
+        })
+        .await;
+        let current = self.ensure_current().await;
+        if result.as_ref().is_err_and(|error| error.is_transport()) {
+            self.invalidate_hub_revision(Some(revision)).await;
+        }
+        // SignalR 的 Drop 内部会同步等待断开，放到阻塞线程以免占住运行时。
+        tauri::async_runtime::spawn_blocking(move || drop(client));
+        current?;
+        decode_hub_envelope(&result?)
+    }
 
-        let client = hub_session
-            .client
-            .as_mut()
-            .ok_or_else(|| AppError::Internal {
-                detail: "SignalR 连接未初始化".into(),
-            })?;
-        let envelope = client
-            .invoke_with_args::<MessagePackValue, _>(method.to_owned(), |arguments| {
-                arguments.argument(payload.clone());
-                arguments.argument(json!({ "UseGzip": true }));
-            })
-            .await
-            .map_err(AppError::transport)?;
-        decode_hub_envelope(&envelope)
+    async fn connected_client(&self) -> Result<(SignalRClient, u64)> {
+        self.ensure_current().await?;
+        if let Some(client) = self.cached_hub().await {
+            return Ok(client);
+        }
+        let _connecting = self.context.connecting.lock().await;
+        if let Some(client) = self.cached_hub().await {
+            return Ok(client);
+        }
+        // 刷新和连接都不持有 Hub 锁；认证失败可以安全地重置会话。
+        let token = self.token().await?;
+        let client = self.connect_hub(token).await?;
+        if let Err(error) = self.ensure_current().await {
+            tauri::async_runtime::spawn_blocking(move || drop(client));
+            return Err(error);
+        }
+        let mut hub = self.context.hub.lock().await;
+        hub.revision += 1;
+        let result = (client.clone(), hub.revision);
+        hub.client = Some(client);
+        Ok(result)
+    }
+
+    async fn cached_hub(&self) -> Option<(SignalRClient, u64)> {
+        let hub = self.context.hub.lock().await;
+        hub.client
+            .as_ref()
+            .map(|client| (client.clone(), hub.revision))
     }
 
     /// 建立使用 MessagePack 协议的官方 SignalR Hub 连接。
@@ -55,8 +102,25 @@ impl OfficialClient {
 
     /// 丢弃当前 SignalR 连接，使下次调用重新连接。
     pub(in crate::api) async fn invalidate_hub(&self) {
-        *self.hub_session.lock().await = HubSession::default();
+        self.invalidate_hub_revision(None).await;
     }
+
+    async fn invalidate_hub_revision(&self, revision: Option<u64>) {
+        let removed = {
+            let mut hub = self.context.hub.lock().await;
+            if revision.is_some_and(|revision| revision != hub.revision) {
+                return;
+            }
+            hub.client.take()
+        };
+        tauri::async_runtime::spawn_blocking(move || drop(removed));
+    }
+}
+
+async fn with_timeout<T>(future: impl Future<Output = Result<T>>) -> Result<T> {
+    tokio::time::timeout(HUB_TIMEOUT, future)
+        .await
+        .map_err(|_| AppError::transport("SignalR 请求超时"))?
 }
 
 /// 校验并解码 SignalR MessagePack 响应包。
@@ -108,6 +172,36 @@ fn hub_field<'a>(value: &'a MessagePackValue, name: &str) -> Option<&'a MessageP
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn decodes_gzip_payload_and_rejects_corruption() {
+        use std::io::Write;
+        let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+        encoder.write_all(br#"{"Id":42}"#).unwrap();
+        let envelope = |bytes| {
+            MessagePackValue::Map(vec![
+                ("Success".into(), true.into()),
+                ("Response".into(), MessagePackValue::Binary(bytes)),
+            ])
+        };
+        assert_eq!(
+            decode_hub_envelope(&envelope(encoder.finish().unwrap())).unwrap(),
+            json!({"Id": 42})
+        );
+        assert!(matches!(
+            decode_hub_envelope(&envelope(vec![1, 2, 3])),
+            Err(AppError::UpstreamProtocol { .. })
+        ));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn bounds_an_unresponsive_operation() {
+        let started = tokio::time::Instant::now();
+        let result = with_timeout(std::future::pending::<Result<()>>()).await;
+        assert!(matches!(result, Err(AppError::Transport { .. })));
+        assert_eq!(started.elapsed(), HUB_TIMEOUT);
+        assert!(with_timeout(async { Ok(()) }).await.is_ok());
+    }
 
     #[test]
     fn decodes_successful_empty_response_as_null() {

@@ -9,7 +9,9 @@ use crate::{
     error::{AppError, Result},
     mapping::{
         common::{pagination, read_position},
-        value::{array, number, optional_html, optional_string, string},
+        value::{
+            array, number, optional_html, optional_string, required_id, required_string, string,
+        },
     },
 };
 
@@ -88,9 +90,9 @@ pub(crate) fn chapter_content(value: &Value, document_id: String) -> Result<Nove
         .ok_or_else(|| AppError::protocol("小说章节响应缺少 Chapter"))?;
     Ok(NovelChapterContent {
         chapter_id: document_id,
-        server_chapter_id: number(chapter, "Id").to_string(),
-        title: string(chapter, "Title"),
-        html: sanitize_chapter_html(&string(chapter, "Content")),
+        server_chapter_id: required_id(chapter, "Id")?.to_string(),
+        title: required_string(chapter, "Title")?,
+        html: sanitize_chapter_html(&required_string(chapter, "Content")?),
         font_url: chapter_font_url(chapter),
         read_position: read_position(value.get("ReadPosition")),
     })
@@ -121,7 +123,24 @@ fn chapter_font_url(chapter: &Value) -> Option<String> {
 mod tests {
     use serde_json::json;
 
-    use super::{reader_detail, sanitize_chapter_html, summary};
+    use super::{chapter_content, reader_detail, sanitize_chapter_html, summary};
+
+    #[test]
+    fn rejects_malformed_content_but_accepts_an_empty_chapter() {
+        for chapter in [
+            json!(null),
+            json!({}),
+            json!({"Id": 1, "Title": "一", "Content": null}),
+        ] {
+            assert!(chapter_content(&json!({"Chapter": chapter}), "1".into()).is_err());
+        }
+        let content = chapter_content(
+            &json!({"Chapter": {"Id": 1, "Title": "一", "Content": ""}}),
+            "1".into(),
+        )
+        .unwrap();
+        assert!(content.html.is_empty());
+    }
 
     #[test]
     fn maps_unified_chapters_and_resume_position_by_sort_num() {
